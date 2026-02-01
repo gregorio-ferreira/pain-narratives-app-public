@@ -1,0 +1,706 @@
+# Spanish (es_new.yml) - Plataforma de Evaluación AINarratives - Localización Completa
+app:
+  title: "🏥 Plataforma de Evaluación AINarratives"
+  tagline: "Herramienta para facilitar la evaluación del dolor gracias a la inteligencia artificial"
+  welcome_message: "👋 ¡Bienvenido/a l AINarratives!"
+  
+sidebar:
+  header: "⚙️ Configuración"
+  language_select: "Idioma / Language"
+  openai_api_key: "Clave API de OpenAI"
+  api_key_help: "Introduzca su clave API de OpenAI para habilitar evaluaciones con IA"
+  use_database: "💾 Usar Base de Datos"
+  database_help: "Habilitar para guardar resultados en la base de datos PostgreSQL"
+  model_selection: "🤖 Selección de Modelo"
+  model_help: "Elija el modelo de OpenAI para la evaluación"
+  temperature: "🌡️ Temperatura"
+  temperature_help: "Controla la aleatoriedad (0.0 = determinístico, 1.0 = muy aleatorio)"
+  max_tokens: "📝 Máximo de Tokens"
+  max_tokens_help: "Número máximo de tokens en la respuesta"
+  login_section: "🔐 Inicio de Sesión"
+  username: "Nombre de Usuario"
+  username_help: "Introduzca su nombre de usuario"
+  login_button: "🔑 Iniciar Sesión"
+  logout_button: "🚪 Cerrar Sesión"
+  password: "Contraseña"
+  refresh_button: "🔄 Actualizar"
+  refresh_groups_button: "🔄 Actualizar Grupos"
+  refresh_groups_help: "Actualizar manualmente la lista de grupos de evaluación si es necesario"
+  evaluation_groups: "Grupos de evaluación"
+  select_group: "Seleccionar un grupo de evaluación"
+  select_group_help: "Seleccione un grupo de evaluación para organizar sus evaluaciones"
+  no_groups_warning: "⚠️ No hay grupos de evaluación disponibles."
+  create_group_info: "🧪 ¡Cree un grupo de evaluación en la pestaña **Gestión** para comenzar!"
+  groups_count: "{count} grupo(s) disponible(s)"
+
+auth:
+  login_required: "🔒 Por favor inicie sesión para acceder a esta sección."
+  username_password_required: "nombre de usuario y contraseña"
+  authenticating: "Autenticando..."
+  welcome_user: "✅ ¡Bienvenido/a, {username}!"
+  invalid_credentials: "❌ Nombre de usuario o contraseña inválidos"
+  authentication_error: "❌ Error de autenticación: {error}"
+  admin_access: "🔑 Acceso de Administrador"
+  user_access: "👥 Acceso de Usuario"
+  need_help: "ℹ️ ¿Necesita Ayuda?"
+  first_time_info: |
+    **¿Primera vez aquí?**
+    Consulte la página principal para una descripción general de la plataforma.
+
+    **¿Olvidó sus credenciales?**
+    Contacte a su administrador del sistema.
+
+    **¿Necesita una cuenta?**
+    Solicite a su administrador que le cree una.
+
+tabs:
+  narrative_dimensions: "🎯 Narrativas y Dimensiones"
+  pain_assessment: "🏥 Evaluación"
+  batch_evaluation: "📊 Evaluación por Lotes"
+  analytics: "📈 Analíticas"
+  questionnaires: "📋 Cuestionarios"
+  management: "⚙️ Gestión"
+  help: "❓ Ayuda"
+
+narrative_dimensions:
+  header: "🎯 Narrativas y Dimensiones"
+  description: "Evalúe múltiples narrativas dimensiones de las narrativas de dolor usando  IA"
+  narrative_input: "📝 Introducción de la Narrativa"
+  narrative_placeholder: "Por favor, introduzca  aquí el texto de la narrativa de dolor..."
+  narrative_help: "Introduzca  la narrativa de dolor a evaluar "
+  evaluation_type: "🔬 Tipo de Evaluación"
+  single_evaluation: "Evaluación Única"
+  multiple_evaluation: "Evaluaciones Múltiples (Prueba de Consistencia)"
+  num_evaluations: "Número de Evaluaciones"
+  num_evaluations_help: "Cuántas veces evaluar la misma narrativa para análisis de consistencia"
+  create_new_experiment: "🧪 Crear Nuevo Experimento"
+  experiment_help: "Crear una nueva entrada de experimento en la base de datos"
+  evaluate_button: "🚀 Evaluar Narrativa"
+  evaluating_message: "🔄 Evaluando narrativa..."
+  evaluation_complete: "✅ ¡Evaluación completada!"
+  evaluation_error: "❌ La evaluación falló"
+  load_existing_narrative: "Cargar narrativa existente"
+  new_narrative: "Nueva narrativa"
+  upload_narrative_file: "Subir narrativa ( Solo formato .txt)"
+  enter_modify_narrative: "Introducir o modificar la narrativa "
+  save_narrative_button: "💾 Guardar Narrativa en BD"
+  narrative_saved: "Narrativa guardada con ID {narrative_id}"
+  failed_save_narrative: "Error al guardar narrativa: {error}"
+  admin_mode_info: "👑 **Modo Administrador**: Puede crear grupos de evaluación con prompts personalizados en la pestaña Gestión."
+  no_group_selected: "⚠️ **Ningún grupo de evaluación seleccionado**"
+  get_started_info: |
+    🧪 **Comenzar:**
+    1. **Usuarios regulares**: Seleccione un grupo de evaluación de la barra lateral
+    2. **Administradores**: Cree o seleccione un grupo de evaluación desde la pestaña Gestión
+    Una vez que haya seleccionado un grupo de evaluación, puede personalizar las dimensiones de evaluación aquí.
+  selected_group: "📋 **Grupo de evaluación seleccionado**: {group_id}"
+  customize_dimensions: "### 📝 Personalizar Dimensiones de Evaluación"
+  customize_info: "💡 Modifique las dimensiones de evaluación existentes si lo desea, o añada otras de su interés "
+  dimensions_ready_button: "✅ Definición de Dimensiones Lista"
+  fix_dimension_ranges: "❌ Por favor corrija los rangos de dimensión antes de continuar."
+
+pain_assessment:
+  header: "🏥 Evaluación de las dimensiones"
+  description: "Evalúe narrativas de dolor individuales usando las dimensiones configuradas"
+  setup_required: "ℹ️ **Configuración Requerida**"
+  setup_instructions: |
+    Para usar las funciones de evaluación, configure su conexión OpenAI:
+
+    1. Ingrese su clave API de OpenAI en la barra lateral (o asegúrese de que esté configurada en su entorno)
+    2. Seleccione su modelo preferido y configuraciones de temperatura
+    3. Haga clic en **"Inicializar Conexiones"** para comenzar a evaluar narrativas
+
+    Una vez configurado, podrá probar narrativas individuales y ver resultados de evaluación en tiempo real.
+  no_group_selected: "⚠️ Ningún grupo de evaluación seleccionado"
+  evaluation_group_required: |
+    🧪 **Grupo de evaluación Requerido**
+
+    Para ejecutar evaluaciones, necesita:
+    1. Ir a la pestaña **⚙️ Gestión**
+    2. Crear un nuevo grupo de evaluación
+    3. Volver aquí para ejecutar evaluaciones
+
+    Los grupos de evaluación ayudan a organizar su investigación y asociar evaluaciones con estudios específicos.
+  current_narrative: "Narrativa Actual"
+  narrative_required: "Por favor proporcione una narrativa de dolor en la pestaña 'Narrativas y Dimensiones'."
+  pain_narrative_label: "Narrativa de Dolor"
+  max_tokens: "Tokens Máximos"
+  number_evaluations: "Número de Evaluaciones"
+  number_evaluations_help: "Para pruebas de consistencia"
+  evaluate_button: "🚀 Evaluar"
+  rerun_button: "🔁 Re-ejecutar"
+  evaluating_narrative: "Evaluando narrativa..."
+
+questionnaires:
+  header: "📋 Cuestionarios"
+  description: |
+    ℹ️ **Análisis de Cuestionarios**
+
+    Esta función le permite ejecutar cuestionarios estandarizados usando la narrativa actual.
+    
+    **Cuestionarios Disponibles:**
+    - **PCS (Escala de Catastrofización del Dolor)**: Evalúa patrones de pensamiento catastrófico relacionados con la experiencia del dolor
+    - **BPI-IS (Inventario Breve del Dolor - Escala de Interferencia)**: Evalúa la interferencia del dolor con las actividades diarias y la intensidad del dolor
+    - **TSK-11SV (Escala de Tampa de Kinesiofobia - Versión Corta)**: Mide el miedo al movimiento y la evitación de actividades debido al dolor
+    
+    **Cómo funciona:**
+    1. Ingrese o seleccione una narrativa de dolor
+    2. Elija un cuestionario del menú desplegable
+    3. Haga clic en "Ejecutar Cuestionario" para obtener respuestas generadas por IA
+    4. Vea puntuaciones detalladas y análisis
+    
+    El modelo de IA analizará la narrativa y proporcionará puntuaciones basadas en el marco validado del cuestionario.
+  select_questionnaire: "Seleccionar cuestionario"
+  select_questionnaires: "Seleccionar cuestionarios"
+  select_at_least_one: "Seleccione al menos un cuestionario para ejecutar."
+  selected_questionnaires_label: "Cuestionarios Seleccionados"
+  narrative_required: "Por favor proporcione una narrativa de dolor en la pestaña 'Narrativas y Dimensiones'."
+  pain_narrative_label: "Narrativa de Dolor"
+  run_questionnaire_button: "Ejecutar Cuestionario"
+  run_questionnaires_button: "Ejecutar Cuestionarios Seleccionados"
+  rerun_button: "🔁 Re-ejecutar"
+  clear_results_button: "🗑️ Limpiar Resultados"
+  contacting_model: "Contactando modelo..."
+  no_result_error: "No se devolvió resultado del modelo"
+  results_summary: "📋 Resultados de Cuestionarios"
+  scores_header: "Puntuaciones"
+  score_distribution_header: "Distribución de Puntuación"
+  model_reasoning_header: "Razonamiento del Modelo"
+  no_scores_warning: "No se encontraron puntuaciones en la respuesta del modelo"
+  question_column: "Pregunta"
+  question_text_column: "Texto de Pregunta"
+  score_column: "Puntuación"
+  scale_column: "Escala"
+  total_score_label: "Puntuación Total PCS"
+  total_score_help: "Suma de todas las puntuaciones individuales (rango: 0-52)"
+  results_header: "Resultados"
+  scale_type_column: "Tipo de Escala"
+  interference_average: "Promedio Interferencia"
+  interference_help: "Puntuación promedio para ítems de interferencia (0-10)"
+  intensity_average: "Promedio Intensidad"
+  intensity_help: "Puntuación promedio para ítems de intensidad (0-10)"
+  average_score_label: "Puntuación Promedio"
+  tsk_total_help: "Suma de todas las puntuaciones TSK-11SV (rango: 11-44)"
+  tsk_average_help: "Puntuación promedio TSK-11SV (rango: 1-4)"
+  bpi_total_help: "Suma de todas las puntuaciones BPI-IS (rango: 0-100)"
+
+analytics:
+  header: "📈 Analíticas"
+  description: "Ver analíticas e insights de sus datos de evaluación"
+  group_summary: "Resumen del Grupo {group_id}"
+  experiments_metric: "Experimentos"
+  questionnaires_metric: "Cuestionarios"
+  stored_results_header: "Resultados Almacenados"
+  no_evaluation_history: "No hay historial de evaluación disponible para esta sesión."
+  total_evaluations: "Evaluaciones Totales"
+  models_used: "Modelos Usados"
+  avg_temperature: "Temperatura Promedio"
+  last_24h: "Últimas 24h"
+  evaluation_trends: "📈 Tendencias de Evaluación"
+  score_distributions: "📊 Distribuciones de Puntuación por Dimensión"
+  consistency_analysis: "🎯 Análisis de Consistencia"
+  consistency_warning: "Se necesitan al menos 2 evaluaciones para análisis de consistencia."
+  model_comparison: "🤖 Comparación de Modelos"
+  temporal_analysis: "⏰ Análisis Temporal"
+  export_data: "📤 Exportar Datos"
+  
+management:
+  header: "⚙️ Gestión de Aplicación"
+  description: "Gestionar grupos de evaluación, ver información del sistema y acceder a herramientas de administración."
+  evaluation_groups_tab: "🧪 Grupos de Evaluación"
+  user_administration_tab: "👥 Administración de Usuarios"
+  questionnaire_prompts_tab: "📝 Prompts de Cuestionarios"
+  system_info_tab: "📊 Información del Sistema"
+  experiment_group_management: "🧪 Gestión de Grupos de Evaluación"
+  select_group_info: "Seleccione un grupo de evaluación de la barra lateral para ver sus detalles."
+  no_groups_admin: "📭 No existen grupos de evaluación en el sistema aún."
+  no_groups_user: "📭 No tienes grupos de evaluación aún. Crea uno abajo para comenzar."
+  create_new_group: "➕ Crear Nuevo Grupo de Evaluación"
+  create_tip: "💡 **Consejo**: Después de crear un nuevo grupo de evaluación, la página se actualizará automáticamente para actualizar todos los menús desplegables en toda la aplicación."
+  about_templates: "ℹ️ Acerca de las Plantillas Predeterminadas"
+  templates_description: |
+    **Plantillas de Evaluación de Fibromialgia Predeterminadas:**
+
+    - **Rol del Sistema**: Define la IA como una persona experta  e en evaluación de los problemas de dolor
+    - **Prompt Base**: Proporciona criterios de evaluación estructurados para puntuación de severidad y discapacidad (escala 0-10)
+    - **Soporte de Idioma**: Optimizado para narrativas de pacientes en español con explicaciones en inglés
+    - **Enfoque Clínico**: Incluye orientación sobre mecanismos de afrontamiento, factores de resistencia y evaluación holística
+
+    Estas plantillas están basadas en mejores prácticas clínicas y pueden personalizarse después de la creación.
+  required_fields: "📝 **Campos Requeridos**: Descripción y al menos una dimensión completa (nombre y definición)"
+  login_required: "🔒 Por favor inicie sesión para acceder a las funciones de gestión."
+  error_loading: "❌ Error al cargar la interfaz de gestión: {error}"
+  system_info_header: "📊 Información del Sistema"
+  total_users_metric: "👥 Usuarios Totales"
+  total_groups_metric: "🧪 Grupos de Evaluación Totales"
+  create_group_button: "🚀 Crear Grupo de Evaluación"
+  description_label: "Descripción *"
+  description_help: "Una breve descripción para qué es este grupo de evaluación"
+  system_role_label: "Rol del Sistema (Opcional)"
+  system_role_help: "Defina el rol/contexto para el sistema de IA"
+  base_prompt_label: "Plantilla de Prompt Base (Opcional)"
+  base_prompt_help: "Instrucciones base que se usarán para todas las evaluaciones en este grupo"
+  group_created_success: "✅ ¡Grupo de evaluación creado exitosamente!"
+  group_creation_error: "❌ Error al crear grupo de evaluación"
+  admin_panel: "👑 Panel de Administración"
+  user_management: "👥 Gestión de Usuarios"
+  experiment_groups: "🧪 Grupos de Experimentos"
+  basic_information: "📋 Información Básica"
+  group_id: "🆔 ID del Grupo"
+  status_concluded: "✅ Concluido"
+  status_active: "🔄 Activo"
+  created_label: "Creado"
+  owner_label: "Propietario"
+  no_description: "Sin descripción proporcionada"
+  ai_configuration: "🤖 Configuración de IA"
+  system_role_content: "Contenido del Rol del Sistema"
+  no_system_role: "_No se definió rol del sistema_"
+  view_system_role: "Ver Rol del Sistema"
+  view_base_prompt: "Ver Prompt Base"
+  base_prompt_content: "Contenido del Prompt Base"
+  no_base_prompt: "_No se definió prompt base_"
+  evaluation_dimensions: "📊 Dimensiones de Evaluación"
+  no_dimensions: "_No se definieron dimensiones_"
+  generated_prompt: "🎯 Prompt de Evaluación Generado"
+  no_generated_prompt: "_No se puede generar prompt sin dimensiones_"
+  questionnaire_prompts_header: "📝 Gestión de Prompts de Cuestionarios"
+  questionnaire_prompts_description: "Personaliza los prompts de cuestionarios para grupos de evaluación específicos. Cada grupo puede tener roles de sistema e instrucciones personalizadas para cuestionarios PCS, BPI-IS y TSK-11SV."
+  select_experiment_group: "🧪 Seleccionar Grupo de Evaluación"
+  initialize_default_prompts: "🔧 Inicializar Prompts Predeterminados"
+  prompts_initialized: "✅ ¡Prompts predeterminados inicializados exitosamente!"
+  prompts_initialization_failed: "❌ Error al inicializar prompts predeterminados."
+  current_prompts: "📋 Prompts Actuales"
+  questionnaire_prompts: "Prompts de Cuestionarios"
+  system_role: "Rol del Sistema"
+  instructions: "Instrucciones"
+  save_prompts: "💾 Guardar Prompts"
+  prompts_updated: "prompts actualizados exitosamente!"
+  prompts_update_failed: "falló la actualización de prompts."
+  reset_to_default: "🔄 Restablecer por Defecto"
+  prompts_reset: "prompts restablecidos por defecto exitosamente!"
+  prompts_reset_failed: "falló el restablecimiento de prompts."
+  no_experiment_groups: "⚠️ No se encontraron grupos de evaluación. Crea un grupo de evaluación primero."
+  
+help:
+  header: "❓ Ayuda y Documentación"
+  description: "Aprenda cómo usar la Plataforma de Evaluación AINarratives"
+  
+common:
+  loading: "Cargando..."
+  error: "Error"
+  success: "Éxito"
+  warning: "Advertencia"
+  info: "Información"
+  cancel: "Cancelar"
+  save: "Guardar"
+  delete: "Eliminar"
+  edit: "Editar"
+  view: "Ver"
+  close: "Cerrar"
+  back: "Atrás"
+  next: "Siguiente"
+  previous: "Anterior"
+  submit: "Enviar"
+  reset: "Restablecer"
+  clear: "Limpiar"
+  search: "Buscar"
+  filter: "Filtrar"
+  sort: "Ordenar"
+  export: "Exportar"
+  import: "Importar"
+  download: "Descargar"
+  upload: "Subir"
+  connections_initialized: "✅ ¡Conexiones inicializadas exitosamente!"
+  connection_failed: "❌ Conexión falló: {error}"
+  
+errors:
+  api_key_required: "❌ Por favor ingrese su clave API de OpenAI para continuar"
+  database_error: "Error de conexión a base de datos"
+  json_parsing_failed: "Falló el análisis JSON. Intentando extraer valores del contenido sin procesar."
+  file_processing_failed: "Error al procesar archivo: {error}"
+
+# Display Components
+display:
+  consistency_analysis: "🎯 Análisis de Consistencia"
+  consistency_warning: "Se necesitan al menos 2 evaluaciones para análisis de consistencia."
+  avg_std_dev: "Desviación Estándar Promedio"
+  max_difference: "Diferencia Máxima"
+  dimensions_analyzed: "Dimensiones Analizadas"
+  batch_processing_progress: "🔄 Progreso de Procesamiento por Lotes"
+  evaluation_comparison: "Comparación de Evaluaciones"
+  no_comparison_data: "No hay datos de evaluación válidos para comparación"
+  comparison_info: "Se necesitan al menos 2 evaluaciones para comparación"
+  no_batch_results: "No hay resultados por lotes para mostrar"
+  total_evaluations: "Evaluaciones Totales"
+  successful_evaluations: "Exitosas"
+  error_rate: "Tasa de Error"
+  score_distributions: "Distribuciones de Puntuación"
+  scores_by_category: "Puntuaciones por Categoría"
+  configuration: "Configuración"
+  input_narrative: "Narrativa de Entrada"
+  evaluation_result: "Resultado de Evaluación"
+  model_reasoning: "Razonamiento del Modelo"
+  dimension_explanations: "Explicaciones de Dimensiones"
+  prompt_preview: "Vista Previa del Prompt"
+  cost_estimate: "💰 Estimación de Costo"
+
+# Hardcoded strings that need localization
+ui_text:
+  batch_processing_progress: "🔄 Progreso de Procesamiento por Lotes"
+  customize_evaluation_dimensions: "### 📝 Personalizar Dimensiones de Evaluación"
+  modify_dimensions_info: "💡 Modifique las dimensiones a continuación para personalizar cómo se evaluarán las narrativas."
+  define_evaluation_dimensions: "Defina las dimensiones de evaluación. El prompt subyacente proviene del grupo de evaluación seleccionado."
+  fix_dimension_ranges: "❌ Por favor corrija los rangos de dimensión antes de continuar."
+  no_permission_update: "❌ No tienes permisos para actualizar este grupo de evaluación."
+  changes_saved_locally: "Cambios guardados localmente solo para esta sesión."
+  dimensions_updated_success: "✅ ¡Dimensiones actualizadas exitosamente!"
+  database_update_failed_local_saved: "⚠️ No se pudo actualizar el grupo de evaluación en la base de datos. Cambios guardados localmente para esta sesión."
+  error_updating_group: "❌ Error al actualizar el grupo de evaluación: {error}"
+  translating_result: "🌍 Traduciendo resultado de evaluación a {language}..."
+  translation_completed_success: "✅ ¡Traducción a {language} completada exitosamente!"
+  translation_failed_english_only: "⚠️ Error en la traducción: {error}. Continuando solo con inglés."
+  evaluation_completed_success: "✅ ¡Evaluación completada exitosamente!"
+  batch_evaluation_header: "📦 Evaluación por Lotes"
+  upload_data_header: "📁 Subir Datos"
+  upload_csv_info: "Suba un archivo CSV o use datos de muestra para probar."
+  login_required_management: "🔒 Por favor inicie sesión para acceder a las funciones de gestión."
+  define_evaluation_dimensions_title: "**Definir Dimensiones de Evaluación**"
+  dimension_name_title: "**Nombre de Dimensión**"
+  definition_explanation_title: "**Definición/Explicación**"
+  lowest_score_title: "**Puntuación Mínima**"
+  highest_score_title: "**Puntuación Máxima**"
+  actions_title: "**Acciones**"
+  generated_prompt_preview: "### 📋 Vista Previa del Prompt Generado"
+  add_dimension_button: "➕ Agregar Dimensión"
+  use_this_prompt_button: "Usar Este Prompt"
+  delete_prompt_button: "Eliminar Prompt"
+  add_json_structure_button: "Agregar Estructura JSON"
+  add_scale_definition_button: "Agregar Definición de Escala"
+  add_medical_context_button: "Agregar Contexto Médico"
+  no_saved_prompts_info: "No hay prompts guardados disponibles."
+  no_prompts_in_category_info: "No hay prompts en la categoría seleccionada."
+  no_prompt_history_info: "No hay historial de uso de prompts disponible."
+  prompt_deleted_success: "¡Prompt eliminado!"
+  confirm_deletion_warning: "Haz clic de nuevo para confirmar la eliminación"
+  provide_name_error: "Por favor proporciona un nombre para el prompt"
+  provide_description_error: "Por favor proporciona una descripción"
+  prompt_saved_success: "✅ ¡Prompt '{prompt_name}' guardado exitosamente!"
+  placeholder_required_error: "⚠️ El prompt debe contener el marcador {narrative}"
+  potential_issues_warning: "**Problemas Potenciales:**"
+  prompt_looks_good: "✅ ¡El prompt se ve bien!"
+  
+  # UI Component Headers
+  save_current_prompt_header: "💾 Guardar Prompt Actual"
+  advanced_prompt_editor_header: "✏️ Editor Avanzado de Prompts"
+  prompt_analytics_header: "📊 Analíticas de Prompts"
+  prompt_customization_header: "🔧 Personalización de Prompts"
+  user_administration_header: "👥 Administración de Usuarios"
+  all_users_subheader: "📊 Todos los Usuarios"
+  detailed_results_header: "📋 Resultados Detallados"
+  available_variables_header: "Variables Disponibles"
+  prompt_validation_header: "Validación de Prompt"
+  most_used_prompts_header: "Prompts Más Utilizados"
+  your_account_header: "👤 Tu Cuenta"
+  database_connection_header: "🔗 Conexión a Base de Datos"
+  documentation_header: "📚 Documentación"
+  quick_actions_header: "⚡ Acciones Rápidas"
+  
+  # Button Text
+  dimensions_ready_button: "✅ Definición de Dimensiones Lista"
+  start_batch_processing_button: "🚀 Iniciar Procesamiento por Lotes"
+  use_sample_data_button: "🧪 Usar Datos de Muestra"
+  process_sample_data_button: "Procesar Datos de Muestra"
+  show_complete_prompt_button: "📋 Mostrar Prompt Completo"
+  
+  # Form Elements
+  filter_by_category_label: "Filtrar por categoría:"
+  prompt_name_label: "Nombre del Prompt"
+  custom_category_label: "Categoría Personalizada (si se seleccionó 'personalizada')"
+  show_debug_info_label: "🔍 Mostrar Información de Depuración de Dimensiones"
+  narrative_text_label: "Texto de Narrativa"
+  description_label_short: "Descripción"
+  
+  # Placeholders
+  custom_evaluation_placeholder: "ej., Mi Evaluación Personalizada"
+  prompt_purpose_placeholder: "Breve descripción del propósito de este prompt"
+  study_description_placeholder: "ej., Estudio de Evaluación de Dolor "
+  system_role_placeholder: "Eres un  experto especializado en evaluación del dolor..."
+  base_prompt_placeholder: "Evalúa la siguiente narrativa de dolor y proporciona puntuaciones para severidad y discapacidad..."
+  
+  # Help Text
+  category_organization_help: "Elige o agrega una categoría para organización"
+  narrative_placeholder_help: "Usa {narrative} como marcador para el texto de la narrativa"
+  csv_format_help: "El CSV debe contener columnas: 'id', 'narrative', y opcionalmente 'category'"
+  expert_prompts_help: "Pre-cargar con prompts diseñados por expertos para evaluación de dolor"
+  ai_role_help: "Define el rol y experiencia de la IA (opcional)"
+  prompt_template_help: "Plantilla de prompt predeterminada para evaluaciones (opcional)"
+  remove_dimension_help: "Eliminar {dimension_name}"
+  select_for_removal_label: "Seleccionar para eliminar"
+  remove_selected_dimensions_button: "🗑️ Eliminar Dimensiones Seleccionadas"
+  no_dimensions_selected_warning: "Por favor seleccione al menos una dimensión para eliminar."
+  confirm_remove_dimensions: "¿Está seguro de que desea eliminar {count} dimensión(es) seleccionada(s)?"
+  dimensions_removed_success: "✅ Las dimensiones seleccionadas han sido eliminadas."
+  dimensions_removed_and_saved_success: "✅ Las dimensiones seleccionadas han sido eliminadas y guardadas en la base de datos."
+  dimensions_save_failed: "❌ Error al guardar los cambios de dimensiones en la base de datos."
+  dimensions_removed_no_db: "✅ Dimensiones eliminadas (base de datos no conectada)."
+  dimensions_save_error: "❌ Error al guardar en la base de datos"
+  
+  # Info Messages
+  admin_see_all_groups_info: "👑 Como administrador, puedes ver todos los grupos de evaluación."
+  admin_privileges_required_warning: "🔒 Se requieren privilegios de administrador para acceder a la administración de usuarios."
+  no_users_found_info: "📭 No se encontraron usuarios en el sistema."
+  upload_csv_sample_info: "Sube un archivo CSV o usa datos de muestra para probar."
+  command_line_scripts_info: "💡 Usa los scripts de línea de comandos para operaciones detalladas de gestión de usuarios."
+  
+  # User Management
+  user_management_actions: "Acciones"
+  user_actions_header: "Acciones de Usuario"
+  create_new_user_header: "➕ Crear Nuevo Usuario"
+  username_input_label: "Nombre de Usuario"
+  password_input_label: "Contraseña"
+  make_admin_checkbox: "Hacer Administrador"
+  create_user_button: "Crear Usuario"
+  user_created_success: "✅ Usuario '{username}' creado exitosamente"
+  user_creation_failed: "❌ Error al crear usuario: {error}"
+  username_required_error: "El nombre de usuario es requerido"
+  password_required_error: "La contraseña es requerida"
+  password_min_length_error: "La contraseña debe tener al menos 3 caracteres"
+  edit_user_header: "✏️ Editar Usuario: {username}"
+  delete_user_button: "🗑️ Eliminar Usuario"
+  toggle_admin_button: "👑 Cambiar Admin"
+  reset_password_button: "🔑 Restablecer Contraseña"
+  new_password_label: "Nueva Contraseña"
+  confirm_delete_user: "¿Está seguro de que desea eliminar al usuario '{username}'? Esta acción no se puede deshacer."
+  user_deleted_success: "✅ Usuario '{username}' eliminado exitosamente"
+  user_delete_failed: "❌ Error al eliminar usuario: {error}"
+  admin_status_updated: "✅ Estado de administrador actualizado para el usuario '{username}'"
+  admin_update_failed: "❌ Error al actualizar estado de administrador: {error}"
+  password_reset_success: "✅ Contraseña restablecida exitosamente para el usuario '{username}'"
+  password_reset_failed: "❌ Error al restablecer contraseña: {error}"
+  cannot_delete_self: "❌ No puede eliminar su propia cuenta"
+  experiment_groups_column: "Grupos de Experimento"
+  edit_experiment_groups_header: "🧪 Editar Grupos de Experimento"
+  edit_groups_button: "🧪 Editar Grupos"
+  current_groups_label: "Grupos Actuales"
+  enter_group_ids_label: "Ingrese IDs de Grupo (separados por comas)"
+  enter_group_ids_help: "Ingrese los IDs de grupos de experimento separados por comas (ej. 1, 3, 5)"
+  save_groups_button: "💾 Guardar Grupos"
+  groups_updated_success: "✅ Grupos de experimento actualizados exitosamente para el usuario '{username}'"
+  groups_update_failed: "❌ Error al actualizar grupos de experimento: {error}"
+  invalid_group_ids_error: "❌ Formato inválido: Por favor ingrese enteros separados por comas"
+  group_not_found_error: "❌ El grupo de experimento con ID {group_id} no existe"
+  available_groups_label: "📋 Grupos Disponibles"
+  no_groups_available: "No hay grupos de experimento disponibles"
+  
+  # Error Messages
+  invalid_json_response_error: "Formato de respuesta inválido: se esperaba objeto JSON"
+  missing_scores_field_error: "Formato de respuesta inválido: falta el campo 'scores'"
+  scores_not_object_error: "Formato de respuesta inválido: 'scores' debe ser un objeto"
+  json_parsing_failed_warning: "Falló el análisis JSON. Intentando extraer valores del contenido sin procesar."
+  invalid_json_file_error: "Archivo JSON inválido"
+  fix_issues_error: "❌ Por favor corrije los siguientes problemas:"
+  
+  # Generated Prompt Preview
+  generated_prompt_preview_header: "**Vista Previa del Prompt Generado:**"
+  define_dimensions_header: "**Definir Dimensiones de Evaluación**"
+  prompt_preview_header: "**Vista Previa del Prompt**"
+  
+  # Success Messages
+  prompt_saved_session_success: "Prompt guardado como prompt actual."
+  prompt_library_header: "📚 Biblioteca de Prompts"
+  consistency_analysis_header: "🎯 Análisis de Consistencia"
+  consistency_analysis_warning: "Se necesitan al menos 2 evaluaciones para análisis de consistencia."
+  invalid_response_format: "Formato de respuesta inválido: se esperaba objeto JSON"
+  model_format_error: "Por favor intente de nuevo. Si el problema persiste, el modelo podría no estar siguiendo el formato JSON."
+  latest_evaluation_results: "🎯 Resultados de Evaluación Más Recientes"
+  batch_results_summary: "📊 Resumen de Resultados por Lotes"
+  detailed_results: "📋 Resultados Detallados"
+
+evaluation:
+   no_numeric_scores: "No se encontraron puntuaciones numéricas en el resultado de evaluación"
+   narrative_text: "Texto de Narrativa"
+   details_header: "Detalles de Evaluación"
+   configuration_header: "Configuración"
+   input_narrative_header: "Narrativa de Entrada"
+   result_header: "Resultado de Evaluación"
+   reasoning_header: "Razonamiento del Modelo"
+   model_reasoning_header: "Razonamiento del Modelo"
+   explanations_header: "Explicaciones de Dimensiones"
+   raw_response_header: "Respuesta Cruda de API"
+   model_label: "Modelo"
+   temperature_label: "Temperatura"
+   timestamp_label: "Marca de Tiempo"
+   max_tokens_label: "Máximo de Tokens"
+   narrative_text_label: "Texto de Narrativa"
+   no_narrative_available: "No hay narrativa disponible"
+
+assessment_feedback:
+   header: "Feedback experto"
+   instructions: |
+     Por favor proporciona tu feedback para cada una de las dimensiones evaluadas. Califica la puntuación otorgada para cada dimensión, la explicación facilitada
+     y hasta qué punto  utilizarías esa información en tu valoración clínica.
+   dimension_group_header: "Evaluación de {dimension}"
+   dimension_score_question: "La puntuación representa adecuadamente la {dimension} expresada en la narrativa."
+   dimension_explanation_question: "La explicación representa adecuadamente la {dimension} expresada en la narrativa."
+   dimension_usage_question: "Usaría la puntuación y explicación de {dimension} para ayudarme en la evlauación del dolor del paciente."
+   submit_button: "Enviar feedback"
+   feedback_completed: "✅ Feedback completado"
+   already_submitted_info: "Ya registraste feedback para esta evaluación."
+   save_success: "✅ Feedback guardado correctamente."
+   save_error: "❌ No se pudo guardar el feedback: {error}"
+   incomplete_warning: "⚠️ Responde todas las preguntas antes de enviar."
+   no_database_warning: "ℹ️ La recopilación de feedback requiere una conexión activa a la base de datos."
+   no_experiment_info: "ℹ️ Ejecuta y guarda una evaluación antes de proporcionar feedback."
+   select_placeholder: "Selecciona una opción"
+   options:
+     strongly_disagree: "Totalmente en desacuerdo"
+     disagree: "En desacuerdo"
+     somewhat_disagree: "Algo en desacuerdo"
+     neither_agree_nor_disagree: "Ni de acuerdo ni en desacuerdo"
+     somewhat_agree: "Algo de acuerdo"
+     agree: "De acuerdo"
+     strongly_agree: "Totalmente de acuerdo"
+
+questionnaire_feedback:
+  header: "Feedback experto sobre cuestionario"
+  instructions: |
+    Considerando la narrativa y las respuestas al cuestionario proporcionadas por el sistema, proporciona tu evaluación de experto.
+  expert_instructions: "Instrucciones para el Experto"
+  authenticity_question: "¿Consideras que el cuestionario podría haber sido contestado por la persona que escribió la narrativa?"
+  reasoning_question: "¿El razonamiento del modelo justifica adecuadamente las respuestas al cuestionario basándose en el contenido de la narrativa?"
+  submit_button: "Enviar feedback"
+  feedback_completed: "✅ Feedback completado"
+  already_submitted_info: "Ya registraste feedback para este cuestionario."
+  save_success: "✅ Feedback del cuestionario guardado correctamente."
+  save_error: "❌ No se pudo guardar el feedback del cuestionario: {error}"
+  incomplete_warning: "⚠️ Responde todas las preguntas antes de enviar."
+  no_database_warning: "ℹ️ La recopilación de feedback requiere una conexión activa a la base de datos."
+  no_questionnaire_info: "ℹ️ Ejecuta y guarda un cuestionario antes de proporcionar feedback."
+  select_placeholder: "Selecciona una opción"
+  options:
+    strongly_disagree: "Totalmente en desacuerdo"
+    disagree: "En desacuerdo"
+    somewhat_disagree: "Algo en desacuerdo"
+    neither_agree_nor_disagree: "Ni de acuerdo ni en desacuerdo"
+    somewhat_agree: "Algo de acuerdo"
+    agree: "De acuerdo"
+    strongly_agree: "Totalmente de acuerdo"
+
+# Welcome page (landing page for non-authenticated users)
+welcome:
+  tagline: "Herramienta de Investigación Potenciada por IA para la Evaluación de Dimensiones de Fibromialgia"
+  description: |
+    Una plataforma para profesionales de la salud e investigadores para ayudar en la evaluación del dolor
+    de las narrativas propias de las personas. AI Narratives utiliza Modelos de Lenguaje Grande y ha sido optimizado
+    para el idioma español. Construido con prácticas modernas de Python incluyendo SQLModel, gestión de paquetes UV,
+    y gestión integral de usuarios para la excelencia en investigación.
+  about_platform_title: "Acerca de Esta Plataforma"
+  about_platform_description: |
+    La Plataforma de Evaluación AINarratives es una herramienta de investigación especializada diseñada para profesionales
+    de la salud e investigadores para analizar sistemáticamente las descripciones de dolor 
+    utilizando inteligencia artificial con criterios de evaluación a nivel de psicólogo experto.
+  key_capabilities_title: "Capacidades Clave:"
+  capability_management: "⚙️ **Gestión**: Crear y gestionar grupos de evaluación para investigación organizada"
+  capability_evaluation: "**Evaluación de resultados relevantes para evaluación de Dimensiones**: los expertos pueden elegir entre evaluaciones predefinidas o crear las suyas propias."
+  capability_spanish: "**Optimizado para Idioma Español**: Diseñado específicamente para narrativas de pacientes de habla hispana"
+  capability_batch: "🩺 **Análisis individuales o por lotes**: puedes usar AINarratives para evaluar narrativas individuales o un conjunto que incluya diferentes."
+  capability_analytics: "📊 **Análisis e Insights**: Analizar patrones y exportar datos para análisis externos"
+  capability_help: "📚 **Ayuda y Documentación**: Guías integrales y mejores prácticas"
+  quick_start_title: "Inicio Rápido:"
+  quick_start_step1: "1. **Iniciar sesión** usando la barra lateral"
+  quick_start_step2: "2. **Configurar** tu clave de API de OpenAI"
+  quick_start_step3: "3. **Crear** un grupo de Evaluación"
+  quick_start_step4: "4. **Comenzar** a evaluar narrativas"
+  need_help_title: "¿Necesitas Ayuda?"
+  need_help_item1: "- Consulta la pestaña de Ayuda después de iniciar sesión"
+  need_help_item2: "- Revisa la documentación"
+  need_help_item3: "- Contacta a tu administrador"
+  for_administrators_title: "Para Administradores:"
+  for_administrators_description: |
+    Usa los scripts de gestión para:
+    - Registrar nuevos usuarios
+    - Gestionar permisos de usuario
+    - Respaldar datos de evaluación
+
+    Ver docs/archive/USER_MANAGEMENT.md para detalles.
+  getting_started_title: "Comenzando"
+  getting_started_description: |
+    **Para comenzar a usar la plataforma:**
+    1. **Iniciar sesión** con tus credenciales usando la barra lateral de la izquierda
+    2. Todas las herramientas y características de evaluación estarán disponibles después de la autenticación
+    3. Comienza con la pestaña de Gestión para crear tu primer grupo de Evaluación
+    4. Visita la pestaña de Ayuda y Documentación para orientación detallada
+
+    **Contacta a tu administrador del sistema si necesitas credenciales de acceso o soporte técnico.**
+
+  # Additional Management UI Strings
+  use_default_templates_label: "Usar plantillas de evaluación de fibromialgia predeterminadas"
+  grant_access_users_label: "Conceder acceso a usuarios"
+  user_management_scripts_header: "**Scripts de Gestión de Usuarios:**"
+  user_registration_header: "**Registro de Usuarios:**"
+  your_access_metric: "🔍 Tu Acceso"
+  all_groups_admin: "Todos los Grupos (Administrador)"
+  your_groups_metric: "🧪 Tus Grupos"
+  username_label: "**Nombre de Usuario:**"
+  user_id_label: "**ID de Usuario:**"
+  account_type_label: "**Tipo de Cuenta:**"
+  admin_type: "Administrador"
+  regular_user_type: "Usuario Regular"
+  permissions_label: "**Permisos:**"
+  access_all_groups_perm: "✅ Acceder a todos los grupos de Evaluación"
+  manage_users_perm: "✅ Gestionar usuarios"
+  system_admin_perm: "✅ Administración del sistema"
+  create_groups_perm: "✅ Crear grupos de Evaluación"
+  run_evaluations_perm: "✅ Ejecutar evaluaciones"
+  manage_data_perm: "✅ Gestionar tus datos"
+  schema_label: "**Esquema:**"
+  status_label: "**Estado:**"
+  connected_status: "✅ Conectado"
+  
+  # Spinner Messages
+  evaluating_narrative_spinner: "Evaluando narrativa..."
+  evaluating_multiple_consistency_spinner: "Evaluando múltiples veces para consistencia..."
+  
+  # Metric Labels
+  characters_metric: "Caracteres"
+  estimated_tokens_metric: "Tokens Estimados"
+  score_range_metric: "Rango de Puntuación"
+  total_uses_metric: "Usos Totales"
+  unique_prompts_metric: "Prompts Únicos"
+  uses_today_metric: "Usos Hoy"
+  total_evaluations_metric: "Evaluaciones Totales"
+  successful_metric: "Exitosas"
+  error_rate_metric: "Tasa de Error"
+  input_cost_metric: "Costo de Entrada"
+  output_cost_metric: "Costo de Salida"
+  total_cost_metric: "Costo Total"
+  
+  # Form Labels
+  save_prompt_button: "Guardar Prompt"
+  add_dimension_button: "Agregar Dimensión"
+  
+  # Section Headers
+  score_distributions_header: "Distribuciones de Puntuación"
+  scores_by_category_header: "Puntuaciones por Categoría"
+  evaluation_details_header: "Detalles de Evaluación"
+  configuration_header: "Configuración"
+  input_narrative_header: "Narrativa de Entrada"
+  evaluation_result_header: "Resultado de Evaluación"
+  model_reasoning_header: "Razonamiento del Modelo"
+  dimension_explanations_header: "Explicaciones de Dimensiones"
+  raw_api_response_header: "Respuesta Cruda de API"
+  prompt_preview_header: "Vista Previa del Prompt"
+  preview_prompt_header: "Vista Previa del Prompt"
+  
+  # Warning/Error Messages
+  invalid_response_format_warning: "Formato de respuesta inválido: se esperaba objeto JSON"
+  missing_scores_field_warning: "Formato de respuesta inválido: falta el campo 'scores'"
+  scores_not_object_warning: "Formato de respuesta inválido: 'scores' debe ser un objeto"
+  model_format_error_message: "Por favor intente de nuevo. Si el problema persiste, el modelo podría no estar siguiendo el formato JSON."
+  cost_estimate_not_available: "Estimación de costo no disponible para este modelo."
+
+# Footer
+footer:
+  version: "Plataforma de Evaluación AINarratives v0.1.0"
+  built_with: "Construido con Streamlit, SQLModel y OpenAI"
+  tagline_footer: "Excelencia en Investigación a través de IA Moderna"

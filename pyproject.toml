@@ -1,0 +1,125 @@
+[project]
+name = "pain-narratives"
+version = "0.1.0"
+description = "AI-powered research platform for systematic evaluation of patient pain narratives"
+authors = [
+    { name = "Pain Narratives Research Team", email = "research@example.com" },
+]
+readme = "README.md"
+requires-python = ">=3.11"
+keywords = [
+    "pain",
+    "narratives",
+    "ai",
+    "healthcare",
+    "research",
+    "fibromyalgia",
+    "evaluation",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Healthcare Industry",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+    "scikit-learn>=1.3.0",
+    "openai>=1.0.0",
+    "sqlalchemy>=2.0.0",
+    "psycopg2-binary>=2.9.0",
+    "streamlit>=1.28.0",
+    "plotly>=5.15.0",
+    "matplotlib>=3.7.0",
+    "seaborn>=0.12.0",
+    "scipy>=1.11.0",
+    "jupyter>=1.0.0",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0.0",
+    "gitpython>=3.1.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "alembic>=1.14.1,<2",
+    "sqlmodel>=0.0.16",
+    "tiktoken>=0.5.0",
+    "openpyxl>=3.1.0",
+    "markitdown>=0.1.0",
+    "mammoth>=1.7.0",
+    "pdfminer.six>=20231228",
+    "statsmodels>=0.14.4",
+    "pingouin>=0.5.5",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "flake8>=6.0.0",
+    "mypy>=1.5.0",
+]
+analysis = [
+    "matplotlib>=3.7.0",
+    "seaborn>=0.12.0",
+    "pingouin>=0.5.0",
+    "scipy>=1.11.0",
+]
+
+[project.scripts]
+pain-narratives = "pain_narratives.ui:main"
+pain-narratives-register-user = "scripts.register_user:main"
+pain-narratives-manage-users = "scripts.manage_users:main"
+run-experiments = "pain_narratives.experiments.runner:main"
+
+[project.urls]
+Homepage = "https://github.com/your-org/pain-narratives"
+Repository = "https://github.com/your-org/pain-narratives.git"
+Documentation = "https://github.com/your-org/pain-narratives#readme"
+"Bug Tracker" = "https://github.com/your-org/pain-narratives/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+# when you run `uv run`, this directory will be added to PYTHONPATH
+dev-mode-dirs = ["src"]
+
+[tool.black]
+line-length = 120
+target-version = ['py311']
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 120
+
+[tool.flake8]
+max-line-length = 120
+extend-ignore = [
+    "E203", # whitespace before ':'
+    "W503", # line break before binary operator
+    "E231", # missing whitespace after ':' (often in f-strings)
+    "E221", # multiple spaces before operator
+    "E202", # whitespace before ')'
+]
+
+[dependency-groups]
+dev = [
+    "autopep8>=2.3.2",
+    "black>=25.1.0",
+    "flake8>=7.2.0",
+    "isort>=6.0.1",
+    "mypy>=1.15.0",
+    "pre-commit>=4.2.0",
+    "pytest>=8.3.5",
+    "pytest-cov>=6.1.1",
+    "yapf>=0.43.0",
+]

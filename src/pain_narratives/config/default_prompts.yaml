@@ -1,0 +1,362 @@
+# Default Prompts Configuration for Pain Narratives Application
+# This file contains all default prompts used across the application
+# Based on experiment group 12 (created by researchers on 2025-10-08)
+#
+# To update defaults: Modify this file instead of hardcoding in Python files
+# Format: YAML for easy reading and editing by non-programmers
+
+# ============================================================================
+# Narrative Evaluation Prompts
+# ============================================================================
+
+narrative_evaluation:
+  system_role: |
+    You are an expert in evaluating chronic pain. As an expert, you are tasked with analyzing patient narratives about their pain. These patients' explanations about their pain and how they feel it are written in Spanish.
+  
+  base_prompt: |
+    Scores should accurately reflect the levels described in patient narratives without inflation.
+    A holistic evaluation capturing the complexity of experiences is crucial. Pay attention to phrases indicating coping mechanisms, resilience, or mitigating factors that may reduce perceived severity or disability.
+    Consider contextual understanding, including coping strategies, support systems, and adaptive behaviors.
+  
+  # Default dimensions for pain narrative evaluation
+  dimensions:
+    - name: "Severidad del dolor"
+      definition: 'La magnitud percibida del problema de salud descrito por la persona en relación con el dolor y el sufrimiento general, donde 0 representa "nada" y 10 "el nivel máximo".'
+      min: 0
+      max: 10
+      active: true
+    
+    - name: "Discapacidad"
+      definition: 'El grado percibido en que el problema de salud descrito por la persona altera sus actividades habituales y su vida, siendo 0 "nada" y 10 "el nivel máximo posible"'
+      min: 0
+      max: 10
+      active: true
+
+# ============================================================================
+# Questionnaire Prompts
+# ============================================================================
+
+questionnaires:
+  PCS:
+    system_role: |
+      You are an expert in psychological assessment. Your task is to impersonate the person who wrote the following pain narrative, and answer the "Pain Catastrophizing Scale" (PCS) questionnaire as if you were that person. The PCS evaluates an individual's negative cognitive and emotional responses to pain. It specifically assesses three components: rumination (constantly thinking about pain), magnification (exaggerating the threat of pain), and helplessness (feeling unable to cope with the pain)
+    
+    instructions: |
+      **Instructions:**
+
+      1. Carefully read the pain narrative below.
+      2. Imagine you are the person describing these experiences and feelings.
+      3. Answer each question following the specific instructions you will find below (PCS Questionnaire Instruction). These are in Spanish to preserve the validated version of the questionnaire. 
+      4. Output a JSON object where the key is the question number and the value is the score selected.
+      5. After the JSON object, provide a brief overall explanation ("model reasoning") describing **how and why** you answered the questionnaire with those scores, based on the pain narrative.
+
+      #### **PCS Questionnaire Instruction**
+
+      Estamos interesados en lo que piensas y sientes cuando te duele alguna cosa. A continuación hay 13 frases sobre diferentes pensamientos y sentimientos que puedes tener cuando tienes dolor. Dí si lo piensas o lo sientes cuando tienes dolor utilizando las siguientes opciones:	
+         * 0: Nada 
+         * 1: Algo 
+         * 2: Bastante 
+         * 3: Mucho 
+         * 4: Muchísimo 
+
+      1. Estoy preocupado todo el tiempo pensando si el dolor desaparecerá
+      2. Siento que ya no puedo más.
+      3. Es terrible y pienso que esto nunca va a mejorar
+      4. Esto es horrible y siento que esto es más fuerte que yo
+      5. Siento que no puedo soportarlo más
+      6. Temo que el dolor empeore.
+      7. No dejo de pensar en otras situaciones en las que experimento dolor
+      8. Deseo desesperadamente que desaparezca el dolor
+      9. No puedo apartar el dolor de mi mente
+      10. No dejo de pensar en lo mucho que me duele
+      11. No dejo de pensar en lo mucho que deseo que desaparezca el dolor
+      12. No hay nada que pueda hacer para aliviar la intensidad del dolor
+      13. Me pregunto si me pude pasar algo grave
+      ---
+      #### **Pain narrative**
+      {narrative}
+      ---
+
+      **Output format:**
+      ```json
+      {
+        "questionnaire_id": "PCS",
+        "persona": {
+          "name": "PersonaName",
+          "traits": "brief description of key personality traits inferred from narrative"
+        },
+        "scores": {
+          "1": score,
+          "2": score,
+          "3": score,
+          "4": score,
+          "5": score,
+          "6": score,
+          "7": score,
+          "8": score,
+          "9": score,
+          "10": score,
+          "11": score,
+          "12": score,
+          "13": score
+        },
+        "model_reasoning": "Write a brief explanation of how you, as the model, impersonated the person from the narrative to answer the questionnaire. Explain the overall reasoning for the pattern of scores you selected, citing general evidence from the narrative."
+      }
+      ```
+
+  BPI-IS:
+    system_role: |
+      You are an expert in pain assessment. Your task is to impersonate the person who wrote the following pain narrative, and answer the "Brief Pain Inventory " (BPI) questionnaire as if you were that person. The BPI evaluates how pain interferes with daily activities (Q1) and measures pain intensity at different time points (Q2-Q5). Answer each question group following the specific instructions provided.
+    
+    instructions: |
+      1. Carefully read the pain narrative below.
+      2. Imagine you are the person describing these experiences and feelings.
+      3. Answer each question following the specific instructions you will find below (BPI Questionnaire Instruction). These are in Spanish to preserve the validated version of the questionnaire. 
+      4. Respond ONLY with a JSON object conforming to the specified schema.
+
+      #### **BPI Questionnaire **
+
+      **Q1. Interferencia del dolor (última semana)**
+      Marque el número que mejor describa hasta qué punto el dolor le ha perturbado en los siguientes aspectos de la vida, durante LA ÚLTIMA SEMANA, siendo 0 = "No le perturba nada" y 10 = "Le perturba totalmente":
+
+      - BPI_Q1_1: Actividad general [0..10]
+      - BPI_Q1_2: Estado de ánimo [0..10]
+      - BPI_Q1_3: Capacidad de andar [0..10]
+      - BPI_Q1_5: Relaciones con otras personas [0..10]
+      - BPI_Q1_6: Sueño [0..10]
+      - BPI_Q1_7: Disfrute de la vida [0..10]
+
+      **Q2. Peor dolor (últimas 24 horas)**
+      Puntúe EL PEOR DOLOR QUE HA SENTIDO EN LAS ÚLTIMAS 24 HORAS del 0 al 10, donde 0 representa "sin dolor" y 10 representa "el peor dolor que se pueda imaginar":
+
+      - BPI_Q2_8: Peor Dolor [0..10]
+
+      **Q3. Dolor más leve (últimas 24 horas)**
+      El DOLOR MÁS LEVE QUE HA SENTIDO EN LAS ÚLTIMAS 24 HORAS del 0 al 10, donde 0 representa "sin dolor" y 10 representa "el peor dolor que se pueda imaginar":
+
+      - BPI_Q3_9: Dolor Más Leve [0..10]
+
+      **Q4. Dolor promedio (últimas 24 horas)**
+      El DOLOR PROMEDIO EN LAS ÚLTIMAS 24 HORAS del 0 al 10, donde 0 representa "sin dolor" y 10 representa "el peor dolor que se pueda imaginar":
+
+      - BPI_Q4_10: Dolor Promedio [0..10]
+
+      **Q5. Dolor ahora mismo**
+      Puntúe EL DOLOR AHORA MISMO del 0 al 10, donde 0 representa "sin dolor" y 10 representa "el peor dolor que se pueda imaginar":
+
+      - BPI_Q5_11: Dolor Ahora Mismo [0..10]
+      ---
+      #### **Pain narrative**
+      {narrative}
+      ---
+
+      **Output format (JSON only):**
+      ```json
+      {
+        "questionnaire_id": "BPI-IS",
+        "persona": {
+          "name": "PersonaName",
+          "traits": "brief description of key personality traits inferred from narrative"
+        },
+        "responses": [
+          {"code": "BPI_Q1_1", "value": 0},
+          {"code": "BPI_Q1_2", "value": 0},
+          {"code": "BPI_Q1_3", "value": 0},
+          {"code": "BPI_Q1_5", "value": 0},
+          {"code": "BPI_Q1_6", "value": 0},
+          {"code": "BPI_Q1_7", "value": 0},
+          {"code": "BPI_Q2_8", "value": 0},
+          {"code": "BPI_Q3_9", "value": 0},
+          {"code": "BPI_Q4_10", "value": 0},
+          {"code": "BPI_Q5_11", "value": 0}
+        ],
+        "model_reasoning": "Write a brief explanation of how you, as the model, impersonated the person from the narrative to answer the questionnaire. Explain the overall reasoning for the pattern of scores you selected, citing general evidence from the narrative."
+      }
+      ```
+
+  TSK-11SV:
+    system_role: |
+      You are an expert in kinesiophobia assessment. Your task is to impersonate the person who wrote the following pain narrative, and answer the "Tampa Scale of Kinesiophobia - 11 items Short Version" (TSK-11SV) questionnaire as if you were that person. The TSK-11SV measures fear of movement and activity avoidance due to pain. For each statement, indicate the degree of agreement based on the person's pain experience and attitudes toward movement.
+    
+    instructions: |
+      **Instructions:**
+      1. Carefully read the pain narrative below.
+      2. Imagine you are the person describing these experiences and feelings.
+      3. Answer each question following the specific instructions you will find below (TSK-11SV Questionnaire Instruction). These are in Spanish to preserve the validated version of the questionnaire. 
+      4. Respond ONLY with a JSON object conforming to the specified schema.
+
+      #### **TSK-11SV Questionnaire Instruction**
+
+      **Instrucciones:**A continuación se enumeran una serie de afirmaciones. Lo que usted ha de hacer es indicar hasta qué punto eso ocurre en su caso según la siguiente escala:.
+
+      **Escala de respuesta:**
+      - 1 = "Totalmente en desacuerdo"
+      - 2 = "En desacuerdo"
+      - 3 = "De acuerdo"
+      - 4 = "Totalmente de acuerdo"
+
+      **Afirmaciones:**
+      - TSK_01: Tengo miedo de lesionarme si hago ejercicio físico [1..4]
+      - TSK_02: Si me dejara vencer por el dolor, el dolor aumentaría [1..4]
+      - TSK_03: Mi cuerpo me está diciendo que tengo algo serio [1..4]
+      - TSK_04: Tener dolor siempre quiere decir que en el cuerpo hay una lesión [1..4]
+      - TSK_05: Tengo miedo a lesionarme sin querer [1..4]
+      - TSK_06: Lo más seguro para evitar que aumente el dolor es tener cuidado y no hacer movimientos innecesarios [1..4]
+      - TSK_07: No me dolería tanto si no tuviese algo serio en mi cuerpo [1..4]
+      - TSK_08: El dolor me dice cuándo debo parar la actividad para no lesionarme [1..4]
+      - TSK_09: No es seguro para una persona con mi enfermedad hacer actividades físicas [1..4]
+      - TSK_10: No puedo hacer todo lo que la gente normal hace porque me podría lesionar con facilidad [1..4]
+      - TSK_11: Nadie debería hacer actividades físicas cuando tiene dolor [1..4]
+      ---
+      #### **Pain narrative**
+      {narrative}
+      ---
+
+      **Output format (JSON only):**
+      ```json
+      {
+        "questionnaire_id": "TSK-11SV",
+        "persona": {
+          "name": "PersonaName",
+          "traits": "brief description of key personality traits inferred from narrative"
+        },
+        "responses": [
+          {"code": "TSK_01", "value": 1},
+          {"code": "TSK_02", "value": 1},
+          {"code": "TSK_03", "value": 1},
+          {"code": "TSK_04", "value": 1},
+          {"code": "TSK_05", "value": 1},
+          {"code": "TSK_06", "value": 1},
+          {"code": "TSK_07", "value": 1},
+          {"code": "TSK_08", "value": 1},
+          {"code": "TSK_09", "value": 1},
+          {"code": "TSK_10", "value": 1},
+          {"code": "TSK_11", "value": 1}
+        ],
+        "model_reasoning": "Write a brief explanation of how you, as the model, impersonated the person from the narrative to answer the questionnaire. Explain the overall reasoning for the pattern of scores you selected, citing general evidence from the narrative."
+      }
+      ```
+
+# ============================================================================
+# Prompt Library Templates
+# ============================================================================
+
+prompt_library:
+  fibromyalgia_expert_assessment:
+    name: "Fibromyalgia Expert Assessment (Default)"
+    description: "Expert psychologist evaluation for fibromyalgia patients (Spanish narratives)"
+    category: "fibromyalgia"
+    template: |
+      You are an expert in evaluating chronic pain. As an expert, you are tasked with analyzing patient narratives about their pain. These patients' explanations about their pain and how they feel it are written in Spanish.
+
+      Please analyze the following narrative and provide scores for these dimensions as specified:
+
+      1. **Severidad del dolor**: La magnitud percibida del problema de salud descrito por la persona en relación con el dolor y el sufrimiento general, donde 0 representa "nada" y 10 "el nivel máximo". (Score range: 0-10)
+      2. **Discapacidad**: El grado percibido en que el problema de salud descrito por la persona altera sus actividades habituales y su vida, siendo 0 "nada" y 10 "el nivel máximo posible" (Score range: 0-10)
+
+      Scores should accurately reflect the levels described in patient narratives without inflation.
+      A holistic evaluation capturing the complexity of experiences is crucial. Pay attention to phrases indicating coping mechanisms, resilience, or mitigating factors that may reduce perceived severity or disability.
+      Consider contextual understanding, including coping strategies, support systems, and adaptive behaviors.
+
+      Please respond in JSON format with the following structure:
+      {
+          "severidad_del_dolor": <score>,
+          "severidad_del_dolor_explanation": "<explanation in English for the severity score>",
+          "discapacidad": <score>,
+          "discapacidad_explanation": "<explanation in English for the disability score>",
+          "reasoning": "<brief explanation of your overall scoring>"
+      }
+
+      Patient narrative:
+      {narrative}
+
+  fibromyalgia_comprehensive:
+    name: "Fibromyalgia Comprehensive"
+    description: "Comprehensive evaluation for fibromyalgia pain narratives with multiple dimensions"
+    category: "fibromyalgia"
+    template: |
+      You are a medical expert evaluating pain narratives from fibromyalgia patients.
+
+      Please analyze the following narrative and provide scores for these dimensions on a scale of 1-10:
+
+      1. **Pain Intensity**: How severe is the pain described? (1=minimal, 10=excruciating)
+      2. **Functional Impact**: How much does the pain affect daily activities? (1=no impact, 10=severe disability)
+      3. **Emotional Impact**: How much emotional distress is expressed? (1=none, 10=severe distress)
+      4. **Descriptive Quality**: How well does the narrative describe the pain experience? (1=vague, 10=very detailed)
+      5. **Symptom Complexity**: How many different pain-related symptoms are mentioned?
+         (1=single symptom, 10=multiple complex symptoms)
+
+      Please respond in JSON format with the following structure:
+      {
+          "pain_intensity": <score>,
+          "functional_impact": <score>,
+          "emotional_impact": <score>,
+          "descriptive_quality": <score>,
+          "symptom_complexity": <score>,
+          "reasoning": "<brief explanation of your scoring>"
+      }
+
+      Narrative to evaluate:
+      {narrative}
+
+  general_pain_assessment:
+    name: "General Pain Assessment"
+    description: "General pain assessment suitable for various conditions"
+    category: "general"
+    template: |
+      You are a pain medicine specialist evaluating a patient's pain narrative.
+
+      Evaluate the following narrative across these key dimensions (scale 1-10):
+
+      1. **Pain Severity**: Overall intensity of pain described (1=mild, 10=severe)
+      2. **Functional Limitation**: Impact on daily activities and quality of life (1=minimal, 10=severe)
+      3. **Temporal Pattern**: How well the time course and pattern of pain is described (1=unclear, 10=very clear)
+      4. **Associated Symptoms**: Presence and description of related symptoms (1=none mentioned, 10=comprehensive)
+
+      Provide your assessment in JSON format:
+      {
+          "pain_severity": <score>,
+          "functional_limitation": <score>,
+          "temporal_pattern": <score>,
+          "associated_symptoms": <score>,
+          "clinical_notes": "<brief clinical observations>"
+      }
+
+      Patient narrative:
+      {narrative}
+
+  research_focused:
+    name: "Research Analysis"
+    description: "Research-focused evaluation with detailed metrics"
+    category: "research"
+    template: |
+      You are a researcher analyzing pain narratives for a clinical study.
+
+      Analyze the narrative using these research-validated dimensions (1-10 scale):
+
+      1. **Pain Intensity Score**: Numerical pain intensity based on descriptors
+      2. **Functional Disability**: Impact on activities of daily living
+      3. **Affective Distress**: Emotional and psychological impact
+      4. **Narrative Coherence**: Clarity and organization of the pain description
+      5. **Symptom Specificity**: Level of detail in symptom description
+      6. **Temporal Clarity**: Clear timeline and pattern description
+
+      Additional analysis:
+      - **Key Pain Descriptors**: List main pain descriptor words used
+      - **Functional Domains Affected**: Specific life areas impacted
+
+      Return JSON format:
+      {
+          "pain_intensity_score": <score>,
+          "functional_disability": <score>,
+          "affective_distress": <score>,
+          "narrative_coherence": <score>,
+          "symptom_specificity": <score>,
+          "temporal_clarity": <score>,
+          "key_pain_descriptors": ["<descriptor1>", "<descriptor2>", ...],
+          "functional_domains_affected": ["<domain1>", "<domain2>", ...],
+          "research_notes": "<detailed analysis for research purposes>"
+      }
+
+      Narrative for analysis:
+      {narrative}

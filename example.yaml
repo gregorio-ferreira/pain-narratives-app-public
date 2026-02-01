@@ -1,0 +1,31 @@
+# Example configuration for Pain Narratives Application
+# Copy this file to `.yaml` and fill in your own secrets and settings.
+
+models:
+  default_model: gpt-5-mini
+  default_temperature: 1.0
+  default_top_p: 1.0
+  default_max_tokens: 1000
+
+openai:
+  api_key_pain_narratives: "YOUR_OPENAI_API_KEY"
+  org_id: "YOUR_OPENAI_ORG_ID"
+
+bedrock:
+  aws_credentials: "YOUR_AWS_PROFILE"
+  aws_access_key: "YOUR_AWS_ACCESS_KEY"
+  aws_secret_key: "YOUR_AWS_SECRET_KEY"
+  aws_region: "eu-central-1"
+
+pg-prod:
+  password: "YOUR_DB_PASSWORD"
+  host: "YOUR_DB_HOST"
+  database: "YOUR_DB_NAME"
+  user: "YOUR_DB_USER"
+  port: 5432
+
+app:
+  data_root_path: "./data"
+  environment: development
+  streamlit_server_port: 8501
+  streamlit_server_address: localhost
