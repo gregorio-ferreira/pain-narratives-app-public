@@ -78,8 +78,11 @@ dmypy.json
 
 # Configuration files with secrets
 .yaml
+config.yaml
 *.yaml.bak
 secrets.yaml
+!example.yaml
+!config.yaml.example
 
 # Logs
 logs/

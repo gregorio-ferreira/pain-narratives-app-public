@@ -51,10 +51,10 @@ class ModelConfig:
     default_model: str = "gpt-5-mini"
     default_temperature: float = 1.0
     default_top_p: float = 1.0
-    default_max_tokens: int = 8000  # GPT-5 needs high limits for reasoning tokens + output
+    default_max_tokens: int = 8000
     translation_model: str = "gpt-5-mini"
-    translation_temperature: float = 1.0  # GPT-5 models work best with temperature 1.0
-    translation_max_tokens: int = 8000  # Increased to match default for consistency
+    translation_temperature: float = 1.0
+    translation_max_tokens: int = 8000
 
 
 @dataclass
@@ -80,22 +80,35 @@ class ConfigManager:
         Initialize configuration manager.
 
         Args:
-            config_path (str, optional): Path to config file. Defaults to ~/.yaml.
+            config_path (str, optional): Path to config file. Defaults to config.yaml in project root.
             logger (Logger, optional): Logger instance.
         """
         if config_path is None:
-            # Use project-level .yaml by default (need 4 dirname calls: settings.py -> config -> pain_narratives -> src -> project_root)
-            project_yaml = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), ".yaml")
-            if os.path.exists(project_yaml):
-                config_path = project_yaml
+            # Calculate project root (4 dirname calls: settings.py -> config -> pain_narratives -> src -> project_root)
+            project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+            
+            # Look for config files in order of priority:
+            # 1. config.yaml in project root (recommended for local development)
+            # 2. .yaml in project root (legacy hidden file)
+            config_yaml = os.path.join(project_root, "config.yaml")
+            dot_yaml = os.path.join(project_root, ".yaml")
+            
+            if os.path.exists(config_yaml):
+                config_path = config_yaml
+            elif os.path.exists(dot_yaml):
+                config_path = dot_yaml
             else:
+                # Fallback to home directory (not recommended for public repos)
                 config_path = os.path.expanduser("~/.yaml")
+                
         self.config_path = config_path
         self.logger = logger
         self._config: dict[str, Any] = {}
 
+        # Always log which config file is being used (helpful for debugging)
+        print(f"📁 Loading configuration from: {config_path}")
         if self.logger:
-            self.logger.debug(f"Loading configuration from {config_path}")
+            self.logger.info(f"Loading configuration from {config_path}")
 
         self._load_config()
 
@@ -179,7 +192,8 @@ class ConfigManager:
     # Convenience properties for easier access
     @property
     def openai_api_key(self) -> str:
-        return self.openai_config.api_key
+        # Prefer api_key_pain_narratives if set, otherwise fall back to api_key
+        return self.openai_config.api_key_pain_narratives or self.openai_config.api_key
 
     @property
     def openai_api_key_pain_narratives(self) -> str:

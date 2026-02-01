@@ -370,11 +370,12 @@ def display_cost_estimate(
         avg_response_tokens: Average response tokens
     """
     # Rough cost estimates (as of 2024 - should be updated)
+    # See: https://openai.com/pricing for current pricing
     cost_per_1k_tokens = {
-        "gpt-5": {"input": 0.03, "output": 0.06},
-        "gpt-5-mini": {"input": 0.01, "output": 0.03},
-        "gpt-5-nano": {"input": 0.005, "output": 0.015},
-        "gpt-3.5-turbo": {"input": 0.0015, "output": 0.002},
+        "gpt-4o": {"input": 0.0025, "output": 0.01},
+        "gpt-5-mini": {"input": 0.00015, "output": 0.0006},
+        "gpt-4-turbo": {"input": 0.01, "output": 0.03},
+        "gpt-3.5-turbo": {"input": 0.0005, "output": 0.0015},
     }
 
     if model in cost_per_1k_tokens:

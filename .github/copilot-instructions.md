@@ -135,8 +135,8 @@ def evaluate_narrative(narrative: str) -> Dict[str, Any]:
     response = client.create_completion(
         messages=[{"role": "user", "content": narrative}],
         model="gpt-5-mini",
-        temperature=0.0,
-        max_tokens=1000
+        temperature=1.0,
+        max_tokens=8000
     )
     return response
 ```
@@ -175,7 +175,7 @@ results = runner.run_single_experiment(
     experiment_group_id=group_id,  # Note: backend uses "experiment_group"
     narrative_row=narrative_data,
     model="gpt-5-mini",
-    temperature=0.0
+    temperature=1.0
 )
 ```
 

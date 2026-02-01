@@ -1,0 +1,31 @@
+# Configuration file for Pain Narratives Application
+# Copy this file to config.yaml and fill in your values
+# config.yaml is gitignored and should contain your actual credentials
+
+models:
+  default_model: gpt-5-mini
+  default_temperature: 1.0
+  default_top_p: 1.0
+  default_max_tokens: 8000
+  translation_model: gpt-5-mini
+  translation_temperature: 1.0
+  translation_max_tokens: 8000
+
+openai:
+  # Get your API key from: https://platform.openai.com/api-keys
+  api_key_pain_narratives: "YOUR_OPENAI_API_KEY"
+  org_id: "YOUR_OPENAI_ORG_ID"
+
+# Database configuration - matches docker-compose.yml defaults
+pg-prod:
+  password: "pain_narratives_dev"
+  host: "localhost"  # Use 'localhost' when running app locally, 'postgres' if running app in Docker
+  database: "pain_narratives"
+  user: "pain_narratives"
+  port: 5432
+
+app:
+  data_root_path: "./data"
+  environment: development
+  streamlit_server_port: 8501
+  streamlit_server_address: 0.0.0.0

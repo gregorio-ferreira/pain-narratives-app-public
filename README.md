@@ -59,7 +59,56 @@ pain_narratives/
 - OpenAI API key
 - UV package manager (recommended)
 
-### Installation
+### Quick Start with Docker (Recommended)
+
+The easiest way to get started is using Docker Compose, which sets up both the PostgreSQL database and application:
+
+1. **Clone the repository**:
+
+   ```bash
+   git clone <repository-url>
+   cd pain-narratives-app
+   ```
+
+2. **Set up configuration**:
+
+   ```bash
+   # Copy the example configuration
+   cp config.yaml.example config.yaml
+
+   # Edit config.yaml with your OpenAI API key
+   # Get your key from: https://platform.openai.com/api-keys
+   ```
+
+3. **Start the PostgreSQL database**:
+
+   ```bash
+   # Start only the database (recommended for development)
+   docker compose up -d postgres
+   ```
+
+4. **Initialize the database and create admin user**:
+
+   ```bash
+   # Install dependencies
+   uv sync
+
+   # Run database migrations
+   cd src/pain_narratives/db && uv run alembic upgrade head && cd ../../..
+
+   # Create your first admin user
+   uv run python scripts/register_user.py
+   ```
+
+5. **Start the application**:
+
+   ```bash
+   uv run streamlit run scripts/run_app.py
+   ```
+
+6. **Access the application** at `http://localhost:8501`
+
+### Manual Installation (Without Docker)
 
 1. **Clone the repository**:
 
@@ -81,26 +130,25 @@ pain_narratives/
    ```
 
 4. **Configure the application**:
-   Create or update your `~/.yaml` configuration file with the required settings:
+   Create a `.yaml` file in the project root (or `~/.yaml` in your home directory):
 
    ```yaml
    openai:
-     api_key: your_openai_api_key_here
-     api_key_pain_narratives: your_pain_narratives_api_key_here
+     api_key_pain_narratives: your_openai_api_key_here
      org_id: your_openai_org_id_here
 
-   pg:
+   pg-prod:
      password: your_database_password
-     host: your_database_host
-     database: your_database_name
-     user: your_database_user
+     host: localhost
+     database: pain_narratives
+     user: pain_narratives
      port: 5432
 
    models:
      default_model: gpt-5-mini
-     default_temperature: 0.0
+     default_temperature: 1.0
      default_top_p: 1.0
-     default_max_tokens: 1000
+     default_max_tokens: 8000
 
    app:
      data_root_path: "./data"
@@ -109,17 +157,22 @@ pain_narratives/
      streamlit_server_address: localhost
    ```
 
-5. **Initialize the database**:
+5. **Set up PostgreSQL database**:
 
    ```bash
-   # Create database schema
-   psql -d pain_narratives -f sql/db_creation.sql
+   # Create database and user (requires PostgreSQL admin access)
+   psql -U postgres -c "CREATE USER pain_narratives WITH PASSWORD 'your_password';"
+   psql -U postgres -c "CREATE DATABASE pain_narratives OWNER pain_narratives;"
+   psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE pain_narratives TO pain_narratives;"
+
+   # Create schema
+   psql -U pain_narratives -d pain_narratives -c "CREATE SCHEMA IF NOT EXISTS pain_narratives_app;"
 
    # Run migrations
-   cd src/pain_narratives/db && alembic upgrade head
+   cd src/pain_narratives/db && uv run alembic upgrade head && cd ../../..
 
-   # Initialize with default admin user
-   uv run python scripts/setup/init_database.py
+   # Create your first admin user
+   uv run python scripts/register_user.py
    ```
 
 ### Running the Application
@@ -130,16 +183,23 @@ pain_narratives/
 uv run streamlit run scripts/run_app.py
 ```
 
-**Using UV's hatch integration** (recommended):
+**Using Make** (recommended):
 
 ```bash
-uv run python scripts/run_app.py
+make app
 ```
 
-Default admin credentials:
+### Full Docker Deployment
 
-- Username: `admin`
-- Password: `admin123`
+To run both the database and application in Docker:
+
+```bash
+# Start everything (database + app)
+docker compose --profile full up -d
+
+# View logs
+docker compose logs -f app
+```
 
 ### EC2 Deployment with HTTPS
 
@@ -313,7 +373,7 @@ The main interface provides five key tabs:
 - `User`: User accounts with authentication and authorization
 - `ExperimentGroup`: Research experiment organization
 - `Narrative`: Patient pain descriptions and metadata
-- `ModelResponse`: AI evaluation results and scores
+- `EvaluationResult`: Processed assessment results
 - `UserPrompt`: Custom prompt configurations
 
 **Database Features**:
@@ -341,7 +401,7 @@ The main interface provides five key tabs:
 
 **OpenAI API Integration**:
 
-- Support for multiple model variants (GPT-5, GPT-5-mini, GPT-5-nano)
+- Support for multiple model variants (GPT-4o, gpt-5-mini, GPT-4-turbo)
 - Customizable prompting strategies
 - Response validation and error handling
 
@@ -370,9 +430,9 @@ pg:
 
 models:
   default_model: gpt-5-mini
-  default_temperature: 0.0
+  default_temperature: 1.0
   default_top_p: 1.0
-  default_max_tokens: 1000
+  default_max_tokens: 8000
 
 app:
   data_root_path: "./data"
@@ -480,13 +540,14 @@ class User(SQLModel, table=True):
 class Narrative(SQLModel, table=True):
     narrative_id: int = Field(primary_key=True)
     narrative: Optional[str] = None
-    seve_rube: Optional[int] = None
-    seve_pat: Optional[int] = None
-    disca_rube: Optional[int] = None
-    disca_pat: Optional[int] = None
+    owner_id: int = Field(foreign_key="users.id")
+    narrative_hash: Optional[str] = Field(default=None, max_length=64)
+    word_count: Optional[int] = Field(default=None)
+    char_count: Optional[int] = Field(default=None)
 
     experiments: List["ExperimentList"] = Relationship(back_populates="narrative")
-    model_responses: List["ModelResponse"] = Relationship(back_populates="narrative")
+    owner: Optional["User"] = Relationship(back_populates="narratives")
+    evaluation_results: List["EvaluationResult"] = Relationship(back_populates="narrative")
 ```
 
 **Evaluation Groups Table** (SQLModel - `ExperimentGroup` model):

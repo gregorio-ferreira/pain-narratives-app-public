@@ -20,9 +20,7 @@ from pain_narratives.core.openai_client import OpenAIClient
 
 # Direct import for questionnaire prompts to avoid circular dependency
 from pain_narratives.db.models_sqlmodel import QuestionnairePrompt
-from pain_narratives.ui.components.assessment_feedback import (
-    render_assessment_feedback_form,
-)
+from pain_narratives.ui.components.assessment_feedback import render_assessment_feedback_form
 from pain_narratives.ui.components.batch_processing import run_batch_evaluation
 from pain_narratives.ui.components.evaluation_display import display_evaluation_details
 from pain_narratives.ui.components.evaluation_logic import NarrativeEvaluator
@@ -51,9 +49,7 @@ from pain_narratives.ui.components.questionnaire import (
     run_pcs_questionnaire,
     run_tsk_11sv_questionnaire,
 )
-from pain_narratives.ui.components.questionnaire_feedback import (
-    render_questionnaire_feedback_form,
-)
+from pain_narratives.ui.components.questionnaire_feedback import render_questionnaire_feedback_form
 from pain_narratives.ui.utils.localization import get_translator
 
 # Configure comprehensive logging
@@ -317,7 +313,7 @@ class PainNarrativesApp:
         # Non-admin users: fixed model and temperature
         # Admins: full control
         if st.session_state.is_admin:
-            model = st.sidebar.selectbox(t("sidebar.model_selection"), ["gpt-5", "gpt-5-mini", "gpt-5-nano"], index=0)
+            model = st.sidebar.selectbox(t("sidebar.model_selection"), ["gpt-4o", "gpt-5-mini", "gpt-4-turbo"], index=1)
             temperature = st.sidebar.slider(
                 t("sidebar.temperature"),
                 min_value=0.0,
@@ -593,9 +589,7 @@ class PainNarrativesApp:
         st.info(t("ui_text.modify_dimensions_info"))
 
         # Import the dimensions editor function that doesn't use forms
-        from pain_narratives.ui.components.prompt_manager import (
-            dimensions_editor_no_form,
-        )
+        from pain_narratives.ui.components.prompt_manager import dimensions_editor_no_form
 
         # Show preview only for admins
         dims, invalid_range, invalid_fields = dimensions_editor_no_form(
@@ -620,9 +614,7 @@ class PainNarrativesApp:
                 group_base_prompt = st.session_state.get("selected_group_base_prompt")
 
                 # Import function for generating prompt
-                from pain_narratives.ui.components.prompt_manager import (
-                    generate_prompt_from_dimensions,
-                )
+                from pain_narratives.ui.components.prompt_manager import generate_prompt_from_dimensions
 
                 # Generate the updated prompt using the group's system and base prompts
                 generated_prompt = generate_prompt_from_dimensions(

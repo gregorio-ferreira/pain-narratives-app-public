@@ -21,10 +21,15 @@ from pain_narratives.config.settings import get_settings
 
 # Import all models to register them with SQLModel metadata
 from pain_narratives.db.models_sqlmodel import (  # noqa: F401
+    AssessmentFeedback,
+    EvaluationResult,
     ExperimentGroup,
+    ExperimentGroupUser,
     ExperimentList,
-    ModelResponse,
     Narrative,
+    Questionnaire,
+    QuestionnaireFeedback,
+    QuestionnairePrompt,
     RequestResponse,
     User,
     UserPrompt,

@@ -5,8 +5,8 @@
 ### 1. **Configuration File Updated** (`.yaml`)
 
 - Added `translation_model: gpt-5-mini`
-- Added `translation_temperature: 0.0`
-- Added `translation_max_tokens: 2000`
+- Added `translation_temperature: 1.0`
+- Added `translation_max_tokens: 8000`
 
 ### 2. **Settings Configuration Updated** (`src/pain_narratives/config/settings.py`)
 
@@ -29,8 +29,8 @@
 ### **Independent Translation Model**
 
 - Translation operations use `gpt-5-mini` regardless of the main evaluation model
-- Dedicated temperature setting (0.0) for consistent translations
-- Separate token limit (2000) optimized for translation tasks
+- Dedicated temperature setting for consistent translations
+- Separate token limit optimized for translation tasks
 
 ### **Enhanced Translation Coverage**
 
@@ -48,13 +48,13 @@
 
 ```yaml
 models:
-  # Main evaluation model (unchanged)
-  default_model: gpt-5-nano
+  # Main evaluation model
+  default_model: gpt-5-mini
 
   # Translation-specific settings
   translation_model: gpt-5-mini # Model used for translations
-  translation_temperature: 0.0 # Low temp for consistent translations
-  translation_max_tokens: 2000 # Sufficient tokens for medical content
+  translation_temperature: 1.0 # Temperature for translations
+  translation_max_tokens: 8000 # Sufficient tokens for medical content
 ```
 
 ## ✅ **Validation Results**
@@ -62,8 +62,8 @@ models:
 ### **Configuration Loading**
 
 - ✅ Translation model: `gpt-5-mini`
-- ✅ Translation temperature: `0.0`
-- ✅ Translation max tokens: `2000`
+- ✅ Translation temperature: `1.0`
+- ✅ Translation max tokens: `8000`
 
 ### **Translation Quality**
 
@@ -80,7 +80,7 @@ models:
 ## 🌟 **Benefits**
 
 1. **Cost Efficiency**: Use a smaller, faster model for translations while keeping powerful models for evaluations
-2. **Consistency**: Fixed temperature (0.0) ensures consistent translation results
+2. **Consistency**: Fixed temperature ensures consistent translation results
 3. **Flexibility**: Easy to switch translation models or adjust parameters
 4. **Performance**: Dedicated token limits optimized for translation tasks
 5. **Quality**: Enhanced logic translates all relevant fields (reasoning + explanations)

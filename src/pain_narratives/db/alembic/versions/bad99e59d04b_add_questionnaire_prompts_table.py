@@ -33,7 +33,8 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id'),
         schema='pain_narratives_app'
     )
-    op.drop_table('prompt_test_pcs', schema='pain_narratives_app')
+    # Drop legacy table if it exists (was used in development)
+    op.execute("DROP TABLE IF EXISTS pain_narratives_app.prompt_test_pcs")
     # ### end Alembic commands ###
 
 
