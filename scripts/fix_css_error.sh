@@ -171,7 +171,7 @@ chown $APP_USER:$APP_USER "$APP_DIR/.streamlit/config.toml"
 echo "🔧 Updating systemd service..."
 cat <<EOF | tee /etc/systemd/system/pain-narratives.service
 [Unit]
-Description=Pain Narratives Streamlit App
+Description=AINarratives Streamlit App
 After=network.target
 
 [Service]

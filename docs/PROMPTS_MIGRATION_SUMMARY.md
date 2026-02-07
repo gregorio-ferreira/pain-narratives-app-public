@@ -2,7 +2,7 @@
 
 ## Overview
 
-Successfully migrated the Pain Narratives Application from hardcoded prompts to a **centralized YAML-based configuration system**. The new system uses prompts from **experiment group 12** as the default configuration.
+Successfully migrated the AINarratives Application from hardcoded prompts to a **centralized YAML-based configuration system**. The new system uses prompts from **experiment group 12** as the default configuration.
 
 **Date**: October 9, 2025  
 **Source**: Experiment Group 12 (created October 8, 2025 by researcher)

@@ -2,7 +2,7 @@
 
 ## Overview
 
-As of October 2025, the Pain Narratives Application uses a **centralized YAML-based configuration system** for all default prompts. This makes it easy for researchers to update default prompts without modifying Python code.
+As of October 2025, the AINarratives Application uses a **centralized YAML-based configuration system** for all default prompts. This makes it easy for researchers to update default prompts without modifying Python code.
 
 **Key File**: `src/pain_narratives/config/default_prompts.yaml`
 
@@ -37,8 +37,8 @@ Each has:
 
 Pre-configured prompt templates for different use cases:
 
-- Fibromyalgia Expert Assessment (Default)
-- Fibromyalgia Comprehensive
+- Chronic Pain Expert Assessment (Default)
+- Chronic Pain Comprehensive
 - General Pain Assessment
 - Research Analysis
 

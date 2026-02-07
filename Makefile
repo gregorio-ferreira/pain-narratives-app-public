@@ -1,4 +1,4 @@
-# Pain Narratives Project Makefile
+# AINarratives Project Makefile
 # Comprehensive project management for UV-based Python project
 
 # Colors for pretty output
@@ -23,7 +23,7 @@ help:
 	@echo 'Usage:'
 	@echo '  ${YELLOW}make${RESET} ${GREEN}<target>${RESET}'
 	@echo ''
-	@echo '${BLUE}Pain Narratives Project Management${RESET}'
+	@echo '${BLUE}AINarratives Project Management${RESET}'
 	@echo ''
 	@echo 'Targets:'
 	@awk '/^[a-zA-Z\-\_0-9]+:/ { \
@@ -103,7 +103,7 @@ app:
 
 ## Run experiments
 experiments:
-	@echo "${BLUE}Running pain narratives experiments...${RESET}"
+	@echo "${BLUE}Running AINarratives experiments...${RESET}"
 	uv run run-experiments --models gpt-5-mini --temperatures 0.0 --repetitions 1
 
 ## Run custom experiment script
@@ -132,8 +132,8 @@ db-migration:
 ## Setup Jupyter kernel for project
 jupyter-setup:
 	@echo "${BLUE}Setting up Jupyter kernel...${RESET}"
-	uv run python -m ipykernel install --user --name "pain-narratives" --display-name "Python (Pain Narratives)"
-	@echo "${GREEN}Jupyter kernel 'Python (Pain Narratives)' installed successfully!${RESET}"
+	uv run python -m ipykernel install --user --name "pain-narratives" --display-name "Python (AINarratives)"
+	@echo "${GREEN}Jupyter kernel 'Python (AINarratives)' installed successfully!${RESET}"
 
 ## Start Jupyter notebook
 notebook:
@@ -266,7 +266,7 @@ pre-commit-check: format lint typecheck test
 # Project Management
 ## Show project information
 info:
-	@echo "${BLUE}Pain Narratives Project Information:${RESET}"
+	@echo "${BLUE}AINarratives Project Information:${RESET}"
 	@echo "📦 Package: $(PACKAGE_NAME)"
 	@echo "🐍 Python: $(shell python --version 2>/dev/null || echo 'Not found')"
 	@echo "📁 Source: $(SRC_DIR)/"

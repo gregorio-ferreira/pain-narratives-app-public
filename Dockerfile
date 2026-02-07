@@ -1,4 +1,4 @@
-# Pain Narratives Application Dockerfile
+# AINarratives Application Dockerfile
 # Multi-stage build for efficient image size
 
 # Build stage

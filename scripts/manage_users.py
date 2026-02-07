@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-User management script for pain narratives application.
+User management script for AINarratives application.
 
 This script provides user management capabilities:
 - List all users
@@ -37,7 +37,7 @@ from pain_narratives.db.models_sqlmodel import User
 def parse_arguments() -> argparse.Namespace:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
-        description="Manage users in the Pain Narratives application",
+        description="Manage users in the AINarratives application",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Commands:

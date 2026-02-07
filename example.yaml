@@ -1,4 +1,4 @@
-# Example configuration for Pain Narratives Application
+# Example configuration for AINarratives Application
 # Copy this file to `.yaml` and fill in your own secrets and settings.
 
 models:

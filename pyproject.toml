@@ -3,7 +3,7 @@ name = "pain-narratives"
 version = "0.1.0"
 description = "AI-powered research platform for systematic evaluation of patient pain narratives"
 authors = [
-    { name = "Pain Narratives Research Team", email = "research@example.com" },
+    { name = "AINarratives Research Team", email = "research@example.com" },
 ]
 readme = "README.md"
 requires-python = ">=3.11"
@@ -13,7 +13,7 @@ keywords = [
     "ai",
     "healthcare",
     "research",
-    "fibromyalgia",
+    "chronic-pain",
     "evaluation",
 ]
 classifiers = [

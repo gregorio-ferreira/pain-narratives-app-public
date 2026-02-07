@@ -576,7 +576,7 @@ class PainNarrativesApp:
                 {
                     "name": "Disability Score",
                     "definition": (
-                        "The extent to which fibromyalgia hinders patients' " "usual activities and quality of life"
+                        "The extent to which chronic pain hinders patients' " "usual activities and quality of life"
                     ),
                     "min": "0",
                     "max": "10",

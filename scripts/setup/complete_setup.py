@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Complete setup script for Pain Narratives application.
+Complete setup script for AINarratives application.
 
 This script:
 1. Runs database migrations
@@ -31,7 +31,7 @@ def run_uv_command(command: str, description: str) -> bool:
 
 def main():
     """Main setup function."""
-    print("🏥 Pain Narratives Application Setup")
+    print("🏥 AINarratives Application Setup")
     print("=" * 50)
 
     # Set project root as global variable
@@ -71,7 +71,7 @@ def main():
     print("   Username: admin")
     print("   Password: admin123")
     print("\n4. Configure your OpenAI API key in the sidebar")
-    print("\nEnjoy using the Pain Narratives Evaluation Platform! 🚀")
+    print("\nEnjoy using the AINarratives Evaluation Platform! 🚀")
 
 
 if __name__ == "__main__":

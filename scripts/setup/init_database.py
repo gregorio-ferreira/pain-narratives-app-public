@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Database initialization script for pain narratives application.
+Database initialization script for AINarratives application.
 
 This script initializes the database schema using Alembic migrations.
 For security reasons, user creation is handled separately through the user management scripts.
@@ -38,7 +38,7 @@ from pain_narratives.db.models_sqlmodel import (  # noqa: F401
 
 def init_database_schema() -> None:
     """Initialize the database schema by creating all tables."""
-    print("🏥 Initializing Pain Narratives Database Schema")
+    print("🏥 Initializing AINarratives Database Schema")
     print("=" * 50)
 
     try:

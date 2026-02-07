@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Script to build Sphinx documentation for the Pain Narratives project.
+Script to build Sphinx documentation for the AINarratives project.
 """
 import os
 

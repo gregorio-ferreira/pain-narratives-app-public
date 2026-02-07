@@ -412,7 +412,7 @@ class PromptManager:
             with col2:
                 prompt_category = st.selectbox(
                     "Category",
-                    ["general", "fibromyalgia", "research", "clinical", "custom"],
+                    ["general", "chronic_pain", "research", "clinical", "custom"],
                     help=t("ui_text.category_organization_help"),
                 )
 

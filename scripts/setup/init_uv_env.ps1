@@ -1,6 +1,6 @@
 # PowerShell script to initialize UV environment and install dependencies
 
-Write-Host "🚀 Initializing Pain Narratives project with UV..." -ForegroundColor Green
+Write-Host "🚀 Initializing AINarratives project with UV..." -ForegroundColor Green
 
 # Navigate to project root
 Set-Location "c:\Users\jgfer\OneDrive\Documents\my Work\uoc\Proyectos\pain_narratives"

@@ -1,12 +1,12 @@
-# Pain Narratives: AI-Powered Fibromyalgia Assessment Tool
+# AINarratives: AI-Powered Chronic Pain Assessment Tool
 
-A comprehensive research platform for evaluating fibromyalgia patient pain narratives using artificial intelligence models. This system provides automated scoring for pain severity and disability levels, supporting both individual assessments and large-scale research studies.
+A comprehensive research platform for evaluating pain narratives from chronic pain patients using artificial intelligence models. This system provides automated scoring for pain severity and disability levels, supporting both individual assessments and large-scale research studies.
 
 **Built with modern Python practices**: SQLModel, UV package manager, type safety, multilingual support, and modular architecture.
 
 ## 🎯 Project Overview
 
-The Pain Narratives project is designed to assist healthcare researchers and clinicians in analyzing written descriptions of pain experiences from fibromyalgia patients. Using OpenAI's language models, the system provides:
+The AINarratives project is designed to assist healthcare researchers and clinicians in analyzing written descriptions of pain experiences from chronic pain patients. Using OpenAI's language models, the system provides:
 
 - **Automated Dimensions evaluation**: AI-powered evaluation of pain severity and disability levels
 - **Research Analytics**: Statistical analysis and agreement metrics for research validation
@@ -628,7 +628,7 @@ db = DatabaseManager()
 # Create Evaluation group with type safety (using experiment_group methods internally)
 group = db.create_experiment_group(
     owner_id=1,
-    description="Fibromyalgia Dimensions evaluation study",
+    description="Chronic Pain Dimensions evaluation study",
     system_role="You are an expert pain specialist...",
     base_prompt="Evaluate the following pain narrative..."
 )
@@ -900,7 +900,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - OpenAI for providing the language models that power the assessment system
-- The fibromyalgia research community for validation and feedback
+- The chronic pain research community for validation and feedback
 - Contributors and maintainers of the open-source libraries used in this project
 
 ## 📞 Support
@@ -970,7 +970,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **OpenAI**: For providing the language models that power the assessment system
 - **Streamlit**: For the interactive web interface framework
 - **PostgreSQL**: For robust database backend
-- **The fibromyalgia research community**: For validation and feedback
+- **The chronic pain research community**: For validation and feedback
 
 ## 📞 Support
 

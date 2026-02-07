@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Setup Pain Narratives Streamlit app on AWS EC2 with HTTPS (FIXED VERSION)
+# Setup AINarratives Streamlit app on AWS EC2 with HTTPS (FIXED VERSION)
 # This version includes proper static file handling and WebSocket support
 
 # Usage: sudo ./scripts/deploy_ec2_fixed.sh <domain> [email]
@@ -21,7 +21,7 @@ fi
 APP_DIR="$(cd "$(dirname "$0")"/.. && pwd)"
 APP_USER="${SUDO_USER:-$USER}"
 
-echo "🚀 Deploying Pain Narratives Application"
+echo "🚀 Deploying AINarratives Application"
 echo "Domain: $DOMAIN"
 echo "App Directory: $APP_DIR"
 echo "App User: $APP_USER"
@@ -188,7 +188,7 @@ chown $APP_USER:$APP_USER "$APP_DIR/.streamlit/config.toml"
 echo "🔧 Creating systemd service..."
 cat <<EOF | tee /etc/systemd/system/pain-narratives.service
 [Unit]
-Description=Pain Narratives Streamlit App
+Description=AINarratives Streamlit App
 After=network.target
 
 [Service]

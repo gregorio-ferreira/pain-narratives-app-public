@@ -129,7 +129,7 @@ def create_sample_csv() -> str:
                 "The pain is constant and affects my daily activities."
             ),
             (
-                "The fibromyalgia pain is all over my body. Some days are better than others, "
+                "The chronic pain is all over my body. Some days are better than others, "
                 "but the fatigue is always there."
             ),
             (
@@ -137,7 +137,7 @@ def create_sample_csv() -> str:
                 "sensitivity to light and sound."
             ),
         ],
-        "category": ["Back Pain", "Fibromyalgia", "Migraine"],
+        "category": ["Back Pain", "Chronic Pain", "Migraine"],
     }
 
     df = pd.DataFrame(sample_data)
@@ -148,13 +148,13 @@ def create_sample_csv() -> str:
 def load_narrative_examples() -> Dict[str, List[str]]:
     """Load example narratives by category."""
     return {
-        "Fibromyalgia": [
+        "Chronic Pain": [
             (
                 "The pain is everywhere today. My joints ache, my muscles feel bruised, and even light touches hurt. "
                 "I couldn't sleep last night because of the pain."
             ),
             (
-                "I've been dealing with fibromyalgia for 3 years now. The worst part is the unpredictability - "
+                "I've been dealing with chronic pain for 3 years now. The worst part is the unpredictability - "
                 "some days I feel almost normal, others I can barely get out of bed."
             ),
             (

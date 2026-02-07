@@ -18,8 +18,8 @@ def debug_translation():
     
     # Sample evaluation result
     english_result = {
-        "explanation": "The patient describes chronic widespread pain lasting over 3 months, affecting multiple body regions including neck, shoulders, back, and legs. This pattern is consistent with fibromyalgia criteria.",
-        "reasoning": "Based on the narrative, the patient exhibits key fibromyalgia indicators: widespread pain duration exceeding 3 months, involvement of multiple anatomical regions, and impact on daily functioning.",
+        "explanation": "The patient describes chronic widespread pain lasting over 3 months, affecting multiple body regions including neck, shoulders, back, and legs. This pattern is consistent with chronic pain criteria.",
+        "reasoning": "Based on the narrative, the patient exhibits key chronic pain indicators: widespread pain duration exceeding 3 months, involvement of multiple anatomical regions, and impact on daily functioning.",
         "scores": {
             "pain_intensity": 8,
             "functional_impact": 7,

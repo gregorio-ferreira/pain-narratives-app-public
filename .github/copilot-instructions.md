@@ -1,8 +1,8 @@
-# GitHub Copilot Custom Instructions - Pain Narratives Application
+# GitHub Copilot Custom Instructions - AINarratives Application
 
 ## Project Overview
 
-This is a Python-based AI-powered fibromyalgia assessment tool that analyzes patient pain narratives using OpenAI's language models. The application provides automated pain assessment, research analytics, batch processing, and an interactive web interface built with Streamlit.
+This is a Python-based AI-powered chronic pain assessment tool that analyzes patient pain narratives using OpenAI's language models. The application provides automated pain assessment, research analytics, batch processing, and an interactive web interface built with Streamlit.
 
 **Key Features:**
 

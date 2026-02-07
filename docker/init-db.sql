@@ -1,4 +1,4 @@
--- Pain Narratives Database Initialization Script
+-- AINarratives Database Initialization Script
 -- This script runs automatically when the PostgreSQL container starts for the first time
 
 -- Create the application schema
@@ -13,4 +13,4 @@ GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA pain_narratives_app TO pain_narr
 ALTER USER pain_narratives SET search_path TO pain_narratives_app, public;
 
 -- Add comment for documentation
-COMMENT ON SCHEMA pain_narratives_app IS 'Schema for Pain Narratives AI Assessment Application';
+COMMENT ON SCHEMA pain_narratives_app IS 'Schema for AINarratives AI Assessment Application';

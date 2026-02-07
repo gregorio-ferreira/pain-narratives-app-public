@@ -219,7 +219,7 @@ management:
   create_tip: "💡 **Tip**: After creating a new Evaluation group, the page will automatically refresh to update all dropdown menus throughout the application."
   about_templates: "ℹ️ About Default Templates"
   templates_description: |
-    **Default Fibromyalgia Assessment Templates:**
+    **Default Chronic Pain Assessment Templates:**
 
     - **System Role**: Defines the AI as an expert  specializing in pain evaluation
     - **Base Prompt**: Provides structured evaluation criteria for severity and disability scoring (0-10 scale)
@@ -588,7 +588,7 @@ questionnaire_feedback:
 
 # Welcome page (landing page for non-authenticated users)
 welcome:
-  tagline: "AI-Powered Research Tool for Fibromyalgia Dimensions evaluation"
+  tagline: "AI-Powered Research Tool for Chronic Pain Dimensions evaluation"
   description: |
     A platform for healthcare professionals and researchers to help in the evaluation of pain
     from people own narratives. AI Narratives used Large Language Models and has been optimized

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-User registration script for pain narratives application.
+User registration script for AINarratives application.
 
 This script allows you to register new users (both admin and regular users)
 with interactive prompts for username, password, and admin privileges.
@@ -17,7 +17,7 @@ from pain_narratives.db.models_sqlmodel import User
 
 def get_user_input() -> tuple[str, str, bool]:
     """Get user registration details through interactive prompts."""
-    print("🔐 User Registration for Pain Narratives")
+    print("🔐 User Registration for AINarratives")
     print("=" * 40)
 
     # Get username

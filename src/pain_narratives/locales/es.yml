@@ -219,7 +219,7 @@ management:
   create_tip: "💡 **Consejo**: Después de crear un nuevo grupo de evaluación, la página se actualizará automáticamente para actualizar todos los menús desplegables en toda la aplicación."
   about_templates: "ℹ️ Acerca de las Plantillas Predeterminadas"
   templates_description: |
-    **Plantillas de Evaluación de Fibromialgia Predeterminadas:**
+    **Plantillas de Evaluación de Dolor Crónico Predeterminadas:**
 
     - **Rol del Sistema**: Define la IA como una persona experta  e en evaluación de los problemas de dolor
     - **Prompt Base**: Proporciona criterios de evaluación estructurados para puntuación de severidad y discapacidad (escala 0-10)
@@ -588,7 +588,7 @@ questionnaire_feedback:
 
 # Welcome page (landing page for non-authenticated users)
 welcome:
-  tagline: "Herramienta de Investigación Potenciada por IA para la Evaluación de Dimensiones de Fibromialgia"
+  tagline: "Herramienta de Investigación Potenciada por IA para la Evaluación de Dimensiones de Dolor Crónico"
   description: |
     Una plataforma para profesionales de la salud e investigadores para ayudar en la evaluación del dolor
     de las narrativas propias de las personas. AI Narratives utiliza Modelos de Lenguaje Grande y ha sido optimizado
@@ -634,7 +634,7 @@ welcome:
     **Contacta a tu administrador del sistema si necesitas credenciales de acceso o soporte técnico.**
 
   # Additional Management UI Strings
-  use_default_templates_label: "Usar plantillas de evaluación de fibromialgia predeterminadas"
+  use_default_templates_label: "Usar plantillas de evaluación de dolor crónico predeterminadas"
   grant_access_users_label: "Conceder acceso a usuarios"
   user_management_scripts_header: "**Scripts de Gestión de Usuarios:**"
   user_registration_header: "**Registro de Usuarios:**"

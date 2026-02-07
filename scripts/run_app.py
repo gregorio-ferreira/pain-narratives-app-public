@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Entry point for the Pain Narratives Streamlit application.
+Entry point for the AINarratives Streamlit application.
 """
 
 from pain_narratives.ui import main

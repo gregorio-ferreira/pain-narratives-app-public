@@ -1,4 +1,4 @@
-# Default Prompts Configuration for Pain Narratives Application
+# Default Prompts Configuration for AINarratives Application
 # This file contains all default prompts used across the application
 # Based on experiment group 12 (created by researchers on 2025-10-08)
 #
@@ -242,10 +242,10 @@ questionnaires:
 # ============================================================================
 
 prompt_library:
-  fibromyalgia_expert_assessment:
-    name: "Fibromyalgia Expert Assessment (Default)"
-    description: "Expert psychologist evaluation for fibromyalgia patients (Spanish narratives)"
-    category: "fibromyalgia"
+  chronic_pain_expert_assessment:
+    name: "Chronic Pain Expert Assessment (Default)"
+    description: "Expert psychologist evaluation for chronic pain patients (Spanish narratives)"
+    category: "chronic_pain"
     template: |
       You are an expert in evaluating chronic pain. As an expert, you are tasked with analyzing patient narratives about their pain. These patients' explanations about their pain and how they feel it are written in Spanish.
 
@@ -270,12 +270,12 @@ prompt_library:
       Patient narrative:
       {narrative}
 
-  fibromyalgia_comprehensive:
-    name: "Fibromyalgia Comprehensive"
-    description: "Comprehensive evaluation for fibromyalgia pain narratives with multiple dimensions"
-    category: "fibromyalgia"
+  chronic_pain_comprehensive:
+    name: "Chronic Pain Comprehensive"
+    description: "Comprehensive evaluation for chronic pain narratives with multiple dimensions"
+    category: "chronic_pain"
     template: |
-      You are a medical expert evaluating pain narratives from fibromyalgia patients.
+      You are a medical expert evaluating pain narratives from chronic pain patients.
 
       Please analyze the following narrative and provide scores for these dimensions on a scale of 1-10:
 

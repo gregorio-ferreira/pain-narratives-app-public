@@ -7,7 +7,7 @@ This shows how to use the register_user.py script with sample inputs.
 
 print(
     """
-🔐 Pain Narratives User Registration Scripts Demo
+🔐 AINarratives User Registration Scripts Demo
 ================================================
 
 The following scripts are available for user management:

@@ -1,6 +1,6 @@
-# Contributing to Pain Narratives
+# Contributing to AINarratives
 
-Thank you for your interest in contributing to the Pain Narratives research platform! This document provides guidelines for contributing to this project.
+Thank you for your interest in contributing to the AINarratives research platform! This document provides guidelines for contributing to this project.
 
 ## 📋 Table of Contents
 
