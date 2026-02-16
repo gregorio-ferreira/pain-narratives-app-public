@@ -519,8 +519,6 @@ response = client.get_completion(
 
 ### Database Schema (SQLModel)
 
-### Database Schema (SQLModel)
-
 **Users Table** (SQLModel):
 
 ```python
