@@ -81,7 +81,7 @@ narrative_dimensions:
   evaluation_error: "❌ La evaluación falló"
   load_existing_narrative: "Cargar narrativa existente"
   new_narrative: "Nueva narrativa"
-  upload_narrative_file: "Subir narrativa ( Solo formato .txt)"
+  upload_narrative_file: "Subir narrativa (PDF, DOCX o TXT)"
   enter_modify_narrative: "Introducir o modificar la narrativa "
   save_narrative_button: "💾 Guardar Narrativa en BD"
   narrative_saved: "Narrativa guardada con ID {narrative_id}"

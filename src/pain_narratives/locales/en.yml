@@ -81,7 +81,7 @@ narrative_dimensions:
   evaluation_error: "❌ Evaluation failed"
   load_existing_narrative: "Load existing narrative"
   new_narrative: "New narrative"
-  upload_narrative_file: "Upload narrative (only in .txt format)"
+  upload_narrative_file: "Upload narrative (PDF, DOCX, or TXT)"
   enter_modify_narrative: "Enter or modify the pain narrative"
   save_narrative_button: "💾 Save Narrative to DB"
   narrative_saved: "Narrative saved with ID {narrative_id}"
