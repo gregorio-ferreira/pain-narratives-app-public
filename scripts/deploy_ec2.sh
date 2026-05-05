@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Setup AINarratives Streamlit app on AWS EC2 with HTTPS
+# Setup Pain Narratives Streamlit app on AWS EC2 with HTTPS
 
 # git config --global user.email "ferreiradesajg@gmail.com"
 # git config --global user.name "gregorio"
@@ -80,7 +80,7 @@ systemctl reload nginx
 # Create systemd service for Streamlit
 cat <<EOF | tee /etc/systemd/system/pain-narratives.service
 [Unit]
-Description=AINarratives Streamlit App
+Description=Pain Narratives Streamlit App
 After=network.target
 
 [Service]
