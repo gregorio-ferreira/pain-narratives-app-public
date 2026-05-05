@@ -124,12 +124,17 @@ Thumbs.db
 
 # Streamlit
 .streamlit/secrets.toml
+.streamlit/config.toml
 
-# Publication and research files (not part of the app)
+# Publication PDFs / drafts — kept out of the public repo
 publications/
-notebooks/
-notebooks_new/
-sql/
 
-# Alembic versions (you may want to include these)
+# Notebook execution outputs (the notebooks themselves are tracked)
+notebooks/outputs/
+notebooks_new/
+
+# Sphinx build output
+docs/_build/
+
+# Alembic versions (kept under version control by intent)
 # src/pain_narratives/db/alembic/versions/*.py
