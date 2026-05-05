@@ -72,11 +72,11 @@ Content to translate:
 Return the translated explanations in the same JSON format, with the same keys but translated values.
 """
 
-    print(f"\n📝 Translation prompt preview:")
+    print("\n📝 Translation prompt preview:")
     print(translation_prompt[:300] + "..." if len(translation_prompt) > 300 else translation_prompt)
 
     # Now try the actual translation
-    print(f"\n🔄 Running actual translation...")
+    print("\n🔄 Running actual translation...")
     try:
         spanish_result = service.translate_evaluation_result(english_result, target_language="es")
 

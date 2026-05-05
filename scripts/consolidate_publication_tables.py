@@ -362,7 +362,7 @@ def consolidate_csvs(output_dir: Path, output_file: Path, project_root: Path, ve
 
             if verbose:
                 print(f"\n{'=' * 70}")
-                print(f"✅ Excel workbook created successfully!")
+                print("✅ Excel workbook created successfully!")
                 print(f"   Total sheets: {sheets_created + 1} (including index)")
                 print(f"   Output: {output_file}")
                 print(f"{'=' * 70}")

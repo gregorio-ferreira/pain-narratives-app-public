@@ -4,7 +4,6 @@ Test script for multilingual evaluation results functionality.
 
 import logging
 
-from pain_narratives.core.openai_client import OpenAIClient
 from pain_narratives.core.translation_service import TranslationService
 
 

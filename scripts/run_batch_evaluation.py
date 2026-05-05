@@ -86,21 +86,21 @@ def run_dry_run(processor: BatchProcessor, narratives_df, args: argparse.Namespa
     estimate = processor.estimate_batch_cost(num_narratives)
 
     print(f"\nNarratives to process: {estimate['num_narratives']}")
-    print(f"\nEvaluations enabled:")
+    print("\nEvaluations enabled:")
     print(f"  - Dimensions: {'✓' if processor.config.include_dimensions else '✗'}")
     print(f"  - PCS: {'✓' if processor.config.include_pcs else '✗'}")
     print(f"  - BPI-IS: {'✓' if processor.config.include_bpi_is else '✗'}")
     print(f"  - TSK-11SV: {'✓' if processor.config.include_tsk_11sv else '✗'}")
 
-    print(f"\nAPI Calls:")
+    print("\nAPI Calls:")
     print(f"  - Per narrative: {estimate['calls_per_narrative']}")
     print(f"  - Total: {estimate['total_api_calls']}")
 
-    print(f"\nToken Estimates:")
+    print("\nToken Estimates:")
     print(f"  - Input tokens: ~{estimate['estimated_input_tokens']:,}")
     print(f"  - Output tokens: ~{estimate['estimated_output_tokens']:,}")
 
-    print(f"\nCost & Time Estimates:")
+    print("\nCost & Time Estimates:")
     print(f"  - Estimated cost: ${estimate['estimated_cost_usd']:.2f} USD")
     print(f"  - Estimated time: {estimate['estimated_time_minutes']:.1f} minutes")
 
@@ -109,7 +109,7 @@ def run_dry_run(processor: BatchProcessor, narratives_df, args: argparse.Namespa
     print(f"Delay between calls: {processor.config.delay_between_calls}s")
 
     # Show sample narratives
-    print(f"\nSample narratives (first 3):")
+    print("\nSample narratives (first 3):")
     for i, (_, row) in enumerate(narratives_df.head(3).iterrows()):
         narrative = row[args.narrative_column]
         preview = narrative[:150] + "..." if len(narrative) > 150 else narrative
@@ -130,7 +130,7 @@ def run_test_single(processor: BatchProcessor, narratives_df, user_id: int, args
     first_row = narratives_df.iloc[0]
     narrative_text = first_row[args.narrative_column]
 
-    print(f"\nNarrative preview:")
+    print("\nNarrative preview:")
     print(f"  {narrative_text[:300]}...")
     print(f"\nProcessing with {processor.config.model}...")
     print("This will create a test experiment group in the database.\n")
@@ -152,7 +152,7 @@ def run_test_single(processor: BatchProcessor, narratives_df, user_id: int, args
 
     # Dimension results
     if processor.config.include_dimensions:
-        print(f"\n--- Dimension Evaluation ---")
+        print("\n--- Dimension Evaluation ---")
         print(f"Success: {'✓' if result.dimension_success else '✗'}")
         if result.dimension_success:
             dim_result = result.dimension_result
@@ -165,7 +165,7 @@ def run_test_single(processor: BatchProcessor, narratives_df, user_id: int, args
 
     # PCS results
     if processor.config.include_pcs and result.pcs_result:
-        print(f"\n--- PCS Questionnaire ---")
+        print("\n--- PCS Questionnaire ---")
         print(f"Success: {'✓' if result.pcs_result.success else '✗'}")
         if result.pcs_result.success:
             from pain_narratives.core.questionnaire_runner import calculate_pcs_total_score
@@ -178,7 +178,7 @@ def run_test_single(processor: BatchProcessor, narratives_df, user_id: int, args
 
     # BPI-IS results
     if processor.config.include_bpi_is and result.bpi_is_result:
-        print(f"\n--- BPI-IS Questionnaire ---")
+        print("\n--- BPI-IS Questionnaire ---")
         print(f"Success: {'✓' if result.bpi_is_result.success else '✗'}")
         if result.bpi_is_result.success:
             from pain_narratives.core.questionnaire_runner import calculate_bpi_is_subscales
@@ -192,7 +192,7 @@ def run_test_single(processor: BatchProcessor, narratives_df, user_id: int, args
 
     # TSK-11SV results
     if processor.config.include_tsk_11sv and result.tsk_11sv_result:
-        print(f"\n--- TSK-11SV Questionnaire ---")
+        print("\n--- TSK-11SV Questionnaire ---")
         print(f"Success: {'✓' if result.tsk_11sv_result.success else '✗'}")
         if result.tsk_11sv_result.success:
             from pain_narratives.core.questionnaire_runner import calculate_tsk_11sv_total_score
