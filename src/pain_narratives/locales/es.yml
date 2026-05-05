@@ -2,7 +2,7 @@
 app:
   title: "🏥 Plataforma de Evaluación AINarratives"
   tagline: "Herramienta para facilitar la evaluación del dolor gracias a la inteligencia artificial"
-  welcome_message: "👋 ¡Bienvenido/a l AINarratives!"
+  welcome_message: "👋 ¡Bienvenido/a a AINarratives!"
   
 sidebar:
   header: "⚙️ Configuración"
@@ -64,10 +64,10 @@ tabs:
 
 narrative_dimensions:
   header: "🎯 Narrativas y Dimensiones"
-  description: "Evalúe múltiples narrativas dimensiones de las narrativas de dolor usando  IA"
+  description: "Evalúe las dimensiones de las narrativas de dolor usando IA"
   narrative_input: "📝 Introducción de la Narrativa"
-  narrative_placeholder: "Por favor, introduzca  aquí el texto de la narrativa de dolor..."
-  narrative_help: "Introduzca  la narrativa de dolor a evaluar "
+  narrative_placeholder: "Por favor, introduzca aquí el texto de la narrativa de dolor..."
+  narrative_help: "Introduzca la narrativa de dolor a evaluar"
   evaluation_type: "🔬 Tipo de Evaluación"
   single_evaluation: "Evaluación Única"
   multiple_evaluation: "Evaluaciones Múltiples (Prueba de Consistencia)"
@@ -81,8 +81,8 @@ narrative_dimensions:
   evaluation_error: "❌ La evaluación falló"
   load_existing_narrative: "Cargar narrativa existente"
   new_narrative: "Nueva narrativa"
-  upload_narrative_file: "Subir narrativa (PDF, DOCX o TXT)"
-  enter_modify_narrative: "Introducir o modificar la narrativa "
+  upload_narrative_file: "Subir narrativa (Solo formato .txt)"
+  enter_modify_narrative: "Introducir o modificar la narrativa"
   save_narrative_button: "💾 Guardar Narrativa en BD"
   narrative_saved: "Narrativa guardada con ID {narrative_id}"
   failed_save_narrative: "Error al guardar narrativa: {error}"
@@ -95,7 +95,7 @@ narrative_dimensions:
     Una vez que haya seleccionado un grupo de evaluación, puede personalizar las dimensiones de evaluación aquí.
   selected_group: "📋 **Grupo de evaluación seleccionado**: {group_id}"
   customize_dimensions: "### 📝 Personalizar Dimensiones de Evaluación"
-  customize_info: "💡 Modifique las dimensiones de evaluación existentes si lo desea, o añada otras de su interés "
+  customize_info: "💡 Modifique las dimensiones de evaluación existentes si lo desea, o añada otras de su interés"
   dimensions_ready_button: "✅ Definición de Dimensiones Lista"
   fix_dimension_ranges: "❌ Por favor corrija los rangos de dimensión antes de continuar."
 
@@ -140,7 +140,7 @@ questionnaires:
     
     **Cuestionarios Disponibles:**
     - **PCS (Escala de Catastrofización del Dolor)**: Evalúa patrones de pensamiento catastrófico relacionados con la experiencia del dolor
-    - **BPI-IS (Inventario Breve del Dolor - Escala de Interferencia)**: Evalúa la interferencia del dolor con las actividades diarias y la intensidad del dolor
+    - **BPI-IS (Inventario Breve del Dolor)**: Evalúa la interferencia del dolor con las actividades diarias y la intensidad del dolor
     - **TSK-11SV (Escala de Tampa de Kinesiofobia - Versión Corta)**: Mide el miedo al movimiento y la evitación de actividades debido al dolor
     
     **Cómo funciona:**
@@ -171,8 +171,10 @@ questionnaires:
   question_text_column: "Texto de Pregunta"
   score_column: "Puntuación"
   scale_column: "Escala"
-  total_score_label: "Puntuación Total PCS"
-  total_score_help: "Suma de todas las puntuaciones individuales (rango: 0-52)"
+  pcs_total_score_label: "Puntuación Total PCS"
+  pcs_total_score_help: "Suma de todas las puntuaciones individuales (rango: 0-52)"
+  bpi_total_score_label: "Puntuación Total BPI-IS"
+  tsk_total_score_label: "Puntuación Total TSK-11SV"
   results_header: "Resultados"
   scale_type_column: "Tipo de Escala"
   interference_average: "Promedio Interferencia"
@@ -183,6 +185,9 @@ questionnaires:
   tsk_total_help: "Suma de todas las puntuaciones TSK-11SV (rango: 11-44)"
   tsk_average_help: "Puntuación promedio TSK-11SV (rango: 1-4)"
   bpi_total_help: "Suma de todas las puntuaciones BPI-IS (rango: 0-100)"
+  pcs_option_label: "PCS. Escala de Catastrofización del Dolor"
+  bpi_option_label: "BPI-IS. Inventario Breve del Dolor"
+  tsk_option_label: "TSK-11SV. Escala de Tampa de Kinesiofobia (Versión Corta)"
 
 analytics:
   header: "📈 Analíticas"
@@ -221,7 +226,7 @@ management:
   templates_description: |
     **Plantillas de Evaluación de Dolor Crónico Predeterminadas:**
 
-    - **Rol del Sistema**: Define la IA como una persona experta  e en evaluación de los problemas de dolor
+    - **Rol del Sistema**: Define la IA como una persona experta en evaluación de los problemas de dolor
     - **Prompt Base**: Proporciona criterios de evaluación estructurados para puntuación de severidad y discapacidad (escala 0-10)
     - **Soporte de Idioma**: Optimizado para narrativas de pacientes en español con explicaciones en inglés
     - **Enfoque Clínico**: Incluye orientación sobre mecanismos de afrontamiento, factores de resistencia y evaluación holística
@@ -423,8 +428,8 @@ ui_text:
   # Placeholders
   custom_evaluation_placeholder: "ej., Mi Evaluación Personalizada"
   prompt_purpose_placeholder: "Breve descripción del propósito de este prompt"
-  study_description_placeholder: "ej., Estudio de Evaluación de Dolor "
-  system_role_placeholder: "Eres un  experto especializado en evaluación del dolor..."
+  study_description_placeholder: "ej., Estudio de Evaluación de Dolor"
+  system_role_placeholder: "Eres un experto especializado en evaluación del dolor..."
   base_prompt_placeholder: "Evalúa la siguiente narrativa de dolor y proporciona puntuaciones para severidad y discapacidad..."
   
   # Help Text
@@ -498,7 +503,7 @@ ui_text:
   scores_not_object_error: "Formato de respuesta inválido: 'scores' debe ser un objeto"
   json_parsing_failed_warning: "Falló el análisis JSON. Intentando extraer valores del contenido sin procesar."
   invalid_json_file_error: "Archivo JSON inválido"
-  fix_issues_error: "❌ Por favor corrije los siguientes problemas:"
+  fix_issues_error: "❌ Por favor corrija los siguientes problemas:"
   
   # Generated Prompt Preview
   generated_prompt_preview_header: "**Vista Previa del Prompt Generado:**"
@@ -538,11 +543,11 @@ assessment_feedback:
    header: "Feedback experto"
    instructions: |
      Por favor proporciona tu feedback para cada una de las dimensiones evaluadas. Califica la puntuación otorgada para cada dimensión, la explicación facilitada
-     y hasta qué punto  utilizarías esa información en tu valoración clínica.
+     y hasta qué punto utilizarías esa información en tu valoración clínica.
    dimension_group_header: "Evaluación de {dimension}"
    dimension_score_question: "La puntuación representa adecuadamente la {dimension} expresada en la narrativa."
    dimension_explanation_question: "La explicación representa adecuadamente la {dimension} expresada en la narrativa."
-   dimension_usage_question: "Usaría la puntuación y explicación de {dimension} para ayudarme en la evlauación del dolor del paciente."
+   dimension_usage_question: "Usaría la puntuación y explicación de {dimension} para ayudarme en la evaluación del dolor del paciente."
    submit_button: "Enviar feedback"
    feedback_completed: "✅ Feedback completado"
    already_submitted_info: "Ya registraste feedback para esta evaluación."

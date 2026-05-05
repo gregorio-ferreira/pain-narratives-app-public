@@ -1,7 +1,7 @@
 # English (en_new.yml) - AINarratives Evaluation Platform - Complete Localization
 app:
   title: "🏥 AINarratives Evaluation Platform"
-  tagline: "AI-Powered Research Tool to facilitate pain assesment"
+  tagline: "AI-Powered Research Tool to facilitate pain assessment"
   welcome_message: "👋 Welcome to the AINarratives!"
   
 sidebar:
@@ -81,7 +81,7 @@ narrative_dimensions:
   evaluation_error: "❌ Evaluation failed"
   load_existing_narrative: "Load existing narrative"
   new_narrative: "New narrative"
-  upload_narrative_file: "Upload narrative (PDF, DOCX, or TXT)"
+  upload_narrative_file: "Upload narrative (only in .txt format)"
   enter_modify_narrative: "Enter or modify the pain narrative"
   save_narrative_button: "💾 Save Narrative to DB"
   narrative_saved: "Narrative saved with ID {narrative_id}"
@@ -95,7 +95,7 @@ narrative_dimensions:
     Once you've selected an Evaluation group, you can customize the evaluation dimensions here.
   selected_group: "📋 **Selected Evaluation group**: {group_id}"
   customize_dimensions: "### 📝 Customize Evaluation Dimensions"
-  customize_info: "💡 Modify the dimensions below if you want, or add others if you want ."
+  customize_info: "💡 Modify the dimensions below if you want, or add new ones."
   dimensions_ready_button: "✅ Dimensions Definition Ready"
   fix_dimension_ranges: "❌ Please fix the dimension ranges before proceeding."
 
@@ -140,7 +140,7 @@ questionnaires:
     
     **Available Questionnaires:**
     - **PCS (Pain Catastrophizing Scale)**: Evaluates catastrophic thinking patterns related to pain experience
-    - **BPI-IS (Brief Pain Inventory - Interference Scale)**: Assesses pain interference with daily activities and pain intensity
+    - **BPI-IS (Brief Pain Inventory)**: Assesses pain interference with daily activities and pain intensity
     - **TSK-11SV (Tampa Scale of Kinesiophobia - Short Version)**: Measures fear of movement and activity avoidance due to pain
     
     **How it works:**
@@ -171,8 +171,10 @@ questionnaires:
   question_text_column: "Question Text"
   score_column: "Score"
   scale_column: "Scale"
-  total_score_label: "Total PCS Score"
-  total_score_help: "Sum of all individual question scores (range: 0-52)"
+  pcs_total_score_label: "Total PCS Score"
+  pcs_total_score_help: "Sum of all individual question scores (range: 0-52)"
+  bpi_total_score_label: "Total BPI-IS Score"
+  tsk_total_score_label: "Total TSK-11SV Score"
   results_header: "Results"
   scale_type_column: "Scale Type"
   interference_average: "Interference Average"
@@ -183,6 +185,9 @@ questionnaires:
   tsk_total_help: "Sum of all TSK-11SV scores (range: 11-44)"
   tsk_average_help: "Average TSK-11SV score (range: 1-4)"
   bpi_total_help: "Sum of all BPI-IS scores (range: 0-100)"
+  pcs_option_label: "PCS. Pain Catastrophizing Scale"
+  bpi_option_label: "BPI-IS. Brief Pain Inventory"
+  tsk_option_label: "TSK-11SV. Tampa Scale of Kinesiophobia (Short Version)"
 
 analytics:
   header: "📈 Analytics"
@@ -221,7 +226,7 @@ management:
   templates_description: |
     **Default Chronic Pain Assessment Templates:**
 
-    - **System Role**: Defines the AI as an expert  specializing in pain evaluation
+    - **System Role**: Defines the AI as an expert specializing in pain evaluation
     - **Base Prompt**: Provides structured evaluation criteria for severity and disability scoring (0-10 scale)
     - **Language Support**: Optimized for Spanish patient narratives with English explanations
     - **Clinical Focus**: Includes guidance on coping mechanisms, resilience factors, and holistic assessment
@@ -423,8 +428,8 @@ ui_text:
   # Placeholders
   custom_evaluation_placeholder: "e.g., My Custom Evaluation"
   prompt_purpose_placeholder: "Brief description of this prompt's purpose"
-  study_description_placeholder: "e.g.,  Pain Assessment Study"
-  system_role_placeholder: "You are an expert  specializing in pain assessment..."
+  study_description_placeholder: "e.g., Pain Assessment Study"
+  system_role_placeholder: "You are an expert specializing in pain assessment..."
   base_prompt_placeholder: "Evaluate the following pain narrative and provide scores for severity and disability..."
   
   # Help Text
@@ -591,7 +596,7 @@ welcome:
   tagline: "AI-Powered Research Tool for Chronic Pain Dimensions evaluation"
   description: |
     A platform for healthcare professionals and researchers to help in the evaluation of pain
-    from people own narratives. AI Narratives used Large Language Models and has been optimized
+    from people's own narratives. AINarratives uses Large Language Models and has been optimized
     for Spanish language. Built with modern Python practices including SQLModel, UV package management,
     and comprehensive user management for research excellence.
   about_platform_title: "About This Platform"
