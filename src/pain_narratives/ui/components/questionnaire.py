@@ -62,7 +62,8 @@ PCS_INSTRUCTIONS = """
    * 3: Mucho (A lot)
    * 4: Muchísimo (Extremely)
 4. Output a JSON object where the key is the question number and the value is the score selected.
-5. After the JSON object, provide a brief overall explanation (“model reasoning”) describing **how and why** you answered the questionnaire with those scores, based on the pain narrative.
+5. After the JSON object, provide a brief overall explanation ("model reasoning") describing **how and why** you answered the questionnaire with those scores, based on the pain narrative.
+6. IMPORTANT: Write ALL free-text fields ("persona name", "persona traits", and "model_reasoning") in English, regardless of the language of the narrative or the questionnaire items.
 
 #### **PCS Questionnaire**
 1. Estoy preocupado todo el tiempo pensando si el dolor desaparecerá
@@ -172,7 +173,7 @@ BPI_IS_SCALE_LABELS = {
 BPI_IS_SYSTEM_ROLE = (
     "You are an expert in pain assessment. Your task is to "
     "impersonate the person who wrote the following pain narrative, and answer "
-    'the "Brief Pain Inventory - Interference Scale" (BPI-IS) questionnaire as if you were that person. '
+    'the "Brief Pain Inventory" (BPI-IS) questionnaire as if you were that person. '
     "The BPI-IS evaluates how pain interferes with daily activities (Q1) and measures pain intensity "
     "at different time points (Q2-Q5). Answer each question group following the specific instructions provided."
 )
@@ -184,8 +185,9 @@ BPI_IS_INSTRUCTIONS = """
 2. Imagine you are the person describing these experiences and feelings.
 3. Answer each question group (Q1-Q5) following the specific instructions for each.
 4. Respond ONLY with a JSON object conforming to the specified schema.
+5. IMPORTANT: Write ALL free-text fields ("persona name", "persona traits", and "model_reasoning") in English, regardless of the language of the narrative or the questionnaire items.
 
-#### **BPI-IS Questionnaire (Brief Pain Inventory - Interference Scale)**
+#### **BPI-IS Questionnaire (Brief Pain Inventory)**
 
 **Q1. Interferencia del dolor (última semana)**
 Marque el número que mejor describa hasta qué punto el dolor le ha perturbado en los siguientes aspectos de la vida, durante LA ÚLTIMA SEMANA, siendo 0 = "No le perturba nada" y 10 = "Le perturba totalmente":
@@ -285,6 +287,7 @@ TSK_11SV_INSTRUCTIONS = """
 2. Imagine you are the person describing these experiences and feelings.
 3. For each of the 11 statements in the TSK-11SV, select the score (1-4) that best reflects how this person would likely respond.
 4. Respond ONLY with a JSON object conforming to the specified schema.
+5. IMPORTANT: Write ALL free-text fields ("persona name", "persona traits", and "model_reasoning") in English, regardless of the language of the narrative or the questionnaire items.
 
 #### **TSK-11SV Questionnaire (Tampa Scale of Kinesiophobia - Short Version)**
 

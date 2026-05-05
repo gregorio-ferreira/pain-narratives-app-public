@@ -20,7 +20,9 @@ from pain_narratives.core.openai_client import OpenAIClient
 
 # Direct import for questionnaire prompts to avoid circular dependency
 from pain_narratives.db.models_sqlmodel import QuestionnairePrompt
-from pain_narratives.ui.components.assessment_feedback import render_assessment_feedback_form
+from pain_narratives.ui.components.assessment_feedback import (
+    render_assessment_feedback_form,
+)
 from pain_narratives.ui.components.batch_processing import run_batch_evaluation
 from pain_narratives.ui.components.evaluation_display import display_evaluation_details
 from pain_narratives.ui.components.evaluation_logic import NarrativeEvaluator
@@ -49,7 +51,9 @@ from pain_narratives.ui.components.questionnaire import (
     run_pcs_questionnaire,
     run_tsk_11sv_questionnaire,
 )
-from pain_narratives.ui.components.questionnaire_feedback import render_questionnaire_feedback_form
+from pain_narratives.ui.components.questionnaire_feedback import (
+    render_questionnaire_feedback_form,
+)
 from pain_narratives.ui.utils.localization import get_translator
 
 # Configure comprehensive logging
@@ -313,7 +317,7 @@ class PainNarrativesApp:
         # Non-admin users: fixed model and temperature
         # Admins: full control
         if st.session_state.is_admin:
-            model = st.sidebar.selectbox(t("sidebar.model_selection"), ["gpt-4o", "gpt-5-mini", "gpt-4-turbo"], index=1)
+            model = st.sidebar.selectbox(t("sidebar.model_selection"), ["gpt-5", "gpt-5-mini", "gpt-5-nano"], index=0)
             temperature = st.sidebar.slider(
                 t("sidebar.temperature"),
                 min_value=0.0,
@@ -589,7 +593,9 @@ class PainNarrativesApp:
         st.info(t("ui_text.modify_dimensions_info"))
 
         # Import the dimensions editor function that doesn't use forms
-        from pain_narratives.ui.components.prompt_manager import dimensions_editor_no_form
+        from pain_narratives.ui.components.prompt_manager import (
+            dimensions_editor_no_form,
+        )
 
         # Show preview only for admins
         dims, invalid_range, invalid_fields = dimensions_editor_no_form(
@@ -614,7 +620,9 @@ class PainNarrativesApp:
                 group_base_prompt = st.session_state.get("selected_group_base_prompt")
 
                 # Import function for generating prompt
-                from pain_narratives.ui.components.prompt_manager import generate_prompt_from_dimensions
+                from pain_narratives.ui.components.prompt_manager import (
+                    generate_prompt_from_dimensions,
+                )
 
                 # Generate the updated prompt using the group's system and base prompts
                 generated_prompt = generate_prompt_from_dimensions(
@@ -1093,9 +1101,9 @@ class PainNarrativesApp:
 
         # Multiple questionnaires available
         questionnaire_options = {
-            "PCS. Escala de catastrofización del dolor": "PCS",
-            "BPI-IS. Brief Pain Inventory - Interference Scale": "BPI-IS",
-            "TSK-11SV. Tampa Scale of Kinesiophobia (Short Version)": "TSK-11SV"
+            t("questionnaires.pcs_option_label"): "PCS",
+            t("questionnaires.bpi_option_label"): "BPI-IS",
+            t("questionnaires.tsk_option_label"): "TSK-11SV",
         }
         
         # Get narrative text first
@@ -1293,8 +1301,56 @@ class PainNarrativesApp:
                     elif questionnaire_id == "TSK-11SV":
                         self._display_tsk_11sv_results(result, t)
 
+    def _translate_questionnaire_display(self, result: Dict[str, Any]) -> Dict[str, Any]:
+        """Translate questionnaire free-text fields for display if user language is not English.
+
+        Returns a display copy with translated model_reasoning and persona.traits,
+        leaving the original result unchanged.
+        """
+        current_language = st.session_state.get("language", "en")
+        if current_language == "en":
+            return result
+
+        # Only translate if we have an OpenAI client available
+        if not st.session_state.get("openai_client"):
+            return result
+
+        from pain_narratives.core.translation_service import TranslationService
+
+        display_result = result.copy()
+        translation_service = TranslationService(st.session_state.openai_client)
+
+        # Build content to translate: model_reasoning and persona traits
+        content_to_translate = {}
+        if display_result.get("model_reasoning"):
+            content_to_translate["model_reasoning"] = display_result["model_reasoning"]
+
+        persona = display_result.get("persona", {})
+        if persona.get("traits"):
+            content_to_translate["persona_traits"] = persona["traits"]
+
+        if not content_to_translate:
+            return display_result
+
+        try:
+            translated = translation_service.translate_evaluation_result(
+                content_to_translate, current_language
+            )
+            if "model_reasoning" in translated:
+                display_result["model_reasoning"] = translated["model_reasoning"]
+            if "persona_traits" in translated:
+                display_result["persona"] = {
+                    **persona,
+                    "traits": translated["persona_traits"],
+                }
+        except Exception as e:
+            logger.warning(f"Questionnaire display translation failed: {e}")
+
+        return display_result
+
     def _display_pcs_results(self, result: Dict[str, Any], t: Any) -> None:
         """Display PCS questionnaire results."""
+        result = self._translate_questionnaire_display(result)
         scores = result.get("scores", {})
         reasoning = result.get("model_reasoning", "")
         persona = result.get("persona", {})
@@ -1328,9 +1384,9 @@ class PainNarrativesApp:
             # Calculate and display total score
             total_score = calculate_pcs_total_score(result)
             st.metric(
-                label=t("questionnaires.total_score_label"),
+                label=t("questionnaires.pcs_total_score_label"),
                 value=f"{total_score}",
-                help=t("questionnaires.total_score_help"),
+                help=t("questionnaires.pcs_total_score_help"),
             )
 
             counts = count_scores(scores)
@@ -1354,6 +1410,7 @@ class PainNarrativesApp:
 
     def _display_bpi_is_results(self, result: Dict[str, Any], t: Any) -> None:
         """Display BPI-IS questionnaire results."""
+        result = self._translate_questionnaire_display(result)
         responses = result.get("responses", [])
         persona = result.get("persona", {})
 
@@ -1394,7 +1451,7 @@ class PainNarrativesApp:
             
             # Display total score prominently
             st.metric(
-                label=t("questionnaires.total_score_label"),
+                label=t("questionnaires.bpi_total_score_label"),
                 value=f"{total_score}",
                 help=t("questionnaires.bpi_total_help"),
             )
@@ -1438,6 +1495,7 @@ class PainNarrativesApp:
 
     def _display_tsk_11sv_results(self, result: Dict[str, Any], t: Any) -> None:
         """Display TSK-11SV questionnaire results."""
+        result = self._translate_questionnaire_display(result)
         responses = result.get("responses", [])
         persona = result.get("persona", {})
 
@@ -1473,7 +1531,7 @@ class PainNarrativesApp:
             col1, col2 = st.columns(2)
             with col1:
                 st.metric(
-                    label=t("questionnaires.total_score_label"),
+                    label=t("questionnaires.tsk_total_score_label"),
                     value=f"{total_score}",
                     help=t("questionnaires.tsk_total_help"),
                 )
