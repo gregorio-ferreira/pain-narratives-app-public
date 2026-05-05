@@ -43,7 +43,9 @@ def _dimension_streamlit_key(dimension: Dict[str, Any], experiment_id: int, suff
     return f"feedback_{experiment_id}_{base}_{suffix}"
 
 
-def render_assessment_feedback_form(evaluation: Dict[str, Any], dimensions: Optional[List[Dict[str, Any]]] = None) -> None:
+def render_assessment_feedback_form(
+    evaluation: Dict[str, Any], dimensions: Optional[List[Dict[str, Any]]] = None
+) -> None:
     """Render dimension-based feedback form beneath the assessment results."""
     if not evaluation:
         return
@@ -94,15 +96,21 @@ def render_assessment_feedback_form(evaluation: Dict[str, Any], dimensions: Opti
     # Check database for existing feedback
     existing = db_manager.get_assessment_feedback(experiment_id, user.get("id")) if db_manager else None
     feedback_already_exists = existing is not None or recently_completed
-    
+
     if feedback_already_exists:
         st.success(t("assessment_feedback.feedback_completed"))
         st.caption(t("assessment_feedback.already_submitted_info"))
-        
+
         # Show existing feedback in read-only mode
         if existing and existing.dimension_feedback:
-            st.write("**" + t("assessment_feedback.header") + " - " + t("assessment_feedback.dimension_group_header").format(dimension="Summary") + "**")
-            
+            st.write(
+                "**"
+                + t("assessment_feedback.header")
+                + " - "
+                + t("assessment_feedback.dimension_group_header").format(dimension="Summary")
+                + "**"
+            )
+
             for dim_name, dim_values in existing.dimension_feedback.items():
                 if isinstance(dim_values, dict):
                     st.write(f"**{dim_name}:**")
@@ -128,7 +136,7 @@ def render_assessment_feedback_form(evaluation: Dict[str, Any], dimensions: Opti
                             st.info(f"Explanation: {dim_values.get('explanation_alignment', 'N/A')}")
                         with col3:
                             st.info(f"Usage: {dim_values.get('usage_intent', 'N/A')}")
-        
+
         return  # Exit early if feedback already exists
 
     likert_values = [value for value, _ in LIKERT_OPTIONS]
@@ -170,18 +178,18 @@ def render_assessment_feedback_form(evaluation: Dict[str, Any], dimensions: Opti
 
     with st.form(f"assessment_feedback_form_{experiment_id}"):
         dimension_responses: Dict[str, Dict[str, Optional[str]]] = {}
-        
+
         # Create feedback sections organized by dimension
         for dim in active_dimensions:
             name = str(dim.get("name", "")).strip()
             defaults = dimension_defaults.get(name, {})
-            
+
             # Create a visual group for each dimension
             st.markdown(f"### {t('assessment_feedback.dimension_group_header').format(dimension=name)}")
-            
+
             with st.container():
                 col1, col2, col3 = st.columns(3)
-                
+
                 with col1:
                     score_key = _dimension_streamlit_key(dim, experiment_id, "score")
                     score_alignment = select_question(
@@ -190,7 +198,7 @@ def render_assessment_feedback_form(evaluation: Dict[str, Any], dimensions: Opti
                         score_key,
                         dimension_name=name,
                     )
-                
+
                 with col2:
                     explanation_key = _dimension_streamlit_key(dim, experiment_id, "explanation")
                     explanation_alignment = select_question(
@@ -199,7 +207,7 @@ def render_assessment_feedback_form(evaluation: Dict[str, Any], dimensions: Opti
                         explanation_key,
                         dimension_name=name,
                     )
-                
+
                 with col3:
                     usage_key = _dimension_streamlit_key(dim, experiment_id, "usage")
                     usage_intent = select_question(
@@ -214,7 +222,7 @@ def render_assessment_feedback_form(evaluation: Dict[str, Any], dimensions: Opti
                     "explanation_alignment": explanation_alignment,
                     "usage_intent": usage_intent,
                 }
-            
+
             st.markdown("---")  # Visual separator between dimensions
 
         submitted = st.form_submit_button(t("assessment_feedback.submit_button"))
@@ -252,16 +260,16 @@ def render_assessment_feedback_form(evaluation: Dict[str, Any], dimensions: Opti
 
     try:
         db_manager.save_assessment_feedback(payload)
-        
+
         # Mark feedback as completed in session state
         st.session_state[feedback_completion_key] = True
-        
+
         # Store recent feedback data for display
         recent_feedback_key = f"recent_assessment_feedback_{experiment_id}_{user.get('id')}"
         st.session_state[recent_feedback_key] = dimension_responses
-        
+
         st.success(t("assessment_feedback.save_success"))
         st.rerun()  # Force re-run to show completion status
-        
+
     except Exception as exc:  # noqa: BLE001 generic user feedback
         st.error(t("assessment_feedback.save_error").format(error=str(exc)))

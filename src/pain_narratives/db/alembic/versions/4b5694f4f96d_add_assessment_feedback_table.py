@@ -35,18 +35,30 @@ def upgrade() -> None:
         sa.Column("disability_usage_intent", sa.String(length=64), nullable=False),
         sa.Column("dimension_feedback", sa.JSON(), nullable=True),
         sa.Column("created", sa.DateTime(), nullable=False),
-        sa.ForeignKeyConstraint([
-            "experiment_id",
-        ], ["pain_narratives_app.experiments_list.experiment_id"]),
-        sa.ForeignKeyConstraint([
-            "experiments_group_id",
-        ], ["pain_narratives_app.experiments_groups.experiments_group_id"]),
-        sa.ForeignKeyConstraint([
-            "user_id",
-        ], ["pain_narratives_app.users.id"]),
-        sa.ForeignKeyConstraint([
-            "narrative_id",
-        ], ["pain_narratives_app.narratives.narrative_id"]),
+        sa.ForeignKeyConstraint(
+            [
+                "experiment_id",
+            ],
+            ["pain_narratives_app.experiments_list.experiment_id"],
+        ),
+        sa.ForeignKeyConstraint(
+            [
+                "experiments_group_id",
+            ],
+            ["pain_narratives_app.experiments_groups.experiments_group_id"],
+        ),
+        sa.ForeignKeyConstraint(
+            [
+                "user_id",
+            ],
+            ["pain_narratives_app.users.id"],
+        ),
+        sa.ForeignKeyConstraint(
+            [
+                "narrative_id",
+            ],
+            ["pain_narratives_app.narratives.narrative_id"],
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("experiment_id", name="uq_assessment_feedback_experiment"),
         schema="pain_narratives_app",

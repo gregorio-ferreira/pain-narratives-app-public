@@ -85,7 +85,9 @@ class ConfigManager:
         """
         if config_path is None:
             # Use project-level .yaml by default (need 4 dirname calls: settings.py -> config -> pain_narratives -> src -> project_root)
-            project_yaml = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), ".yaml")
+            project_yaml = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), ".yaml"
+            )
             if os.path.exists(project_yaml):
                 config_path = project_yaml
             else:

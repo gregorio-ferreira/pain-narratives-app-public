@@ -16,9 +16,9 @@ def test_user_management_methods():
     print("=" * 80)
     print("Testing User Management Database Methods")
     print("=" * 80)
-    
+
     db_manager = DatabaseManager()
-    
+
     # Test 1: Create a test user
     print("\n1. Creating test user...")
     try:
@@ -28,7 +28,7 @@ def test_user_management_methods():
     except Exception as e:
         print(f"   ❌ Failed to create user: {e}")
         return False
-    
+
     # Test 2: Get user experiment groups
     print("\n2. Getting user experiment groups...")
     try:
@@ -36,7 +36,7 @@ def test_user_management_methods():
         print(f"   ✅ User belongs to {len(groups)} groups: {groups}")
     except Exception as e:
         print(f"   ❌ Failed to get groups: {e}")
-    
+
     # Test 3: Update admin status
     print("\n3. Updating admin status...")
     try:
@@ -44,7 +44,7 @@ def test_user_management_methods():
         print(f"   ✅ Admin status updated: {result}")
     except Exception as e:
         print(f"   ❌ Failed to update admin status: {e}")
-    
+
     # Test 4: Reset password
     print("\n4. Resetting password...")
     try:
@@ -52,7 +52,7 @@ def test_user_management_methods():
         print(f"   ✅ Password reset: {result}")
     except Exception as e:
         print(f"   ❌ Failed to reset password: {e}")
-    
+
     # Test 5: Delete user
     print("\n5. Deleting test user...")
     try:
@@ -60,11 +60,12 @@ def test_user_management_methods():
         print(f"   ✅ User deleted: {result}")
     except Exception as e:
         print(f"   ❌ Failed to delete user: {e}")
-    
+
     print("\n" + "=" * 80)
     print("✅ All tests completed successfully!")
     print("=" * 80)
     return True
+
 
 if __name__ == "__main__":
     try:
@@ -73,5 +74,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n❌ Test failed with error: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

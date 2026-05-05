@@ -5,9 +5,7 @@ from typing import Dict, Optional
 
 from sqlmodel import select
 
-from pain_narratives.config.prompts import (
-    get_questionnaire_prompts as get_yaml_questionnaire_prompts,
-)
+from pain_narratives.config.prompts import get_questionnaire_prompts as get_yaml_questionnaire_prompts
 from pain_narratives.core.database import DatabaseManager
 from pain_narratives.db.models_sqlmodel import ExperimentGroup, QuestionnairePrompt
 
@@ -17,8 +15,7 @@ DEFAULT_QUESTIONNAIRE_PROMPTS = get_yaml_questionnaire_prompts()
 
 
 def get_questionnaire_prompts_for_group(
-    db_manager: DatabaseManager,
-    experiment_group_id: int
+    db_manager: DatabaseManager, experiment_group_id: int
 ) -> Dict[str, Dict[str, str]]:
     """
     Get all questionnaire prompts for a specific experiment group.
@@ -31,25 +28,20 @@ def get_questionnaire_prompts_for_group(
         Dict mapping questionnaire types to their prompts (system_role, instructions)
     """
     with db_manager.get_session() as session:
-        stmt = select(QuestionnairePrompt).where(
-            QuestionnairePrompt.experiments_group_id == experiment_group_id
-        )
+        stmt = select(QuestionnairePrompt).where(QuestionnairePrompt.experiments_group_id == experiment_group_id)
         results = session.exec(stmt).all()
 
         prompts = {}
         for prompt in results:
             prompts[prompt.questionnaire_type] = {
                 "system_role": prompt.system_role,
-                "instructions": prompt.instructions
+                "instructions": prompt.instructions,
             }
 
         return prompts
 
 
-def initialize_default_prompts_for_group(
-    db_manager: DatabaseManager,
-    experiment_group_id: int
-) -> bool:
+def initialize_default_prompts_for_group(db_manager: DatabaseManager, experiment_group_id: int) -> bool:
     """
     Initialize default prompts for all questionnaire types for an experiment group.
 
@@ -73,7 +65,7 @@ def initialize_default_prompts_for_group(
                 # Check if prompt already exists
                 existing_stmt = select(QuestionnairePrompt).where(
                     QuestionnairePrompt.experiments_group_id == experiment_group_id,
-                    QuestionnairePrompt.questionnaire_type == q_type
+                    QuestionnairePrompt.questionnaire_type == q_type,
                 )
                 existing = session.exec(existing_stmt).first()
 
@@ -84,7 +76,7 @@ def initialize_default_prompts_for_group(
                         system_role=default_prompts["system_role"],
                         instructions=default_prompts["instructions"],
                         created_at=datetime.now(),
-                        updated_at=datetime.now()
+                        updated_at=datetime.now(),
                     )
                     session.add(new_prompt)
 
@@ -100,7 +92,7 @@ def update_questionnaire_prompt(
     experiment_group_id: int,
     questionnaire_type: str,
     system_role: Optional[str] = None,
-    instructions: Optional[str] = None
+    instructions: Optional[str] = None,
 ) -> bool:
     """
     Update a specific questionnaire prompt for an experiment group.
@@ -122,7 +114,7 @@ def update_questionnaire_prompt(
         with db_manager.get_session() as session:
             stmt = select(QuestionnairePrompt).where(
                 QuestionnairePrompt.experiments_group_id == experiment_group_id,
-                QuestionnairePrompt.questionnaire_type == questionnaire_type
+                QuestionnairePrompt.questionnaire_type == questionnaire_type,
             )
             prompt = session.exec(stmt).first()
 
@@ -134,7 +126,7 @@ def update_questionnaire_prompt(
                     system_role=system_role or DEFAULT_QUESTIONNAIRE_PROMPTS[questionnaire_type]["system_role"],
                     instructions=instructions or DEFAULT_QUESTIONNAIRE_PROMPTS[questionnaire_type]["instructions"],
                     created_at=datetime.now(),
-                    updated_at=datetime.now()
+                    updated_at=datetime.now(),
                 )
                 session.add(prompt)
             else:

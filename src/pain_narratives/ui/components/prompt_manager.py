@@ -748,23 +748,25 @@ def prompt_customization_ui(
 
         # Generate prompt from dimensions using YAML defaults
         prompt_lines = []
-        
+
         # Use system role from YAML config
-        system_role_lines = DEFAULT_SYSTEM_ROLE.split('\n')
+        system_role_lines = DEFAULT_SYSTEM_ROLE.split("\n")
         prompt_lines.extend(system_role_lines)
         prompt_lines.append("")
-        
-        prompt_lines.append("Please analyze the following narrative and provide scores for these dimensions as specified:")
+
+        prompt_lines.append(
+            "Please analyze the following narrative and provide scores for these dimensions as specified:"
+        )
         prompt_lines.append("")
-        
+
         for idx, dim in enumerate(dims, 1):
             prompt_lines.append(
                 f"{idx}. **{dim['name']}**: {dim['definition']} (Score range: {dim['min']}-{dim['max']})"
             )
-        
+
         # Use base prompt from YAML config
         prompt_lines.append("")
-        base_prompt_lines = DEFAULT_BASE_PROMPT.split('\n')
+        base_prompt_lines = DEFAULT_BASE_PROMPT.split("\n")
         prompt_lines.extend(base_prompt_lines)
         prompt_lines.append("")
         prompt_lines.append("Please respond in JSON format with the following structure:")

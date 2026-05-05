@@ -682,12 +682,10 @@ class PainNarrativesApp:
             t("pain_assessment.evaluate_button"),
             type="primary",
             disabled=not narrative_text,
-            key="pain_assessment_evaluate"
+            key="pain_assessment_evaluate",
         )
         rerun_button = st.button(
-            t("pain_assessment.rerun_button"),
-            disabled=not narrative_text,
-            key="pain_assessment_rerun"
+            t("pain_assessment.rerun_button"), disabled=not narrative_text, key="pain_assessment_rerun"
         )
         # Only run evaluation if button is pressed and stay on this tab
         if evaluate_button or rerun_button:
@@ -714,9 +712,7 @@ class PainNarrativesApp:
             display_evaluation_details(latest_result, expanded=True, score_ranges=score_ranges)
 
             feedback_dimensions = (
-                st.session_state.get("selected_group_dimensions")
-                or st.session_state.get("custom_dimensions")
-                or []
+                st.session_state.get("selected_group_dimensions") or st.session_state.get("custom_dimensions") or []
             )
             render_assessment_feedback_form(latest_result, feedback_dimensions)
 
@@ -996,7 +992,7 @@ class PainNarrativesApp:
                         evaluation_result = translation_service.get_available_translation(
                             r.result_json, current_language
                         )
-                        
+
                         # Log which language is being used
                         available_languages = list(r.result_json.keys()) if r.result_json else []
                         if current_language in available_languages:
@@ -1105,56 +1101,52 @@ class PainNarrativesApp:
             t("questionnaires.bpi_option_label"): "BPI-IS",
             t("questionnaires.tsk_option_label"): "TSK-11SV",
         }
-        
+
         # Get narrative text first
         narrative_text = st.session_state.get("current_narrative_text", "")
         if not narrative_text:
             st.warning(t("questionnaires.narrative_required"))
             return
-        
+
         # Display narrative
         st.text_area(
             t("questionnaires.pain_narrative_label"),
             value=narrative_text,
             height=150,
             disabled=True,
-            key="questionnaire_narrative_display"
+            key="questionnaire_narrative_display",
         )
-        
+
         # Questionnaire selection using session state for persistence
         st.subheader(t("questionnaires.select_questionnaires"))
-        
+
         # Initialize questionnaire selections in session state
         if "selected_questionnaire_ids" not in st.session_state:
             st.session_state.selected_questionnaire_ids = []
-        
+
         # Use session state to track checkbox states
         selected_questionnaires = []
         selected_questionnaire_ids = []
-        
+
         # Create checkboxes with session state tracking
         for q_display_name, q_id in questionnaire_options.items():
             # Use session state key for each checkbox
             checkbox_key = f"questionnaire_selected_{q_id}"
-            
+
             # Initialize checkbox state if not exists
             if checkbox_key not in st.session_state:
                 st.session_state[checkbox_key] = False
-            
+
             # Create checkbox with session state value
-            is_selected = st.checkbox(
-                q_display_name,
-                value=st.session_state[checkbox_key],
-                key=checkbox_key
-            )
-            
+            is_selected = st.checkbox(q_display_name, value=st.session_state[checkbox_key], key=checkbox_key)
+
             if is_selected:
                 selected_questionnaires.append(q_display_name)
                 selected_questionnaire_ids.append(q_id)
-        
+
         # Update session state with current selections
         st.session_state.selected_questionnaire_ids = selected_questionnaire_ids
-        
+
         # Show selection summary
         if selected_questionnaires:
             st.write(f"**{t('questionnaires.selected_questionnaires_label')}** ({len(selected_questionnaires)})")
@@ -1162,7 +1154,7 @@ class PainNarrativesApp:
                 st.write(f"• {q_name}")
         else:
             st.info(t("questionnaires.select_at_least_one"))
-        
+
         # Action buttons
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -1170,43 +1162,41 @@ class PainNarrativesApp:
                 t("questionnaires.run_questionnaires_button"),
                 type="primary",
                 disabled=not selected_questionnaires,
-                key="questionnaire_run_btn"
+                key="questionnaire_run_btn",
             )
         with col2:
             rerun_btn = st.button(
-                t("questionnaires.rerun_button"),
-                disabled=not selected_questionnaires,
-                key="questionnaire_rerun_btn"
+                t("questionnaires.rerun_button"), disabled=not selected_questionnaires, key="questionnaire_rerun_btn"
             )
         with col3:
             clear_btn = st.button(
                 t("questionnaires.clear_results_button"),
                 disabled="questionnaire_results" not in st.session_state or not st.session_state.questionnaire_results,
-                key="questionnaire_clear_btn"
+                key="questionnaire_clear_btn",
             )
-        
+
         # Handle clear results button
         if clear_btn:
             if "questionnaire_results" in st.session_state:
                 del st.session_state.questionnaire_results
             st.rerun()
-        
+
         if run_btn or rerun_btn:
             # Initialize results storage in session state
             if "questionnaire_results" not in st.session_state or rerun_btn:
                 st.session_state.questionnaire_results = {}
             all_results = st.session_state.questionnaire_results
-            
+
             # Run questionnaires sequentially
             for i, questionnaire_id in enumerate(selected_questionnaire_ids):
                 questionnaire_name = selected_questionnaires[i]
-                
+
                 with st.spinner(f"{t('questionnaires.contacting_model')} - {questionnaire_name}"):
                     # Get custom prompts for this experiment group if available
                     experiment_group_id = st.session_state.get("selected_experiment_group_id")
                     custom_system_role = None
                     custom_instructions = None
-                    
+
                     if experiment_group_id and st.session_state.db_manager:
                         try:
                             # Direct database query to get custom prompts for this experiment group
@@ -1220,7 +1210,7 @@ class PainNarrativesApp:
                                 for prompt in results:
                                     custom_prompts[prompt.questionnaire_type] = {
                                         "system_role": prompt.system_role,
-                                        "instructions": prompt.instructions
+                                        "instructions": prompt.instructions,
                                     }
 
                                 if questionnaire_id in custom_prompts:
@@ -1228,7 +1218,7 @@ class PainNarrativesApp:
                                     custom_instructions = custom_prompts[questionnaire_id].get("instructions")
                         except Exception as e:
                             logger.warning(f"Failed to load custom prompts, using defaults: {e}")
-                    
+
                     # Run the appropriate questionnaire
                     result = None
                     if questionnaire_id == "PCS":
@@ -1261,7 +1251,7 @@ class PainNarrativesApp:
                             tsk_instructions=custom_instructions or TSK_11SV_INSTRUCTIONS,
                         )
                         result["prompt"] = custom_instructions or TSK_11SV_INSTRUCTIONS
-                    
+
                     if result:
                         # Save to database if enabled
                         if config["use_database"] and st.session_state.db_manager:
@@ -1275,11 +1265,8 @@ class PainNarrativesApp:
                             # Add the database ID to the result for feedback component
                             if db_id:
                                 result["id"] = db_id
-                        
-                        all_results[questionnaire_id] = {
-                            "result": result,
-                            "display_name": questionnaire_name
-                        }
+
+                        all_results[questionnaire_id] = {"result": result, "display_name": questionnaire_name}
                     else:
                         st.error(f"{t('questionnaires.no_result_error')} - {questionnaire_name}")
 
@@ -1287,11 +1274,11 @@ class PainNarrativesApp:
         if "questionnaire_results" in st.session_state and st.session_state.questionnaire_results:
             st.divider()
             st.subheader(t("questionnaires.results_summary"))
-            
+
             for questionnaire_id, data in st.session_state.questionnaire_results.items():
                 result = data["result"]
                 display_name = data["display_name"]
-                
+
                 # Create collapsible section for each questionnaire
                 with st.expander(f"📋 {display_name}", expanded=len(st.session_state.questionnaire_results) == 1):
                     if questionnaire_id == "PCS":
@@ -1333,9 +1320,7 @@ class PainNarrativesApp:
             return display_result
 
         try:
-            translated = translation_service.translate_evaluation_result(
-                content_to_translate, current_language
-            )
+            translated = translation_service.translate_evaluation_result(content_to_translate, current_language)
             if "model_reasoning" in translated:
                 display_result["model_reasoning"] = translated["model_reasoning"]
             if "persona_traits" in translated:
@@ -1356,7 +1341,7 @@ class PainNarrativesApp:
         persona = result.get("persona", {})
 
         st.subheader(t("questionnaires.results_header"))
-        
+
         # Display persona information
         if persona:
             st.info(f"**Persona**: {persona.get('name', 'Unknown')} - {persona.get('traits', 'No traits')}")
@@ -1415,7 +1400,7 @@ class PainNarrativesApp:
         persona = result.get("persona", {})
 
         st.subheader(t("questionnaires.results_header"))
-        
+
         # Display persona information
         if persona:
             st.info(f"**Persona**: {persona.get('name', 'Unknown')} - {persona.get('traits', 'No traits')}")
@@ -1427,41 +1412,51 @@ class PainNarrativesApp:
                 code = response.get("code", "")
                 value = response.get("value", 0)
                 question_text = BPI_IS_QUESTIONS.get(code, f"Question {code}")
-                
+
                 # Determine scale type for labels
                 if code in ["BPI_Q1_1", "BPI_Q1_2", "BPI_Q1_3", "BPI_Q1_5", "BPI_Q1_6", "BPI_Q1_7"]:
                     scale_type = "interference"
                 else:
                     scale_type = "intensity"
-                
-                table_data.append({
-                    t("questionnaires.question_column"): code,
-                    t("questionnaires.question_text_column"): question_text,
-                    t("questionnaires.score_column"): value,
-                    t("questionnaires.scale_type_column"): scale_type.title(),
-                })
+
+                table_data.append(
+                    {
+                        t("questionnaires.question_column"): code,
+                        t("questionnaires.question_text_column"): question_text,
+                        t("questionnaires.score_column"): value,
+                        t("questionnaires.scale_type_column"): scale_type.title(),
+                    }
+                )
 
             score_df = pd.DataFrame(table_data)
             st.dataframe(score_df, hide_index=True, use_container_width=True)
 
             # Calculate and display summary metrics
-            interference_scores = [r["value"] for r in responses if r["code"] in ["BPI_Q1_1", "BPI_Q1_2", "BPI_Q1_3", "BPI_Q1_5", "BPI_Q1_6", "BPI_Q1_7"]]
-            intensity_scores = [r["value"] for r in responses if r["code"] in ["BPI_Q2_8", "BPI_Q3_9", "BPI_Q4_10", "BPI_Q5_11"]]
+            interference_scores = [
+                r["value"]
+                for r in responses
+                if r["code"] in ["BPI_Q1_1", "BPI_Q1_2", "BPI_Q1_3", "BPI_Q1_5", "BPI_Q1_6", "BPI_Q1_7"]
+            ]
+            intensity_scores = [
+                r["value"] for r in responses if r["code"] in ["BPI_Q2_8", "BPI_Q3_9", "BPI_Q4_10", "BPI_Q5_11"]
+            ]
             total_score = calculate_bpi_is_total_score(result)
-            
+
             # Display total score prominently
             st.metric(
                 label=t("questionnaires.bpi_total_score_label"),
                 value=f"{total_score}",
                 help=t("questionnaires.bpi_total_help"),
             )
-            
+
             # Display subscale averages
             col1, col2 = st.columns(2)
             with col1:
                 st.metric(
                     label=t("questionnaires.interference_average"),
-                    value=f"{sum(interference_scores) / len(interference_scores):.1f}" if interference_scores else "N/A",
+                    value=(
+                        f"{sum(interference_scores) / len(interference_scores):.1f}" if interference_scores else "N/A"
+                    ),
                     help=t("questionnaires.interference_help"),
                 )
             with col2:
@@ -1500,7 +1495,7 @@ class PainNarrativesApp:
         persona = result.get("persona", {})
 
         st.subheader(t("questionnaires.results_header"))
-        
+
         # Display persona information
         if persona:
             st.info(f"**Persona**: {persona.get('name', 'Unknown')} - {persona.get('traits', 'No traits')}")
@@ -1513,13 +1508,15 @@ class PainNarrativesApp:
                 value = response.get("value", 1)
                 question_text = TSK_11SV_QUESTIONS.get(code, f"Question {code}")
                 scale_label = TSK_11SV_SCALE_LABELS.get(value, f"Invalid score: {value}")
-                
-                table_data.append({
-                    t("questionnaires.question_column"): code,
-                    t("questionnaires.question_text_column"): question_text,
-                    t("questionnaires.score_column"): value,
-                    t("questionnaires.scale_column"): scale_label,
-                })
+
+                table_data.append(
+                    {
+                        t("questionnaires.question_column"): code,
+                        t("questionnaires.question_text_column"): question_text,
+                        t("questionnaires.score_column"): value,
+                        t("questionnaires.scale_column"): scale_label,
+                    }
+                )
 
             score_df = pd.DataFrame(table_data)
             st.dataframe(score_df, hide_index=True, use_container_width=True)
@@ -1527,7 +1524,7 @@ class PainNarrativesApp:
             # Calculate and display total score
             total_score = calculate_tsk_11sv_total_score(result)
             average_score = total_score / len(responses) if responses else 0
-            
+
             col1, col2 = st.columns(2)
             with col1:
                 st.metric(
@@ -1644,32 +1641,28 @@ class PainNarrativesApp:
                 t("tabs.narrative_dimensions"),
                 t("tabs.help"),
             ]
-            
+
             # Initialize or validate active tab for limited options
             if "active_tab" not in st.session_state or st.session_state.active_tab not in tab_options:
                 st.session_state.active_tab = tab_options[0]
-            
+
             # Get current index safely
             try:
                 current_index = tab_options.index(st.session_state.active_tab)
             except ValueError:
                 current_index = 0
                 st.session_state.active_tab = tab_options[0]
-            
+
             # Tab selector with persistence
             selected_tab = st.radio(
-                "🗂️ Navigation",
-                options=tab_options,
-                index=current_index,
-                key="tab_selector_limited",
-                horizontal=True
+                "🗂️ Navigation", options=tab_options, index=current_index, key="tab_selector_limited", horizontal=True
             )
-            
+
             # Update session state only if tab changed
             if selected_tab != st.session_state.active_tab:
                 st.session_state.active_tab = selected_tab
                 st.rerun()
-            
+
             # Display content based on selected tab
             if selected_tab == t("tabs.narrative_dimensions"):
                 self.narrative_dimensions_tab()
@@ -1685,32 +1678,28 @@ class PainNarrativesApp:
                 t("tabs.management"),
                 t("tabs.help"),
             ]
-            
+
             # Initialize or validate active tab for full options
             if "active_tab" not in st.session_state or st.session_state.active_tab not in tab_options:
                 st.session_state.active_tab = tab_options[0]
-            
+
             # Get current index safely
             try:
                 current_index = tab_options.index(st.session_state.active_tab)
             except ValueError:
                 current_index = 0
                 st.session_state.active_tab = tab_options[0]
-            
+
             # Tab selector with persistence
             selected_tab = st.radio(
-                "🗂️ Navigation",
-                options=tab_options,
-                index=current_index,
-                key="tab_selector_full",
-                horizontal=True
+                "🗂️ Navigation", options=tab_options, index=current_index, key="tab_selector_full", horizontal=True
             )
-            
+
             # Update session state only if tab changed
             if selected_tab != st.session_state.active_tab:
                 st.session_state.active_tab = selected_tab
                 st.rerun()
-            
+
             # Display content based on selected tab
             if selected_tab == t("tabs.narrative_dimensions"):
                 self.narrative_dimensions_tab()
@@ -1768,14 +1757,14 @@ class PainNarrativesApp:
             # If user is using a different language, translate the result
             if current_language != "en" and result.get("result"):
                 logger.info(f"User language is {current_language}, translating evaluation result")
-                
+
                 # Get translator for user messages
                 t = get_translator(st.session_state.language)
-                
+
                 # Show translation progress to user
                 translation_progress = st.empty()
                 translation_progress.info(t("ui_text.translating_result").format(language=current_language.upper()))
-                
+
                 translation_service = TranslationService(st.session_state.openai_client)
 
                 try:
@@ -1784,13 +1773,17 @@ class PainNarrativesApp:
                     )
                     multilingual_result[current_language] = translated_result
                     logger.info(f"Successfully added {current_language} translation to result")
-                    
+
                     # Update user with success message
-                    translation_progress.success(t("ui_text.translation_completed_success").format(language=current_language.upper()))
-                    
+                    translation_progress.success(
+                        t("ui_text.translation_completed_success").format(language=current_language.upper())
+                    )
+
                 except Exception as translation_error:
                     logger.warning(f"Translation failed: {translation_error}")
-                    translation_progress.warning(t("ui_text.translation_failed_english_only").format(error=str(translation_error)))
+                    translation_progress.warning(
+                        t("ui_text.translation_failed_english_only").format(error=str(translation_error))
+                    )
                     # Continue without translation
 
             # Save evaluation result to evaluation_results table
@@ -1863,10 +1856,10 @@ class PainNarrativesApp:
                     missing_fields.append("narrative_id")
                 if not user_id:
                     missing_fields.append("user_id")
-                
+
                 logger.warning(f"Cannot save questionnaire to database: missing required fields: {missing_fields}")
                 st.warning(f"Questionnaire results cannot be saved to database. Missing: {', '.join(missing_fields)}")
-                
+
                 if total_score is not None:
                     logger.info(f"Calculated total score: {total_score} (not saved to database)")
                 return None
@@ -1884,13 +1877,13 @@ class PainNarrativesApp:
             # Save questionnaire result
             questionnaire_id = db_manager.save_questionnaire_result(questionnaire_data)
             logger.info(f"Saved questionnaire {questionnaire_name} to database with ID: {questionnaire_id}")
-            
+
             # Save request/response to request_response table if available in session state
             if hasattr(st.session_state, "last_openai_response") and hasattr(st.session_state, "last_prompt_messages"):
                 try:
                     openai_response = st.session_state.last_openai_response
                     prompt_messages = st.session_state.last_prompt_messages
-                    
+
                     if openai_response and prompt_messages:
                         # Create a minimal experiment entry for the questionnaire
                         experiment_data = {
@@ -1910,9 +1903,9 @@ class PainNarrativesApp:
                             "repo_sha": "",
                             "exp_type": "questionnaire",
                         }
-                        
+
                         experiment_id = db_manager.register_new_experiment(experiment_data)
-                        
+
                         # Prepare request JSON
                         request_json = {
                             "model": openai_response.get("model", "gpt-5"),
@@ -1920,14 +1913,16 @@ class PainNarrativesApp:
                             "temperature": 1.0,
                             "top_p": 1.0,
                         }
-                        
+
                         # Save request/response
                         db_manager.save_request_response(experiment_id, request_json, openai_response)
-                        logger.info(f"Saved request/response for questionnaire {questionnaire_name} with experiment_id: {experiment_id}")
+                        logger.info(
+                            f"Saved request/response for questionnaire {questionnaire_name} with experiment_id: {experiment_id}"
+                        )
                 except Exception as req_resp_error:
                     logger.warning(f"Failed to save request/response for questionnaire: {req_resp_error}")
                     # Don't fail the whole save if just request/response fails
-            
+
             if total_score is not None:
                 logger.info(f"Calculated total score: {total_score}")
 

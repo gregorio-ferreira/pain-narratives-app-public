@@ -30,9 +30,7 @@ import pandas as pd
 import tiktoken
 
 
-def count_tokens_per_row(
-    file_path: Path, sheet_name: str, column_name: str, model: str = "gpt-5"
-) -> None:
+def count_tokens_per_row(file_path: Path, sheet_name: str, column_name: str, model: str = "gpt-5") -> None:
     """
     Count tokens for each text entry in an Excel column.
 
@@ -197,7 +195,7 @@ Examples:
             print(f"🤖 Model: {args.model}")
             print()
 
-            token_counts, text_series = count_tokens_in_excel(args.file_path, args.sheet, args.column, args.model)
+            token_counts, text_series = count_tokens_per_row(args.file_path, args.sheet, args.column, args.model)
 
             # Calculate statistics
             stats = analyze_token_counts(token_counts)

@@ -262,6 +262,7 @@ def display_evaluation_details(
                 # Try to get from config if available in session state
                 try:
                     from pain_narratives.config.settings import get_settings
+
                     max_tokens = get_settings().model_config.default_max_tokens
                 except Exception:
                     max_tokens = "N/A"
@@ -277,7 +278,13 @@ def display_evaluation_details(
         with col2:
             st.subheader(t("evaluation.input_narrative_header"))
             narrative = evaluation.get("narrative", t("evaluation.no_narrative_available"))
-            st.text_area(t("evaluation.narrative_text_label"), value=narrative, height=150, disabled=True, label_visibility="collapsed")
+            st.text_area(
+                t("evaluation.narrative_text_label"),
+                value=narrative,
+                height=150,
+                disabled=True,
+                label_visibility="collapsed",
+            )
 
         # Evaluation result
         if "result" in evaluation:

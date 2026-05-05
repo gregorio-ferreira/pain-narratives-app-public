@@ -149,14 +149,14 @@ class DatabaseManager:
 
     def update_user_experiment_groups(self, user_id: int, group_ids: List[int]) -> bool:
         """Update the experiment groups assigned to a user.
-        
+
         Args:
             user_id: The ID of the user to update
             group_ids: List of experiment group IDs to assign to the user
-            
+
         Returns:
             True if successful, False otherwise
-            
+
         Raises:
             ValueError: If any group_id doesn't exist in the database
         """
@@ -168,28 +168,25 @@ class DatabaseManager:
                 ).first()
                 if not group:
                     raise ValueError(f"Experiment group with ID {group_id} does not exist")
-            
+
             # Delete all existing assignments for this user
             existing_links = session.exec(
                 select(ExperimentGroupUser).where(ExperimentGroupUser.user_id == user_id)
             ).all()
             for link in existing_links:
                 session.delete(link)
-            
+
             # Create new assignments
             for group_id in group_ids:
-                new_link = ExperimentGroupUser(
-                    experiments_group_id=group_id,
-                    user_id=user_id
-                )
+                new_link = ExperimentGroupUser(experiments_group_id=group_id, user_id=user_id)
                 session.add(new_link)
-            
+
             session.commit()
             return True
 
     def get_all_experiment_groups(self) -> List[ExperimentGroup]:
         """Get all experiment groups in the database.
-        
+
         Returns:
             List of all ExperimentGroup objects
         """
@@ -687,14 +684,14 @@ class DatabaseManager:
     def get_batch_results_summary(self, group_id: int) -> Dict[str, Any]:
         """
         Get a comprehensive summary of batch processing results for an experiment group.
-        
-        This method retrieves all dimension evaluations, questionnaire results, and 
+
+        This method retrieves all dimension evaluations, questionnaire results, and
         computed scores for post-processing analysis. Designed for use with batch
         processing results and analysis notebooks.
-        
+
         Args:
             group_id: The experiment group ID to retrieve results for
-            
+
         Returns:
             Dictionary containing:
             - 'group_info': ExperimentGroup metadata
@@ -706,86 +703,71 @@ class DatabaseManager:
             group = session.exec(
                 select(ExperimentGroup).where(ExperimentGroup.experiments_group_id == group_id)
             ).first()
-            
+
             if not group:
                 return {"error": f"Group {group_id} not found"}
-            
+
             # Get all experiments for this group
             experiments = session.exec(
                 select(ExperimentList).where(ExperimentList.experiments_group_id == group_id)
             ).all()
-            
+
             # Get all evaluation results
             eval_results = session.exec(
                 select(EvaluationResult).where(EvaluationResult.experiments_group_id == group_id)
             ).all()
-            
+
             # Get all questionnaires
             questionnaires = session.exec(
                 select(Questionnaire).where(Questionnaire.experiments_group_id == group_id)
             ).all()
-            
+
             # Build narrative-centric results
             narratives_data = []
             narrative_ids = set(exp.narrative_id for exp in experiments if exp.narrative_id)
-            
+
             for narrative_id in narrative_ids:
-                narrative = session.exec(
-                    select(Narrative).where(Narrative.narrative_id == narrative_id)
-                ).first()
-                
+                narrative = session.exec(select(Narrative).where(Narrative.narrative_id == narrative_id)).first()
+
                 if not narrative:
                     continue
-                
+
                 # Get experiment for this narrative
-                exp = next(
-                    (e for e in experiments if e.narrative_id == narrative_id),
-                    None
-                )
-                
+                exp = next((e for e in experiments if e.narrative_id == narrative_id), None)
+
                 # Get evaluation results for this narrative
-                narrative_evals = [
-                    er for er in eval_results if er.narrative_id == narrative_id
-                ]
-                
+                narrative_evals = [er for er in eval_results if er.narrative_id == narrative_id]
+
                 # Extract dimension results
-                dim_result = next(
-                    (er.result_json for er in narrative_evals if er.result_type == "dimensions"),
-                    None
-                )
-                
+                dim_result = next((er.result_json for er in narrative_evals if er.result_type == "dimensions"), None)
+
                 # Get questionnaire results
-                pcs_result = next(
-                    (er.result_json for er in narrative_evals if er.result_type == "PCS"),
-                    None
+                pcs_result = next((er.result_json for er in narrative_evals if er.result_type == "PCS"), None)
+                bpi_is_result = next((er.result_json for er in narrative_evals if er.result_type == "BPI-IS"), None)
+                tsk_result = next((er.result_json for er in narrative_evals if er.result_type == "TSK-11SV"), None)
+
+                narratives_data.append(
+                    {
+                        "narrative_id": narrative_id,
+                        "narrative_text": narrative.narrative,
+                        "experiment_id": exp.experiment_id if exp else None,
+                        "succeeded": exp.succeeded if exp else False,
+                        "dimension_result": dim_result,
+                        "pcs_result": pcs_result,
+                        "bpi_is_result": bpi_is_result,
+                        "tsk_11sv_result": tsk_result,
+                    }
                 )
-                bpi_is_result = next(
-                    (er.result_json for er in narrative_evals if er.result_type == "BPI-IS"),
-                    None
-                )
-                tsk_result = next(
-                    (er.result_json for er in narrative_evals if er.result_type == "TSK-11SV"),
-                    None
-                )
-                
-                narratives_data.append({
-                    "narrative_id": narrative_id,
-                    "narrative_text": narrative.narrative,
-                    "experiment_id": exp.experiment_id if exp else None,
-                    "succeeded": exp.succeeded if exp else False,
-                    "dimension_result": dim_result,
-                    "pcs_result": pcs_result,
-                    "bpi_is_result": bpi_is_result,
-                    "tsk_11sv_result": tsk_result,
-                })
-            
+
             # Calculate summary statistics
             total_narratives = len(narratives_data)
-            successful_dims = sum(1 for n in narratives_data if n["dimension_result"] and "error" not in n["dimension_result"])
+            successful_dims = sum(
+                1 for n in narratives_data if n["dimension_result"] and "error" not in n["dimension_result"]
+            )
             successful_pcs = sum(1 for n in narratives_data if n["pcs_result"])
             successful_bpi_is = sum(1 for n in narratives_data if n["bpi_is_result"])
             successful_tsk = sum(1 for n in narratives_data if n["tsk_11sv_result"])
-            
+
             return {
                 "group_info": {
                     "group_id": group_id,

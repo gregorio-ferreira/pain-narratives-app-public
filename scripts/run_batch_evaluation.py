@@ -63,10 +63,10 @@ def print_progress(progress: BatchProgress) -> None:
     """Print progress to console."""
     elapsed = progress.elapsed_seconds
     remaining = progress.estimated_remaining_seconds
-    
+
     elapsed_str = f"{elapsed/60:.1f}min" if elapsed > 60 else f"{elapsed:.0f}s"
     remaining_str = f"{remaining/60:.1f}min" if remaining > 60 else f"{remaining:.0f}s"
-    
+
     print(
         f"\r[{progress.processed}/{progress.total}] "
         f"✓ {progress.successful} ✗ {progress.failed} | "
@@ -81,40 +81,40 @@ def run_dry_run(processor: BatchProcessor, narratives_df, args: argparse.Namespa
     print("\n" + "=" * 70)
     print("DRY RUN - Cost and Time Estimation")
     print("=" * 70)
-    
+
     num_narratives = len(narratives_df)
     estimate = processor.estimate_batch_cost(num_narratives)
-    
+
     print(f"\nNarratives to process: {estimate['num_narratives']}")
     print(f"\nEvaluations enabled:")
     print(f"  - Dimensions: {'✓' if processor.config.include_dimensions else '✗'}")
     print(f"  - PCS: {'✓' if processor.config.include_pcs else '✗'}")
     print(f"  - BPI-IS: {'✓' if processor.config.include_bpi_is else '✗'}")
     print(f"  - TSK-11SV: {'✓' if processor.config.include_tsk_11sv else '✗'}")
-    
+
     print(f"\nAPI Calls:")
     print(f"  - Per narrative: {estimate['calls_per_narrative']}")
     print(f"  - Total: {estimate['total_api_calls']}")
-    
+
     print(f"\nToken Estimates:")
     print(f"  - Input tokens: ~{estimate['estimated_input_tokens']:,}")
     print(f"  - Output tokens: ~{estimate['estimated_output_tokens']:,}")
-    
+
     print(f"\nCost & Time Estimates:")
     print(f"  - Estimated cost: ${estimate['estimated_cost_usd']:.2f} USD")
     print(f"  - Estimated time: {estimate['estimated_time_minutes']:.1f} minutes")
-    
+
     print(f"\nModel: {processor.config.model}")
     print(f"Temperature: {processor.config.temperature}")
     print(f"Delay between calls: {processor.config.delay_between_calls}s")
-    
+
     # Show sample narratives
     print(f"\nSample narratives (first 3):")
     for i, (_, row) in enumerate(narratives_df.head(3).iterrows()):
         narrative = row[args.narrative_column]
         preview = narrative[:150] + "..." if len(narrative) > 150 else narrative
         print(f"  {i+1}. {preview}")
-    
+
     print("\n" + "=" * 70)
     print("To proceed with actual processing, remove --dry-run flag")
     print("=" * 70 + "\n")
@@ -125,31 +125,31 @@ def run_test_single(processor: BatchProcessor, narratives_df, user_id: int, args
     print("\n" + "=" * 70)
     print("SINGLE NARRATIVE TEST")
     print("=" * 70)
-    
+
     # Get first narrative
     first_row = narratives_df.iloc[0]
     narrative_text = first_row[args.narrative_column]
-    
+
     print(f"\nNarrative preview:")
     print(f"  {narrative_text[:300]}...")
     print(f"\nProcessing with {processor.config.model}...")
     print("This will create a test experiment group in the database.\n")
-    
+
     # Run single test
     result = processor.run_single_test(
         narrative_text=narrative_text,
         user_id=user_id,
         group_description=f"Single Test - {datetime.now().strftime('%Y-%m-%d %H:%M')}",
     )
-    
+
     # Print results
     print("\n" + "=" * 70)
     print("RESULTS")
     print("=" * 70)
-    
+
     print(f"\nNarrative ID: {result.narrative_id}")
     print(f"Experiment ID: {result.experiment_id}")
-    
+
     # Dimension results
     if processor.config.include_dimensions:
         print(f"\n--- Dimension Evaluation ---")
@@ -162,44 +162,47 @@ def run_test_single(processor: BatchProcessor, narratives_df, user_id: int, args
                     print(f"  {key}: {dim_result[key]}")
         if result.dimension_error:
             print(f"Error: {result.dimension_error}")
-    
+
     # PCS results
     if processor.config.include_pcs and result.pcs_result:
         print(f"\n--- PCS Questionnaire ---")
         print(f"Success: {'✓' if result.pcs_result.success else '✗'}")
         if result.pcs_result.success:
             from pain_narratives.core.questionnaire_runner import calculate_pcs_total_score
+
             total = calculate_pcs_total_score(result.pcs_result)
             print(f"Total Score: {total} (range 0-52)")
             print(f"Questionnaire ID: {result.pcs_questionnaire_id}")
         if result.pcs_result.error:
             print(f"Error: {result.pcs_result.error}")
-    
+
     # BPI-IS results
     if processor.config.include_bpi_is and result.bpi_is_result:
         print(f"\n--- BPI-IS Questionnaire ---")
         print(f"Success: {'✓' if result.bpi_is_result.success else '✗'}")
         if result.bpi_is_result.success:
             from pain_narratives.core.questionnaire_runner import calculate_bpi_is_subscales
+
             subscales = calculate_bpi_is_subscales(result.bpi_is_result)
             print(f"Interference Average: {subscales['interference_avg']}")
             print(f"Intensity Average: {subscales['intensity_avg']}")
             print(f"Questionnaire ID: {result.bpi_is_questionnaire_id}")
         if result.bpi_is_result.error:
             print(f"Error: {result.bpi_is_result.error}")
-    
+
     # TSK-11SV results
     if processor.config.include_tsk_11sv and result.tsk_11sv_result:
         print(f"\n--- TSK-11SV Questionnaire ---")
         print(f"Success: {'✓' if result.tsk_11sv_result.success else '✗'}")
         if result.tsk_11sv_result.success:
             from pain_narratives.core.questionnaire_runner import calculate_tsk_11sv_total_score
+
             total = calculate_tsk_11sv_total_score(result.tsk_11sv_result)
             print(f"Total Score: {total} (range 11-44)")
             print(f"Questionnaire ID: {result.tsk_11sv_questionnaire_id}")
         if result.tsk_11sv_result.error:
             print(f"Error: {result.tsk_11sv_result.error}")
-    
+
     print("\n" + "=" * 70)
     print("Test complete! Check the database for full results.")
     print("=" * 70 + "\n")
@@ -274,13 +277,11 @@ def run_batch_repetition(processor: BatchProcessor, user_id: int, args: argparse
 
                 from pain_narratives.db.models_sqlmodel import ExperimentList
 
-                exp = session.exec(
-                    select(ExperimentList).where(ExperimentList.experiment_id == first_exp_id)
-                ).first()
+                exp = session.exec(select(ExperimentList).where(ExperimentList.experiment_id == first_exp_id)).first()
                 if exp:
                     print(f"\nExperiment Group ID: {exp.experiments_group_id}")
                     print(f"Run Number (repeated): {exp.repeated}")
-                    print(f"\nUse this group ID for extraction in notebook 04.")
+                    print("\nUse this group ID for extraction in notebook 04.")
 
     print("\n" + "=" * 70 + "\n")
 
@@ -290,28 +291,28 @@ def run_full_batch(processor: BatchProcessor, narratives_df, user_id: int, args:
     print("\n" + "=" * 70)
     print("BATCH PROCESSING")
     print("=" * 70)
-    
+
     num_narratives = len(narratives_df)
     estimate = processor.estimate_batch_cost(num_narratives)
-    
+
     print(f"\nNarratives: {num_narratives}")
     print(f"Estimated cost: ${estimate['estimated_cost_usd']:.2f} USD")
     print(f"Estimated time: {estimate['estimated_time_minutes']:.1f} minutes")
     print(f"Model: {processor.config.model}")
     print(f"Description: {args.description}")
-    
+
     if not args.yes:
         response = input("\nProceed? [y/N]: ").strip().lower()
         if response != "y":
             print("Aborted.")
             return
-    
+
     print("\nStarting batch processing...")
     print("-" * 70)
-    
+
     # Set progress callback
     processor.set_progress_callback(print_progress)
-    
+
     # Run batch
     results = processor.run_batch(
         narratives_df=narratives_df,
@@ -320,19 +321,19 @@ def run_full_batch(processor: BatchProcessor, narratives_df, user_id: int, args:
         narrative_column=args.narrative_column,
         resume=args.resume,
     )
-    
+
     # Print final summary
     print("\n\n" + "=" * 70)
     print("BATCH COMPLETE")
     print("=" * 70)
-    
+
     successful = sum(1 for r in results if r.dimension_success or (r.pcs_result and r.pcs_result.success))
     failed = len(results) - successful
-    
+
     print(f"\nTotal processed: {len(results)}")
     print(f"Successful: {successful}")
     print(f"Failed: {failed}")
-    
+
     if results:
         # Get group ID from first result
         first_exp_id = results[0].experiment_id
@@ -341,14 +342,12 @@ def run_full_batch(processor: BatchProcessor, narratives_df, user_id: int, args:
                 from sqlmodel import select
 
                 from pain_narratives.db.models_sqlmodel import ExperimentList
-                
-                exp = session.exec(
-                    select(ExperimentList).where(ExperimentList.experiment_id == first_exp_id)
-                ).first()
+
+                exp = session.exec(select(ExperimentList).where(ExperimentList.experiment_id == first_exp_id)).first()
                 if exp:
                     print(f"\nExperiment Group ID: {exp.experiments_group_id}")
-                    print(f"\nTo analyze results, use this group ID in your notebooks.")
-    
+                    print("\nTo analyze results, use this group ID in your notebooks.")
+
     print("\n" + "=" * 70 + "\n")
 
 
@@ -358,14 +357,16 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
-    
+
     # Input options
     parser.add_argument(
-        "--input", "-i",
+        "--input",
+        "-i",
         help="Path to Excel file with narratives (not required when using --from-groups)",
     )
     parser.add_argument(
-        "--narrative-column", "-c",
+        "--narrative-column",
+        "-c",
         default="narrative",
         help="Column name containing narrative text (default: narrative)",
     )
@@ -383,7 +384,7 @@ def main():
         type=int,
         help="Value to filter for in filter-column (e.g., 1)",
     )
-    
+
     # Mode options
     parser.add_argument(
         "--dry-run",
@@ -406,19 +407,20 @@ def main():
         "--run-number",
         type=int,
         help="Run number for batch repetitions (stored in 'repeated' column). "
-             "Use with --from-groups to reuse existing narratives.",
+        "Use with --from-groups to reuse existing narratives.",
     )
     parser.add_argument(
         "--from-groups",
         type=str,
         help="Comma-separated experiment group IDs to load narratives from "
-             "(e.g., '35,36' for narratives from run 1). "
-             "Reuses existing narrative_ids instead of creating new ones.",
+        "(e.g., '35,36' for narratives from run 1). "
+        "Reuses existing narrative_ids instead of creating new ones.",
     )
-    
+
     # Batch options
     parser.add_argument(
-        "--description", "-d",
+        "--description",
+        "-d",
         default=f"Batch Processing - {datetime.now().strftime('%Y-%m-%d')}",
         help="Description for the experiment group",
     )
@@ -427,7 +429,7 @@ def main():
         default="batch_processor",
         help="Username for batch processing (default: batch_processor)",
     )
-    
+
     # Processing options
     parser.add_argument(
         "--model",
@@ -450,7 +452,7 @@ def main():
         "--checkpoint",
         help="Path to checkpoint file for resume capability",
     )
-    
+
     # Evaluation toggles
     parser.add_argument(
         "--skip-dimensions",
@@ -472,19 +474,21 @@ def main():
         action="store_true",
         help="Skip TSK-11SV questionnaire",
     )
-    
+
     # Other options
     parser.add_argument(
-        "--yes", "-y",
+        "--yes",
+        "-y",
         action="store_true",
         help="Skip confirmation prompt",
     )
     parser.add_argument(
-        "--verbose", "-v",
+        "--verbose",
+        "-v",
         action="store_true",
         help="Enable verbose logging",
     )
-    
+
     args = parser.parse_args()
 
     # Set log level

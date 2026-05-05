@@ -117,7 +117,7 @@ class TranslationService:
             # Debug: Log what was actually returned by the translation model
             logger.info(f"Translation model returned keys: {list(translated_data.keys())}")
             logger.info(f"Expected keys: {list(content_to_translate.keys())}")
-            
+
             # Create translated result by copying original and updating translated fields
             translated_result = evaluation_result.copy()
 
@@ -126,7 +126,7 @@ class TranslationService:
                 if key in content_to_translate:
                     translated_result[key] = value
                     logger.info(f"Updated field '{key}' with translation")
-                    
+
             # Check for missing translations and warn
             missing_keys = set(content_to_translate.keys()) - set(translated_data.keys())
             if missing_keys:

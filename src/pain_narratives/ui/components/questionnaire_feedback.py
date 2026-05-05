@@ -69,16 +69,16 @@ def render_questionnaire_feedback_form(
     # Check database for existing feedback
     existing = db_manager.get_questionnaire_feedback(questionnaire_id, user.get("id"))
     feedback_already_exists = existing is not None or recently_completed
-    
+
     if feedback_already_exists:
         st.success(t("questionnaire_feedback.feedback_completed"))
         st.caption(t("questionnaire_feedback.already_submitted_info"))
-        
+
         # Show existing feedback in read-only mode (prefer database data over session state)
         if existing:
             st.write("**" + t("questionnaire_feedback.authenticity_question") + "**")
             st.info(existing.authenticity_rating)
-            
+
             st.write("**" + t("questionnaire_feedback.reasoning_question") + "**")
             st.info(existing.reasoning_adequacy_rating)
         else:
@@ -87,10 +87,10 @@ def render_questionnaire_feedback_form(
             if recent_data:
                 st.write("**" + t("questionnaire_feedback.authenticity_question") + "**")
                 st.info(recent_data.get("authenticity_rating", "N/A"))
-                
+
                 st.write("**" + t("questionnaire_feedback.reasoning_question") + "**")
                 st.info(recent_data.get("reasoning_adequacy_rating", "N/A"))
-        
+
         return  # Exit early if feedback already exists
 
     likert_values = [value for value, _ in LIKERT_OPTIONS]
@@ -120,13 +120,13 @@ def render_questionnaire_feedback_form(
     # Render form only if no existing feedback
     with st.form(f"questionnaire_feedback_form_{questionnaire_id}"):
         st.markdown("#### " + t("questionnaire_feedback.expert_instructions"))
-        
+
         authenticity_rating = select_question(
             "questionnaire_feedback.authenticity_question",
             None,  # Always start fresh
             f"authenticity_{questionnaire_id}",
         )
-        
+
         reasoning_rating = select_question(
             "questionnaire_feedback.reasoning_question",
             None,  # Always start fresh
@@ -157,19 +157,19 @@ def render_questionnaire_feedback_form(
 
     try:
         db_manager.save_questionnaire_feedback(payload)
-        
+
         # Mark feedback as completed in session state
         st.session_state[feedback_completion_key] = True
-        
+
         # Store recent feedback data for display
         recent_feedback_key = f"recent_feedback_{questionnaire_id}_{user.get('id')}"
         st.session_state[recent_feedback_key] = {
             "authenticity_rating": authenticity_rating,
             "reasoning_adequacy_rating": reasoning_rating,
         }
-        
+
         st.success(t("questionnaire_feedback.save_success"))
         st.rerun()  # Force re-run to show completion status
-        
+
     except Exception as exc:  # noqa: BLE001 generic user feedback
         st.error(t("questionnaire_feedback.save_error").format(error=str(exc)))

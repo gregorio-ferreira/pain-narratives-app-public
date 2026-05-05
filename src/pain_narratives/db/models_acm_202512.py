@@ -332,9 +332,7 @@ class ExpertDimensionEvaluation(SQLModel, table=True):
     depresion_explanation_alignment: Optional[str] = Field(
         default=None, sa_column_kwargs={"name": "depresión_explanation_alignment"}
     )
-    depresion_usage_intent: Optional[str] = Field(
-        default=None, sa_column_kwargs={"name": "depresión_usage_intent"}
-    )
+    depresion_usage_intent: Optional[str] = Field(default=None, sa_column_kwargs={"name": "depresión_usage_intent"})
     pensamientos_autoliticos_score_alignment: Optional[str] = Field(
         default=None, sa_column_kwargs={"name": "pensamientos_autolíticos_score_alignment"}
     )
