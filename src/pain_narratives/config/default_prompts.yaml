@@ -46,9 +46,10 @@ questionnaires:
 
       1. Carefully read the pain narrative below.
       2. Imagine you are the person describing these experiences and feelings.
-      3. Answer each question following the specific instructions you will find below (PCS Questionnaire Instruction). These are in Spanish to preserve the validated version of the questionnaire. 
+      3. Answer each question following the specific instructions you will find below (PCS Questionnaire Instruction). These are in Spanish to preserve the validated version of the questionnaire.
       4. Output a JSON object where the key is the question number and the value is the score selected.
       5. After the JSON object, provide a brief overall explanation ("model reasoning") describing **how and why** you answered the questionnaire with those scores, based on the pain narrative.
+      6. IMPORTANT: Write ALL free-text fields ("persona name", "persona traits", and "model_reasoning") in English, regardless of the language of the narrative or the questionnaire items.
 
       #### **PCS Questionnaire Instruction**
 
@@ -106,15 +107,16 @@ questionnaires:
 
   BPI-IS:
     system_role: |
-      You are an expert in pain assessment. Your task is to impersonate the person who wrote the following pain narrative, and answer the "Brief Pain Inventory " (BPI) questionnaire as if you were that person. The BPI evaluates how pain interferes with daily activities (Q1) and measures pain intensity at different time points (Q2-Q5). Answer each question group following the specific instructions provided.
+      You are an expert in pain assessment. Your task is to impersonate the person who wrote the following pain narrative, and answer the "Brief Pain Inventory" (BPI) questionnaire as if you were that person. The BPI evaluates how pain interferes with daily activities (Q1) and measures pain intensity at different time points (Q2-Q5). Answer each question group following the specific instructions provided.
     
     instructions: |
       1. Carefully read the pain narrative below.
       2. Imagine you are the person describing these experiences and feelings.
-      3. Answer each question following the specific instructions you will find below (BPI Questionnaire Instruction). These are in Spanish to preserve the validated version of the questionnaire. 
+      3. Answer each question following the specific instructions you will find below (BPI Questionnaire Instruction). These are in Spanish to preserve the validated version of the questionnaire.
       4. Respond ONLY with a JSON object conforming to the specified schema.
+      5. IMPORTANT: Write ALL free-text fields ("persona name", "persona traits", and "model_reasoning") in English, regardless of the language of the narrative or the questionnaire items.
 
-      #### **BPI Questionnaire **
+      #### **BPI Questionnaire**
 
       **Q1. Interferencia del dolor (última semana)**
       Marque el número que mejor describa hasta qué punto el dolor le ha perturbado en los siguientes aspectos de la vida, durante LA ÚLTIMA SEMANA, siendo 0 = "No le perturba nada" y 10 = "Le perturba totalmente":
@@ -182,12 +184,13 @@ questionnaires:
       **Instructions:**
       1. Carefully read the pain narrative below.
       2. Imagine you are the person describing these experiences and feelings.
-      3. Answer each question following the specific instructions you will find below (TSK-11SV Questionnaire Instruction). These are in Spanish to preserve the validated version of the questionnaire. 
+      3. Answer each question following the specific instructions you will find below (TSK-11SV Questionnaire Instruction). These are in Spanish to preserve the validated version of the questionnaire.
       4. Respond ONLY with a JSON object conforming to the specified schema.
+      5. IMPORTANT: Write ALL free-text fields ("persona name", "persona traits", and "model_reasoning") in English, regardless of the language of the narrative or the questionnaire items.
 
       #### **TSK-11SV Questionnaire Instruction**
 
-      **Instrucciones:**A continuación se enumeran una serie de afirmaciones. Lo que usted ha de hacer es indicar hasta qué punto eso ocurre en su caso según la siguiente escala:.
+      **Instrucciones:** A continuación se enumeran una serie de afirmaciones. Lo que usted ha de hacer es indicar hasta qué punto eso ocurre en su caso según la siguiente escala:.
 
       **Escala de respuesta:**
       - 1 = "Totalmente en desacuerdo"

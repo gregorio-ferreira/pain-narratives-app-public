@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Database initialization script for AINarratives application.
+Database initialization script for pain narratives application.
 
 This script initializes the database schema using Alembic migrations.
 For security reasons, user creation is handled separately through the user management scripts.
@@ -21,15 +21,10 @@ from pain_narratives.config.settings import get_settings
 
 # Import all models to register them with SQLModel metadata
 from pain_narratives.db.models_sqlmodel import (  # noqa: F401
-    AssessmentFeedback,
-    EvaluationResult,
     ExperimentGroup,
-    ExperimentGroupUser,
     ExperimentList,
+    ModelResponse,
     Narrative,
-    Questionnaire,
-    QuestionnaireFeedback,
-    QuestionnairePrompt,
     RequestResponse,
     User,
     UserPrompt,
@@ -38,7 +33,7 @@ from pain_narratives.db.models_sqlmodel import (  # noqa: F401
 
 def init_database_schema() -> None:
     """Initialize the database schema by creating all tables."""
-    print("🏥 Initializing AINarratives Database Schema")
+    print("🏥 Initializing Pain Narratives Database Schema")
     print("=" * 50)
 
     try:

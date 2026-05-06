@@ -1,8 +1,8 @@
 # Sphinx configuration for documentation generation
 
-project = "AINarratives"
-copyright = "2025, AINarratives Team"
-author = "AINarratives Team"
+project = "Pain Narratives"
+copyright = "2025, Pain Narratives Team"
+author = "Pain Narratives Team"
 release = "1.0.0"
 extensions = [
     "sphinx.ext.autodoc",

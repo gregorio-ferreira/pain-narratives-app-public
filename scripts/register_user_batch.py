@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Batch user registration script for AINarratives application.
+Batch user registration script for pain narratives application.
 
 This script allows you to create users via command line arguments,
 useful for automation or batch user creation.
@@ -25,7 +25,7 @@ from pain_narratives.db.models_sqlmodel import User
 def parse_arguments() -> argparse.Namespace:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
-        description="Register a new user for the AINarratives application",
+        description="Register a new user for the Pain Narratives application",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

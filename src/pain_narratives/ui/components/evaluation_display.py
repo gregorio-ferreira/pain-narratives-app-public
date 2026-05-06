@@ -262,6 +262,7 @@ def display_evaluation_details(
                 # Try to get from config if available in session state
                 try:
                     from pain_narratives.config.settings import get_settings
+
                     max_tokens = get_settings().model_config.default_max_tokens
                 except Exception:
                     max_tokens = "N/A"
@@ -277,7 +278,13 @@ def display_evaluation_details(
         with col2:
             st.subheader(t("evaluation.input_narrative_header"))
             narrative = evaluation.get("narrative", t("evaluation.no_narrative_available"))
-            st.text_area(t("evaluation.narrative_text_label"), value=narrative, height=150, disabled=True, label_visibility="collapsed")
+            st.text_area(
+                t("evaluation.narrative_text_label"),
+                value=narrative,
+                height=150,
+                disabled=True,
+                label_visibility="collapsed",
+            )
 
         # Evaluation result
         if "result" in evaluation:
@@ -370,12 +377,11 @@ def display_cost_estimate(
         avg_response_tokens: Average response tokens
     """
     # Rough cost estimates (as of 2024 - should be updated)
-    # See: https://openai.com/pricing for current pricing
     cost_per_1k_tokens = {
-        "gpt-4o": {"input": 0.0025, "output": 0.01},
-        "gpt-5-mini": {"input": 0.00015, "output": 0.0006},
-        "gpt-4-turbo": {"input": 0.01, "output": 0.03},
-        "gpt-3.5-turbo": {"input": 0.0005, "output": 0.0015},
+        "gpt-5": {"input": 0.03, "output": 0.06},
+        "gpt-5-mini": {"input": 0.01, "output": 0.03},
+        "gpt-5-nano": {"input": 0.005, "output": 0.015},
+        "gpt-3.5-turbo": {"input": 0.0015, "output": 0.002},
     }
 
     if model in cost_per_1k_tokens:

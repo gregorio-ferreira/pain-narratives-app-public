@@ -545,13 +545,13 @@ def user_administration_ui(db_manager: DatabaseManager, user_info: Dict[str, Any
     # Edit Experiment Groups section
     st.divider()
     st.subheader(t("ui_text.edit_experiment_groups_header"))
-    
+
     if selected_user_key:
         selected_user = user_options[selected_user_key]
-        
+
         # Get all available experiment groups
         all_groups = db_manager.get_all_experiment_groups()
-        
+
         if not all_groups:
             st.warning(t("ui_text.no_groups_available"))
         else:
@@ -559,32 +559,34 @@ def user_administration_ui(db_manager: DatabaseManager, user_info: Dict[str, Any
             with st.expander(t("ui_text.available_groups_label"), expanded=False):
                 group_info = []
                 for group in all_groups:
-                    group_info.append({
-                        "ID": group.experiments_group_id,
-                        "Description": group.description or "No description",
-                        "Owner": group.owner_id,
-                        "Status": "✅ Concluded" if group.concluded else "🔄 Active"
-                    })
+                    group_info.append(
+                        {
+                            "ID": group.experiments_group_id,
+                            "Description": group.description or "No description",
+                            "Owner": group.owner_id,
+                            "Status": "✅ Concluded" if group.concluded else "🔄 Active",
+                        }
+                    )
                 st.dataframe(pd.DataFrame(group_info), use_container_width=True, hide_index=True)
-            
+
             # Get current groups for the user
             current_groups = db_manager.get_user_experiment_groups(selected_user.id)
             current_groups_str = ", ".join(map(str, current_groups)) if current_groups else "None"
-            
+
             st.info(f"**{t('ui_text.current_groups_label')}:** {current_groups_str}")
-            
+
             # Input for new group IDs
             with st.form("edit_groups_form"):
                 new_groups_str = st.text_input(
                     t("ui_text.enter_group_ids_label"),
                     value=", ".join(map(str, current_groups)) if current_groups else "",
-                    help=t("ui_text.enter_group_ids_help")
+                    help=t("ui_text.enter_group_ids_help"),
                 )
-                
+
                 col1, col2 = st.columns([1, 3])
                 with col1:
                     submit_groups = st.form_submit_button(t("ui_text.save_groups_button"), use_container_width=True)
-                
+
                 if submit_groups:
                     try:
                         # Parse the input
@@ -603,19 +605,20 @@ def user_administration_ui(db_manager: DatabaseManager, user_info: Dict[str, Any
                                     except ValueError:
                                         st.error(t("ui_text.invalid_group_ids_error"))
                                         st.stop()
-                        
+
                         # Validate and update
                         db_manager.update_user_experiment_groups(selected_user.id, new_group_ids)
                         st.success(t("ui_text.groups_updated_success").format(username=selected_user.username))
                         st.rerun()
-                        
+
                     except ValueError as e:
                         # Handle group not found error
                         error_msg = str(e)
                         if "does not exist" in error_msg:
                             # Extract group ID from error message
                             import re
-                            match = re.search(r'ID (\d+)', error_msg)
+
+                            match = re.search(r"ID (\d+)", error_msg)
                             if match:
                                 group_id = match.group(1)
                                 st.error(t("ui_text.group_not_found_error").format(group_id=group_id))

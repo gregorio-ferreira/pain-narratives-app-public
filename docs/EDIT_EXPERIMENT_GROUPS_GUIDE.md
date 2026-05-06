@@ -14,7 +14,7 @@ This guide shows you how to manage which experiment groups a user can access.
 
 ```
 ┌─────────────────────────────────────────────┐
-│  🏥 AINarratives - Management                │
+│  🏥 AINarratives - Management               │
 ├─────────────────────────────────────────────┤
 │  Tabs: [Evaluation groups] [User Admin] ✓  │
 └─────────────────────────────────────────────┘

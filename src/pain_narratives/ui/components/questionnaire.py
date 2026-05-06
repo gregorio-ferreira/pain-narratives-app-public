@@ -62,7 +62,8 @@ PCS_INSTRUCTIONS = """
    * 3: Mucho (A lot)
    * 4: Muchísimo (Extremely)
 4. Output a JSON object where the key is the question number and the value is the score selected.
-5. After the JSON object, provide a brief overall explanation (“model reasoning”) describing **how and why** you answered the questionnaire with those scores, based on the pain narrative.
+5. After the JSON object, provide a brief overall explanation ("model reasoning") describing **how and why** you answered the questionnaire with those scores, based on the pain narrative.
+6. IMPORTANT: Write ALL free-text fields ("persona name", "persona traits", and "model_reasoning") in English, regardless of the language of the narrative or the questionnaire items.
 
 #### **PCS Questionnaire**
 1. Estoy preocupado todo el tiempo pensando si el dolor desaparecerá
@@ -124,55 +125,49 @@ BPI_IS_QUESTIONS = {
     "BPI_Q2_8": "Peor Dolor",
     "BPI_Q3_9": "Dolor Más Leve",
     "BPI_Q4_10": "Dolor Promedio",
-    "BPI_Q5_11": "Dolor Ahora Mismo"
+    "BPI_Q5_11": "Dolor Ahora Mismo",
 }
 
 # Question groups with their specific instructions from the original questionnaire
 BPI_IS_QUESTION_GROUPS = {
     "Q1": {
-        "instruction": "Marque el número que mejor describa hasta qué punto el dolor le ha perturbado en los siguientes aspectos de la vida, durante LA ÚLTIMA SEMANA, siendo 0 = \"No le perturba nada\" y 10 = \"Le perturba totalmente\":",
+        "instruction": 'Marque el número que mejor describa hasta qué punto el dolor le ha perturbado en los siguientes aspectos de la vida, durante LA ÚLTIMA SEMANA, siendo 0 = "No le perturba nada" y 10 = "Le perturba totalmente":',
         "items": ["BPI_Q1_1", "BPI_Q1_2", "BPI_Q1_3", "BPI_Q1_5", "BPI_Q1_6", "BPI_Q1_7"],
-        "scale_labels": {0: "No le perturba nada", 10: "Le perturba totalmente"}
+        "scale_labels": {0: "No le perturba nada", 10: "Le perturba totalmente"},
     },
     "Q2": {
-        "instruction": "Puntúe EL PEOR DOLOR QUE HA SENTIDO EN LAS ÚLTIMAS 24 HORAS del 0 al 10, donde 0 representa \"sin dolor\" y 10 representa \"el peor dolor que se pueda imaginar\".",
+        "instruction": 'Puntúe EL PEOR DOLOR QUE HA SENTIDO EN LAS ÚLTIMAS 24 HORAS del 0 al 10, donde 0 representa "sin dolor" y 10 representa "el peor dolor que se pueda imaginar".',
         "items": ["BPI_Q2_8"],
-        "scale_labels": {0: "Sin dolor", 10: "El peor dolor que se pueda imaginar"}
+        "scale_labels": {0: "Sin dolor", 10: "El peor dolor que se pueda imaginar"},
     },
     "Q3": {
-        "instruction": "El DOLOR MÁS LEVE QUE HA SENTIDO EN LAS ÚLTIMAS 24 HORAS del 0 al 10, donde 0 representa \"sin dolor\" y 10 representa \"el peor dolor que se pueda imaginar\".",
+        "instruction": 'El DOLOR MÁS LEVE QUE HA SENTIDO EN LAS ÚLTIMAS 24 HORAS del 0 al 10, donde 0 representa "sin dolor" y 10 representa "el peor dolor que se pueda imaginar".',
         "items": ["BPI_Q3_9"],
-        "scale_labels": {0: "Sin dolor", 10: "El peor dolor que se pueda imaginar"}
+        "scale_labels": {0: "Sin dolor", 10: "El peor dolor que se pueda imaginar"},
     },
     "Q4": {
-        "instruction": "El DOLOR PROMEDIO EN LAS ÚLTIMAS 24 HORAS del 0 al 10, donde 0 representa \"sin dolor\" y 10 representa \"el peor dolor que se pueda imaginar\".",
+        "instruction": 'El DOLOR PROMEDIO EN LAS ÚLTIMAS 24 HORAS del 0 al 10, donde 0 representa "sin dolor" y 10 representa "el peor dolor que se pueda imaginar".',
         "items": ["BPI_Q4_10"],
-        "scale_labels": {0: "Sin dolor", 10: "El peor dolor que se pueda imaginar"}
+        "scale_labels": {0: "Sin dolor", 10: "El peor dolor que se pueda imaginar"},
     },
     "Q5": {
-        "instruction": "Puntúe EL DOLOR AHORA MISMO del 0 al 10, donde 0 representa \"sin dolor\" y 10 representa \"el peor dolor que se pueda imaginar\".",
+        "instruction": 'Puntúe EL DOLOR AHORA MISMO del 0 al 10, donde 0 representa "sin dolor" y 10 representa "el peor dolor que se pueda imaginar".',
         "items": ["BPI_Q5_11"],
-        "scale_labels": {0: "Sin dolor", 10: "El peor dolor que se pueda imaginar"}
-    }
+        "scale_labels": {0: "Sin dolor", 10: "El peor dolor que se pueda imaginar"},
+    },
 }
 
 BPI_IS_SCALE_LABELS = {
     # Interference items (BPI_1 to BPI_7)
-    "interference": {
-        0: "No le perturba nada",
-        10: "Le perturba totalmente"
-    },
+    "interference": {0: "No le perturba nada", 10: "Le perturba totalmente"},
     # Intensity items (BPI_8 to BPI_11)
-    "intensity": {
-        0: "Sin dolor",
-        10: "El peor dolor que se pueda imaginar"
-    }
+    "intensity": {0: "Sin dolor", 10: "El peor dolor que se pueda imaginar"},
 }
 
 BPI_IS_SYSTEM_ROLE = (
     "You are an expert in pain assessment. Your task is to "
     "impersonate the person who wrote the following pain narrative, and answer "
-    'the "Brief Pain Inventory - Interference Scale" (BPI-IS) questionnaire as if you were that person. '
+    'the "Brief Pain Inventory" (BPI-IS) questionnaire as if you were that person. '
     "The BPI-IS evaluates how pain interferes with daily activities (Q1) and measures pain intensity "
     "at different time points (Q2-Q5). Answer each question group following the specific instructions provided."
 )
@@ -184,8 +179,9 @@ BPI_IS_INSTRUCTIONS = """
 2. Imagine you are the person describing these experiences and feelings.
 3. Answer each question group (Q1-Q5) following the specific instructions for each.
 4. Respond ONLY with a JSON object conforming to the specified schema.
+5. IMPORTANT: Write ALL free-text fields ("persona name", "persona traits", and "model_reasoning") in English, regardless of the language of the narrative or the questionnaire items.
 
-#### **BPI-IS Questionnaire (Brief Pain Inventory - Interference Scale)**
+#### **BPI-IS Questionnaire (Brief Pain Inventory)**
 
 **Q1. Interferencia del dolor (última semana)**
 Marque el número que mejor describa hasta qué punto el dolor le ha perturbado en los siguientes aspectos de la vida, durante LA ÚLTIMA SEMANA, siendo 0 = "No le perturba nada" y 10 = "Le perturba totalmente":
@@ -260,15 +256,10 @@ TSK_11SV_QUESTIONS = {
     "TSK_08": "El dolor me dice cuándo debo parar la actividad para no lesionarme",
     "TSK_09": "No es seguro para una persona con mi enfermedad hacer actividades físicas",
     "TSK_10": "No puedo hacer todo lo que la gente normal hace porque me podría lesionar con facilidad",
-    "TSK_11": "Nadie debería hacer actividades físicas cuando tiene dolor"
+    "TSK_11": "Nadie debería hacer actividades físicas cuando tiene dolor",
 }
 
-TSK_11SV_SCALE_LABELS = {
-    1: "Totalmente en desacuerdo",
-    2: "En desacuerdo",
-    3: "De acuerdo",
-    4: "Totalmente de acuerdo"
-}
+TSK_11SV_SCALE_LABELS = {1: "Totalmente en desacuerdo", 2: "En desacuerdo", 3: "De acuerdo", 4: "Totalmente de acuerdo"}
 
 TSK_11SV_SYSTEM_ROLE = (
     "You are an expert in kinesiophobia assessment. Your task is to "
@@ -285,6 +276,7 @@ TSK_11SV_INSTRUCTIONS = """
 2. Imagine you are the person describing these experiences and feelings.
 3. For each of the 11 statements in the TSK-11SV, select the score (1-4) that best reflects how this person would likely respond.
 4. Respond ONLY with a JSON object conforming to the specified schema.
+5. IMPORTANT: Write ALL free-text fields ("persona name", "persona traits", and "model_reasoning") in English, regardless of the language of the narrative or the questionnaire items.
 
 #### **TSK-11SV Questionnaire (Tampa Scale of Kinesiophobia - Short Version)**
 
@@ -374,7 +366,7 @@ def run_pcs_questionnaire(
 
     # Extract content with proper error handling for gpt-5 empty responses
     content = response.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
-    
+
     # Check if content is empty (common issue with gpt-5)
     if not content:
         logger.error("Received empty content from OpenAI API")
@@ -382,7 +374,7 @@ def run_pcs_questionnaire(
         st.error("❌ The model returned an empty response. This can happen with gpt-5 when the response is truncated.")
         st.info("💡 Try again or switch to gpt-5-mini in the sidebar.")
         return {}
-    
+
     logger.info(f"Raw response content: {content[:200]}...")  # Log first 200 chars for debugging
 
     # More robust JSON extraction
@@ -481,14 +473,14 @@ def run_bpi_is_questionnaire(
         response_format="json_object",  # Force JSON output
     )
     logger.info("Received BPI-IS response from OpenAI")
-    
+
     # Store request/response in session state for later DB persistence
     st.session_state.last_openai_response = response
     st.session_state.last_prompt_messages = messages
 
     # Extract content with proper error handling for gpt-5 empty responses
     content = response.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
-    
+
     # Check if content is empty (common issue with gpt-5)
     if not content:
         logger.error("Received empty content from OpenAI API for BPI-IS")
@@ -496,7 +488,7 @@ def run_bpi_is_questionnaire(
         st.error("❌ The model returned an empty response. This can happen with gpt-5 when the response is truncated.")
         st.info("💡 Try again or switch to gpt-5-mini in the sidebar.")
         return {}
-    
+
     logger.info(f"Raw BPI-IS response content: {content[:200]}...")
 
     # Use the same JSON extraction logic as PCS
@@ -582,14 +574,14 @@ def run_tsk_11sv_questionnaire(
         response_format="json_object",  # Force JSON output
     )
     logger.info("Received TSK-11SV response from OpenAI")
-    
+
     # Store request/response in session state for later DB persistence
     st.session_state.last_openai_response = response
     st.session_state.last_prompt_messages = messages
 
     # Extract content with proper error handling for gpt-5 empty responses
     content = response.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
-    
+
     # Check if content is empty (common issue with gpt-5)
     if not content:
         logger.error("Received empty content from OpenAI API for TSK-11SV")
@@ -597,7 +589,7 @@ def run_tsk_11sv_questionnaire(
         st.error("❌ The model returned an empty response. This can happen with gpt-5 when the response is truncated.")
         st.info("💡 Try again or switch to gpt-5-mini in the sidebar.")
         return {}
-    
+
     logger.info(f"Raw TSK-11SV response content: {content[:200]}...")
 
     # Use the same JSON extraction logic as PCS
@@ -707,7 +699,7 @@ def calculate_tsk_11sv_total_score(result: Dict[str, Any]) -> int:
 def display_score_distribution_chart(counts: Dict[int, int], questionnaire_type: str, translator):
     """
     Display a standardized score distribution chart for any questionnaire type.
-    
+
     Args:
         counts: Dictionary mapping score values to counts
         questionnaire_type: One of 'PCS', 'BPI-IS', 'TSK-11SV'
@@ -716,24 +708,20 @@ def display_score_distribution_chart(counts: Dict[int, int], questionnaire_type:
     import altair as alt
     import pandas as pd
     import streamlit as st
-    
+
     if not counts or all(count == 0 for count in counts.values()):
         st.info(translator("questionnaires.no_scores_warning"))
         return
-    
+
     st.subheader(translator("questionnaires.score_distribution_header"))
-    
+
     chart = None
     if questionnaire_type == "PCS":
         # PCS: Use defined order from PCS_SCORE_LABELS (0→1→2→3→4)
         ordered_scores = sorted(PCS_SCORE_LABELS.keys())
         chart_data = []
         for score in ordered_scores:
-            chart_data.append({
-                "Score": score,
-                "Count": counts.get(score, 0),
-                "Scale": PCS_SCORE_LABELS[score]
-            })
+            chart_data.append({"Score": score, "Count": counts.get(score, 0), "Scale": PCS_SCORE_LABELS[score]})
         df = pd.DataFrame(chart_data)
         chart = (
             alt.Chart(df)
@@ -752,10 +740,7 @@ def display_score_distribution_chart(counts: Dict[int, int], questionnaire_type:
         ordered_scores = list(range(11))  # 0 through 10
         chart_data = []
         for score in ordered_scores:
-            chart_data.append({
-                "Score": score,
-                "Count": counts.get(score, 0)
-            })
+            chart_data.append({"Score": score, "Count": counts.get(score, 0)})
         df = pd.DataFrame(chart_data)
         chart = (
             alt.Chart(df)
@@ -774,11 +759,7 @@ def display_score_distribution_chart(counts: Dict[int, int], questionnaire_type:
         ordered_scores = sorted(TSK_11SV_SCALE_LABELS.keys())
         chart_data = []
         for score in ordered_scores:
-            chart_data.append({
-                "Score": score,
-                "Count": counts.get(score, 0),
-                "Scale": TSK_11SV_SCALE_LABELS[score]
-            })
+            chart_data.append({"Score": score, "Count": counts.get(score, 0), "Scale": TSK_11SV_SCALE_LABELS[score]})
         df = pd.DataFrame(chart_data)
         chart = (
             alt.Chart(df)
@@ -798,7 +779,3 @@ def display_score_distribution_chart(counts: Dict[int, int], questionnaire_type:
 
     if chart is not None:
         st.altair_chart(chart, use_container_width=True)
-
-
-
-

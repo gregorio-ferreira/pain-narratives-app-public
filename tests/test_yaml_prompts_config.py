@@ -24,23 +24,23 @@ def test_narrative_evaluation_config():
     print("=" * 80)
     print("Testing Narrative Evaluation Configuration")
     print("=" * 80)
-    
+
     system_role = get_system_role()
     print(f"\n✓ System Role loaded ({len(system_role)} chars)")
     print(f"  Preview: {system_role[:100]}...")
-    
+
     base_prompt = get_base_prompt()
     print(f"\n✓ Base Prompt loaded ({len(base_prompt)} chars)")
     print(f"  Preview: {base_prompt[:100]}...")
-    
+
     dimensions = get_default_dimensions()
     print(f"\n✓ Default Dimensions loaded ({len(dimensions)} dimensions)")
     for idx, dim in enumerate(dimensions, 1):
         print(f"  {idx}. {dim['name']} ({dim['min']}-{dim['max']}) - Active: {dim.get('active', True)}")
-    
+
     full_prompt = get_default_prompt()
     print(f"\n✓ Full Default Prompt generated ({len(full_prompt)} chars)")
-    
+
     return True
 
 
@@ -49,10 +49,10 @@ def test_questionnaire_prompts():
     print("\n" + "=" * 80)
     print("Testing Questionnaire Prompts Configuration")
     print("=" * 80)
-    
+
     all_prompts = get_questionnaire_prompts()
     print(f"\n✓ Questionnaire prompts loaded ({len(all_prompts)} types)")
-    
+
     for q_type in ["PCS", "BPI-IS", "TSK-11SV"]:
         prompt = get_questionnaire_prompt(q_type)
         if prompt:
@@ -62,7 +62,7 @@ def test_questionnaire_prompts():
         else:
             print(f"\n  ✗ {q_type}: Not found!")
             return False
-    
+
     return True
 
 
@@ -71,16 +71,16 @@ def test_prompt_library():
     print("\n" + "=" * 80)
     print("Testing Prompt Library Configuration")
     print("=" * 80)
-    
+
     library = get_prompt_library()
     print(f"\n✓ Prompt library loaded ({len(library)} templates)")
-    
+
     for template_id, template in library.items():
         print(f"\n  {template_id}:")
         print(f"    Name: {template['name']}")
         print(f"    Category: {template['category']}")
         print(f"    Template: {len(template['template'])} chars")
-    
+
     return True
 
 
@@ -89,16 +89,16 @@ def test_spanish_dimensions():
     print("\n" + "=" * 80)
     print("Testing Experiment Group 12 Spanish Dimensions")
     print("=" * 80)
-    
+
     dimensions = get_default_dimensions()
-    
+
     # Check for Spanish dimension names
     expected_names = ["Severidad del dolor", "Discapacidad"]
-    actual_names = [dim['name'] for dim in dimensions if dim.get('active', True)]
-    
+    actual_names = [dim["name"] for dim in dimensions if dim.get("active", True)]
+
     print(f"\n  Expected dimensions: {expected_names}")
     print(f"  Actual dimensions: {actual_names}")
-    
+
     if set(expected_names) == set(actual_names):
         print("\n✓ Spanish dimensions from experiment group 12 loaded correctly!")
         return True
@@ -112,14 +112,14 @@ def main():
     print("\n" + "=" * 80)
     print("YAML-BASED PROMPTS CONFIGURATION TEST")
     print("=" * 80)
-    
+
     tests = [
         ("Narrative Evaluation Config", test_narrative_evaluation_config),
         ("Questionnaire Prompts", test_questionnaire_prompts),
         ("Prompt Library", test_prompt_library),
         ("Spanish Dimensions (Group 12)", test_spanish_dimensions),
     ]
-    
+
     results = []
     for test_name, test_func in tests:
         try:
@@ -129,18 +129,18 @@ def main():
             print(f"\n✗ {test_name} FAILED with error:")
             print(f"  {type(e).__name__}: {e}")
             results.append((test_name, False))
-    
+
     # Summary
     print("\n" + "=" * 80)
     print("TEST SUMMARY")
     print("=" * 80)
-    
+
     for test_name, result in results:
         status = "✓ PASS" if result else "✗ FAIL"
         print(f"{status}: {test_name}")
-    
+
     all_passed = all(result for _, result in results)
-    
+
     if all_passed:
         print("\n✓ All tests passed! YAML configuration system is working correctly.")
         return 0

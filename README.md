@@ -1,12 +1,12 @@
 # AINarratives: AI-Powered Chronic Pain Assessment Tool
 
-A comprehensive research platform for evaluating pain narratives from chronic pain patients using artificial intelligence models. This system provides automated scoring for pain severity and disability levels, supporting both individual assessments and large-scale research studies.
+A comprehensive research platform for evaluating chronic pain patient narratives using artificial intelligence models. This system provides automated scoring for pain severity and disability levels, supporting both individual assessments and large-scale research studies.
 
 **Built with modern Python practices**: SQLModel, UV package manager, type safety, multilingual support, and modular architecture.
 
 ## 🎯 Project Overview
 
-The AINarratives project is designed to assist healthcare researchers and clinicians in analyzing written descriptions of pain experiences from chronic pain patients. Using OpenAI's language models, the system provides:
+AINarratives is designed to assist healthcare researchers and clinicians in analyzing written descriptions of pain experiences from chronic pain patients. Using OpenAI's language models, the system provides:
 
 - **Automated Dimensions evaluation**: AI-powered evaluation of pain severity and disability levels
 - **Research Analytics**: Statistical analysis and agreement metrics for research validation

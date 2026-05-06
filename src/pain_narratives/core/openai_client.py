@@ -105,14 +105,14 @@ class OpenAIClient:
                 "model": model,
                 "messages": messages,
             }
-            
+
             # Handle GPT-5 model specific parameters
             if model.startswith("gpt-5"):
                 # GPT-5 models use max_completion_tokens and need higher token limits
                 # Ensure minimum token limit for GPT-5 models (reasoning tokens + output)
                 gpt5_max_tokens = max(max_tokens, 8000)  # GPT-5 needs high limits for reasoning + output
                 request_params["max_completion_tokens"] = gpt5_max_tokens
-                
+
                 # GPT-5 models have limited parameter support
                 # Only set temperature if it's not 0.0 (GPT-5 models work best with default temperature)
                 if temperature != 0.0:
@@ -120,7 +120,7 @@ class OpenAIClient:
                 # Only set top_p if it's not the default
                 if top_p != 1.0:
                     request_params["top_p"] = top_p
-                    
+
                 logger.info("  GPT-5 adjusted max_completion_tokens: %s", gpt5_max_tokens)
             else:
                 # Older models use max_tokens and support all parameters
@@ -152,7 +152,7 @@ class OpenAIClient:
                         if "message" in choice:
                             message = choice["message"]
                             logger.info("Message keys: %s", list(message.keys()))
-                            
+
                             # GPT-5 models may return content in different fields
                             content = None
                             if "content" in message and message["content"]:
@@ -160,14 +160,14 @@ class OpenAIClient:
                             elif "refusal" in message and message["refusal"]:
                                 logger.warning("Model returned refusal: %s", message["refusal"])
                                 content = message["refusal"]
-                            
+
                             # For debugging: log all message fields
                             for key, value in message.items():
                                 if value:
                                     logger.info("Message field '%s' has value (length: %d)", key, len(str(value)))
                                 else:
                                     logger.info("Message field '%s' is empty or None", key)
-                            
+
                             if content:
                                 content_length = len(content)
                                 logger.info("Response content length: %d", content_length)

@@ -10,7 +10,7 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 APP_DIR="/home/ubuntu/pain-narratives-app"
-DOMAIN="ec2-63-176-147-227.eu-central-1.compute.amazonaws.com"
+DOMAIN="YOUR_DEPLOYMENT_DOMAIN.example.com"
 APP_USER="ubuntu"
 
 echo "🔧 Quick Fix for CSS Preload Error"
@@ -27,13 +27,13 @@ echo "⚙️  Updating Nginx configuration..."
 cat <<'NGINX' | tee /etc/nginx/sites-available/streamlit
 server {
     listen 80;
-    server_name ec2-63-176-147-227.eu-central-1.compute.amazonaws.com;
+    server_name YOUR_DEPLOYMENT_DOMAIN.example.com;
     return 301 https://$host$request_uri;
 }
 
 server {
     listen 443 ssl http2;
-    server_name ec2-63-176-147-227.eu-central-1.compute.amazonaws.com;
+    server_name YOUR_DEPLOYMENT_DOMAIN.example.com;
 
     ssl_certificate /etc/ssl/pain-narratives/selfsigned.crt;
     ssl_certificate_key /etc/ssl/pain-narratives/selfsigned.key;
@@ -171,7 +171,7 @@ chown $APP_USER:$APP_USER "$APP_DIR/.streamlit/config.toml"
 echo "🔧 Updating systemd service..."
 cat <<EOF | tee /etc/systemd/system/pain-narratives.service
 [Unit]
-Description=AINarratives Streamlit App
+Description=Pain Narratives Streamlit App
 After=network.target
 
 [Service]

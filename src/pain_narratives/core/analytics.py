@@ -175,10 +175,10 @@ def calculate_correlation_metrics(values1: pd.Series, values2: pd.Series) -> Dic
 def get_default_system_prompt() -> str:
     """
     Get the default system prompt for pain narrative evaluation.
-    
+
     This function now loads the prompt from YAML configuration instead of
     being hardcoded, making it easier to maintain and update.
     """
     from pain_narratives.config.prompts import get_default_prompt
-    
+
     return get_default_prompt()

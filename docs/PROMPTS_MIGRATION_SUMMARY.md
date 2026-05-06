@@ -83,7 +83,7 @@ The new defaults incorporate the researcher's validated prompts:
 
    ```
    Old: "You are a psychologist expert in evaluating pain from patients
-         who have been diagnosed with fibromyalgia..."
+         who have been diagnosed with chronic pain..."
 
    New: "You are an expert in evaluating chronic pain. As an expert,
          you are tasked with analyzing patient narratives about their pain..."

@@ -154,7 +154,7 @@ class UserPrompt(SQLModel, table=True):
 
 class QuestionnairePrompt(SQLModel, table=True):
     """Store custom questionnaire prompts and system roles for experiment groups."""
-    
+
     __tablename__ = "questionnaire_prompts"  # type: ignore
     __table_args__ = {"schema": SCHEMA_NAME}
 
