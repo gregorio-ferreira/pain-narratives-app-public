@@ -54,6 +54,8 @@ dependencies = [
     "pdfminer.six>=20231228",
     "statsmodels>=0.14.4",
     "pingouin>=0.5.5",
+    "boto3>=1.43.5",
+    "botocore>=1.43.5",
 ]
 
 [project.optional-dependencies]
