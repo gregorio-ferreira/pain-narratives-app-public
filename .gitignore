@@ -98,6 +98,8 @@ data/
 *.csv
 *.xlsx
 *.xls
+# Metadata-only inventory (counts/hashes/flags, no narrative text) — safe to track.
+!docs/revision/narratives_inventory.csv
 
 # Database files
 *.db
