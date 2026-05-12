@@ -16,6 +16,14 @@ openai:
   api_key_pain_narratives: "YOUR_OPENAI_API_KEY"
   org_id: "YOUR_OPENAI_ORG_ID"
 
+# AWS Bedrock — required for the revision experiments (DeepSeek-R1, Claude Sonnet 4.5).
+# See docs/revision/AWS_BEDROCK_SETUP.md for how to obtain the API key.
+# The api_key is a Bedrock-scoped bearer token; boto3 reads it from the
+# AWS_BEARER_TOKEN_BEDROCK env var, which the app populates from this config.
+bedrock:
+  api_key: "YOUR_BEDROCK_API_KEY"
+  default_region: us-east-1
+
 # Database configuration - matches docker-compose.yml defaults
 pg-prod:
   password: "pain_narratives_dev"

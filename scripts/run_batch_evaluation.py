@@ -450,7 +450,45 @@ def main():
     )
     parser.add_argument(
         "--checkpoint",
-        help="Path to checkpoint file for resume capability",
+        help="Path to checkpoint file for resume capability "
+        "(default: checkpoints/<model>-<description-slug>.json)",
+    )
+    parser.add_argument(
+        "--model-provider",
+        default="openai",
+        choices=["openai", "bedrock_anthropic", "bedrock_deepseek"],
+        help="LLM provider (default: openai). 'bedrock_anthropic' for Claude models "
+        "(Sonnet 4.5, Opus 4.1, Haiku 4.5); 'bedrock_deepseek' for DeepSeek-R1.",
+    )
+    parser.add_argument(
+        "--prompt-version",
+        default="original",
+        choices=["original", "simplified_v1"],
+        help="Prompt set to use. 'original' = published GPT-5 baseline prompts; "
+        "'simplified_v1' = revision-experiment prompts (structured answers only).",
+    )
+    parser.add_argument(
+        "--thinking-enabled",
+        action="store_true",
+        help="Enable extended thinking for Anthropic Claude models (Sonnet 4.5, etc).",
+    )
+    parser.add_argument(
+        "--thinking-budget-tokens",
+        type=int,
+        default=8000,
+        help="Token budget for extended thinking (only effective with --thinking-enabled).",
+    )
+    parser.add_argument(
+        "--bedrock-region",
+        default=None,
+        help="AWS region for Bedrock calls (default: from config.yaml bedrock.default_region).",
+    )
+    parser.add_argument(
+        "--consecutive-failure-threshold",
+        type=int,
+        default=5,
+        help="Abort the batch after this many narrative-level failures in a row "
+        "(default: 5). Saves the checkpoint before exit so --resume can pick up.",
     )
 
     # Evaluation toggles
@@ -506,6 +544,17 @@ def main():
         logger.error("--input is required when not using --from-groups")
         sys.exit(1)
 
+    # Auto-name the checkpoint per (model, description) so different runs don't
+    # collide on a shared checkpoint file. Skipped if the user passed --checkpoint.
+    checkpoint_path = args.checkpoint
+    if checkpoint_path is None:
+        import re as _re
+        slug_model = _re.sub(r"[^A-Za-z0-9._-]", "_", args.model)[:48]
+        slug_desc = _re.sub(r"[^A-Za-z0-9._-]", "_", args.description)[:48]
+        checkpoint_path = f"checkpoints/{slug_model}__{slug_desc}.json"
+        Path("checkpoints").mkdir(parents=True, exist_ok=True)
+        logger.info(f"Using checkpoint file: {checkpoint_path}")
+
     # Create configuration
     config = BatchConfig(
         model=args.model,
@@ -515,7 +564,13 @@ def main():
         include_pcs=not args.skip_pcs,
         include_bpi_is=not args.skip_bpi_is,
         include_tsk_11sv=not args.skip_tsk,
-        checkpoint_file=args.checkpoint,
+        checkpoint_file=checkpoint_path,
+        model_provider=args.model_provider,
+        prompt_version=args.prompt_version,
+        thinking_enabled=args.thinking_enabled,
+        thinking_budget_tokens=args.thinking_budget_tokens,
+        bedrock_region=args.bedrock_region,
+        consecutive_failure_threshold=args.consecutive_failure_threshold,
     )
 
     # Initialize components
