@@ -75,6 +75,8 @@ class ExperimentList(SQLModel, table=True):
     extra_description: Optional[dict] = Field(default=None, sa_column=Column(JSON))
     repo_sha: str
     exp_type: str = Field(default="aut", nullable=False)
+    prompt_version: Optional[str] = Field(default=None, max_length=64)
+    reasoning_tokens: Optional[int] = None
 
     group: Optional["ExperimentGroup"] = Relationship(back_populates="experiments")
     narrative: Optional["Narrative"] = Relationship(back_populates="experiments")

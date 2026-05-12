@@ -26,6 +26,8 @@ class BedrockConfig:
     aws_access_key: str
     aws_secret_key: str
     aws_region: str
+    api_key: str = ""
+    default_region: str = "us-east-1"
 
 
 @dataclass
@@ -136,6 +138,8 @@ class ConfigManager:
             aws_access_key=bedrock_data.get("aws_access_key", ""),
             aws_secret_key=bedrock_data.get("aws_secret_key", ""),
             aws_region=bedrock_data.get("aws_region", "us-east-1"),
+            api_key=bedrock_data.get("api_key", ""),
+            default_region=bedrock_data.get("default_region", bedrock_data.get("aws_region", "us-east-1")),
         )
 
     @property

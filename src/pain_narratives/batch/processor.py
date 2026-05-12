@@ -20,8 +20,17 @@ import pandas as pd
 from pain_narratives.config.prompts import (
     get_base_prompt,
     get_default_dimensions,
+    get_narrative_evaluation_config_v,
     get_questionnaire_prompt,
     get_system_role,
+)
+from pain_narratives.core.bedrock_client import (
+    BedrockAuthError,
+    BedrockClient,
+    BedrockError,
+    BedrockModelError,
+    BedrockOpenAIAdapter,
+    BedrockTransientError,
 )
 from pain_narratives.core.database import DatabaseManager
 from pain_narratives.core.openai_client import OpenAIClient
@@ -99,6 +108,19 @@ class BatchConfig:
     checkpoint_file: Optional[str] = None
     checkpoint_interval: int = 10  # Save checkpoint every N narratives
 
+    # Provider / prompt-version selection (revision experiments)
+    model_provider: str = "openai"  # "openai" or "bedrock_anthropic" or "bedrock_deepseek"
+    prompt_version: str = "original"  # "original" or "simplified_v1"
+
+    # Bedrock-only options
+    thinking_enabled: bool = False
+    thinking_budget_tokens: int = 8000
+    bedrock_region: Optional[str] = None
+
+    # Safety net — abort batch after N consecutive narrative-level failures
+    # (likely indicates auth expiry, quota exhaustion, or a programming bug)
+    consecutive_failure_threshold: int = 5
+
 
 @dataclass
 class BatchProgress:
@@ -143,21 +165,58 @@ class BatchProcessor:
         openai_client: Optional[OpenAIClient] = None,
         config: Optional[BatchConfig] = None,
     ):
-        """
-        Initialize the batch processor.
+        """Initialize the batch processor.
 
-        Args:
-            db_manager: Database manager instance
-            openai_client: OpenAI client instance
-            config: Batch processing configuration
+        When `config.model_provider` is `"openai"`, the OpenAI client is used
+        as before. When it starts with `"bedrock"`, a `BedrockClient` is
+        constructed and wrapped in `BedrockOpenAIAdapter` so existing call
+        sites (`run_questionnaire(openai_client=self.openai_client, ...)`)
+        keep working unchanged.
         """
         self.db_manager = db_manager or DatabaseManager()
-        self.openai_client = openai_client or OpenAIClient()
         self.config = config or BatchConfig()
+
+        # The attribute remains named `openai_client` for compatibility with
+        # the rest of the codebase; it is the LLM adapter regardless of provider.
+        if self.config.model_provider.startswith("bedrock"):
+            self._bedrock_client = BedrockClient(region=self.config.bedrock_region)
+            force_temp = self.config.temperature if not self.config.thinking_enabled else None
+            self.openai_client = BedrockOpenAIAdapter(  # type: ignore[assignment]
+                self._bedrock_client,
+                thinking_enabled=self.config.thinking_enabled,
+                thinking_budget_tokens=self.config.thinking_budget_tokens,
+                force_temperature=force_temp,
+            )
+        else:
+            self._bedrock_client = None
+            self.openai_client = openai_client or OpenAIClient()
 
         self.progress = BatchProgress()
         self._checkpoint_data: Dict[str, Any] = {}
         self._progress_callback: Optional[Callable[[BatchProgress], None]] = None
+
+    def preflight(self, min_remaining_hours: float = 2.0) -> None:
+        """Run pre-batch sanity checks. Raises a typed error on failure so the
+        runner can present a clear message before any expensive work starts.
+
+        - Bedrock: validates that the bearer token is not expired and has at
+          least `min_remaining_hours` of usable time left.
+        - OpenAI: no-op (the OpenAI SDK validates per-call).
+        """
+        if self._bedrock_client is not None:
+            from datetime import timedelta
+            info = self._bedrock_client.check_credentials(
+                min_remaining=timedelta(hours=min_remaining_hours)
+            )
+            if info.expires_at:
+                remaining = info.time_remaining()
+                logger.info(
+                    "Bedrock pre-flight OK: token valid until %s (%s remaining)",
+                    info.expires_at.isoformat(),
+                    remaining,
+                )
+            else:
+                logger.info("Bedrock pre-flight OK: long-term token (no expiry)")
 
     def set_progress_callback(self, callback: Callable[[BatchProgress], None]) -> None:
         """Set a callback function for progress updates."""
@@ -324,20 +383,13 @@ class BatchProcessor:
         self,
         narrative_text: str,
         experiment_id: int,
-    ) -> Dict[str, Any]:
-        """
-        Run dimension evaluation on a narrative.
-
-        Args:
-            narrative_text: The pain narrative text
-            experiment_id: The experiment ID for logging
-
-        Returns:
-            Dict with evaluation results
-        """
-        system_role = get_system_role()
-        base_prompt = get_base_prompt()
-        dimensions = get_default_dimensions()
+    ) -> tuple[Dict[str, Any], int]:
+        """Run dimension evaluation. Returns (parsed_result, reasoning_tokens).
+        Versioned via `self.config.prompt_version`."""
+        ne_cfg = get_narrative_evaluation_config_v(self.config.prompt_version)
+        system_role = ne_cfg.get("system_role", "").strip() or get_system_role()
+        base_prompt = ne_cfg.get("base_prompt", "").strip() or get_base_prompt()
+        dimensions = ne_cfg.get("dimensions", []) or get_default_dimensions()
 
         # Build the full prompt
         dimension_descriptions = []
@@ -347,13 +399,26 @@ class BatchProcessor:
                     f"- **{dim['name']}**: {dim['definition']} (Score range: {dim['min']}-{dim['max']})"
                 )
 
+        # Output instruction depends on prompt version: original asks for
+        # scores+explanations; simplified asks for scores only.
+        if self.config.prompt_version == "simplified_v1":
+            output_instruction = (
+                "Output a JSON object with the dimension snake_case names as keys "
+                "and the integer score as values. Do not include any other fields, "
+                "explanations, or commentary."
+            )
+        else:
+            output_instruction = (
+                "Please respond in JSON format with scores and explanations for each dimension."
+            )
+
         full_prompt = f"""{base_prompt}
 
 Please analyze the following narrative and provide scores for these dimensions as specified:
 
 {chr(10).join(dimension_descriptions)}
 
-Please respond in JSON format with scores and explanations for each dimension.
+{output_instruction}
 
 Patient narrative:
 {narrative_text}
@@ -364,12 +429,16 @@ Patient narrative:
             {"role": "user", "content": full_prompt},
         ]
 
-        response = self.openai_client.create_completion(
-            messages=messages,
-            model=self.config.model,
-            temperature=self.config.temperature,
-            max_tokens=self.config.max_tokens,
-            response_format="json_object",
+        # Retry dimensions on transient errors; auth/model errors raise immediately.
+        response = self._call_llm_with_retry(
+            lambda: self.openai_client.create_completion(
+                messages=messages,
+                model=self.config.model,
+                temperature=self.config.temperature,
+                max_tokens=self.config.max_tokens,
+                response_format="json_object",
+            ),
+            label="dimensions",
         )
 
         # Save request/response
@@ -381,6 +450,7 @@ Patient narrative:
 
         # Parse response
         content = response.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+        reasoning_tokens = int(response.get("reasoning_tokens") or 0)
 
         if content:
             try:
@@ -393,55 +463,92 @@ Patient narrative:
                     content = content[:-3]
                 content = content.strip()
 
-                return json.loads(content)
+                return json.loads(content), reasoning_tokens
             except json.JSONDecodeError as e:
                 logger.warning(f"Failed to parse dimension response: {e}")
-                return {"error": str(e), "raw_content": content[:500]}
+                return {"error": str(e), "raw_content": content[:500]}, reasoning_tokens
 
-        return {"error": "Empty response"}
+        return {"error": "Empty response"}, reasoning_tokens
+
+    def _call_llm_with_retry(self, fn: Callable[[], Any], *, label: str) -> Any:
+        """Call an LLM completion `fn` with retry on transient Bedrock errors.
+
+        BedrockAuthError raises immediately so the runner can halt the batch.
+        BedrockModelError raises immediately (programming bug, not transient).
+        Generic exceptions are treated as transient up to `max_retries`.
+        """
+        delay = self.config.retry_delay
+        last_exc: Optional[Exception] = None
+        for attempt in range(1, self.config.max_retries + 1):
+            try:
+                return fn()
+            except BedrockAuthError:
+                raise  # halt batch immediately — caller will save checkpoint
+            except BedrockModelError as e:
+                logger.error("[%s] model rejected request (not retried): %s", label, e)
+                raise
+            except (BedrockTransientError, Exception) as e:  # noqa: BLE001
+                last_exc = e
+                logger.warning(
+                    "[%s] attempt %d/%d failed: %s",
+                    label,
+                    attempt,
+                    self.config.max_retries,
+                    e,
+                )
+                if attempt < self.config.max_retries:
+                    time.sleep(delay)
+                    delay *= 2
+        assert last_exc is not None
+        raise last_exc
 
     def _run_questionnaire_with_retry(
         self,
         narrative_text: str,
         questionnaire_type: str,
     ) -> QuestionnaireResult:
-        """
-        Run a questionnaire with retry logic.
+        """Run a questionnaire with retry logic, using the configured prompt
+        version. Bedrock auth errors propagate to the caller so the batch halts."""
+        prompts = get_questionnaire_prompt(
+            questionnaire_type, version=self.config.prompt_version
+        )
 
-        Args:
-            narrative_text: The pain narrative text
-            questionnaire_type: One of 'PCS', 'BPI-IS', 'TSK-11SV'
+        def _do_call() -> QuestionnaireResult:
+            return run_questionnaire(
+                narrative=narrative_text,
+                questionnaire_type=questionnaire_type,
+                openai_client=self.openai_client,
+                model=self.config.model,
+                temperature=self.config.temperature,
+                system_role=prompts.get("system_role"),
+                instructions=prompts.get("instructions"),
+                max_tokens=self.config.max_tokens,
+            )
 
-        Returns:
-            QuestionnaireResult
-        """
-        prompts = get_questionnaire_prompt(questionnaire_type)
+        # run_questionnaire catches Exception internally and returns
+        # QuestionnaireResult(success=False, error=...). But it doesn't catch
+        # BedrockAuthError because that subclasses Exception. So a BedrockAuthError
+        # raised inside the client will be caught by run_questionnaire's
+        # except Exception and turned into a non-success result with the
+        # error message. We re-raise BedrockAuthError ourselves by checking the
+        # error message; that's brittle but minimally invasive.
+        result: Optional[QuestionnaireResult] = None
+        for attempt in range(1, self.config.max_retries + 1):
+            result = _do_call()
+            if result.success:
+                return result
+            # Detect auth failure on the error string and halt the batch.
+            err_text = (result.error or "").lower()
+            if any(s in err_text for s in ("bearer token", "accessdenied", "expired", "invalid api key")):
+                raise BedrockAuthError(result.error or "auth failure during questionnaire")
+            logger.warning(
+                "%s attempt %d/%d failed: %s",
+                questionnaire_type, attempt, self.config.max_retries, result.error,
+            )
+            if attempt < self.config.max_retries:
+                time.sleep(self.config.retry_delay * (2 ** (attempt - 1)))
 
-        for attempt in range(self.config.max_retries):
-            try:
-                result = run_questionnaire(
-                    narrative=narrative_text,
-                    questionnaire_type=questionnaire_type,
-                    openai_client=self.openai_client,
-                    model=self.config.model,
-                    temperature=self.config.temperature,
-                    system_role=prompts.get("system_role"),
-                    instructions=prompts.get("instructions"),
-                    max_tokens=self.config.max_tokens,
-                )
-
-                if result.success:
-                    return result
-
-                logger.warning(f"{questionnaire_type} attempt {attempt + 1} failed: {result.error}")
-
-            except Exception as e:
-                logger.warning(f"{questionnaire_type} attempt {attempt + 1} exception: {str(e)}")
-
-            if attempt < self.config.max_retries - 1:
-                time.sleep(self.config.retry_delay)
-
-        # Return the last result even if failed
+        assert result is not None
         return result
 
     def _save_questionnaire_result(
@@ -531,10 +638,15 @@ Patient narrative:
             experiment_id=experiment_id,
         )
 
+        total_reasoning_tokens = 0
+
         # 1. Dimension evaluation
         if self.config.include_dimensions:
             try:
-                dim_result = self._run_dimension_evaluation(narrative_text, experiment_id)
+                dim_result, dim_reasoning_tokens = self._run_dimension_evaluation(
+                    narrative_text, experiment_id
+                )
+                total_reasoning_tokens += dim_reasoning_tokens
                 result.dimension_success = "error" not in dim_result
                 result.dimension_result = dim_result
 
@@ -557,6 +669,9 @@ Patient narrative:
                     parsed_answers=result.dimension_success,
                 )
 
+            except BedrockAuthError:
+                # Halt the batch — refreshing credentials is the only recourse.
+                raise
             except Exception as e:
                 result.dimension_error = str(e)
                 logger.error(f"Dimension evaluation failed: {e}")
@@ -566,6 +681,9 @@ Patient narrative:
         # 2. PCS questionnaire
         if self.config.include_pcs:
             result.pcs_result = self._run_questionnaire_with_retry(narrative_text, "PCS")
+            total_reasoning_tokens += int(
+                (result.pcs_result.raw_response or {}).get("reasoning_tokens") or 0
+            )
             result.pcs_questionnaire_id = self._save_questionnaire_result(
                 result.pcs_result, "PCS", experiment_id, group_id, narrative_id, user_id
             )
@@ -574,6 +692,9 @@ Patient narrative:
         # 3. BPI-IS questionnaire
         if self.config.include_bpi_is:
             result.bpi_is_result = self._run_questionnaire_with_retry(narrative_text, "BPI-IS")
+            total_reasoning_tokens += int(
+                (result.bpi_is_result.raw_response or {}).get("reasoning_tokens") or 0
+            )
             result.bpi_is_questionnaire_id = self._save_questionnaire_result(
                 result.bpi_is_result, "BPI-IS", experiment_id, group_id, narrative_id, user_id
             )
@@ -582,10 +703,19 @@ Patient narrative:
         # 4. TSK-11SV questionnaire
         if self.config.include_tsk_11sv:
             result.tsk_11sv_result = self._run_questionnaire_with_retry(narrative_text, "TSK-11SV")
+            total_reasoning_tokens += int(
+                (result.tsk_11sv_result.raw_response or {}).get("reasoning_tokens") or 0
+            )
             result.tsk_11sv_questionnaire_id = self._save_questionnaire_result(
                 result.tsk_11sv_result, "TSK-11SV", experiment_id, group_id, narrative_id, user_id
             )
             time.sleep(self.config.delay_between_calls)
+
+        # Persist aggregate reasoning-token count for cost reconstruction.
+        if total_reasoning_tokens > 0:
+            self.db_manager.update_experiment_status(
+                experiment_id, reasoning_tokens=total_reasoning_tokens
+            )
 
         return result
 
@@ -648,10 +778,14 @@ Patient narrative:
         """
         results: List[NarrativeEvaluationResult] = []
         processed_ids: List[int] = []
+        consecutive_failures = 0
+
+        # Pre-flight: credentials, model access. Raises with a clear message
+        # before any DB rows are created.
+        self.preflight()
 
         # Load checkpoint if resuming
         checkpoint = self._load_checkpoint() if resume else {}
-        skip_until_id = None
 
         if checkpoint and resume:
             processed_ids = checkpoint.get("processed_ids", [])
@@ -672,75 +806,102 @@ Patient narrative:
 
         git_sha = get_git_sha()
 
-        for idx, row in narratives_df.iterrows():
-            narrative_text = row[narrative_column]
+        try:
+            for idx, row in narratives_df.iterrows():
+                narrative_text = row[narrative_column]
 
-            # Skip if already processed (resume mode)
-            if idx in processed_ids:
-                continue
+                # Skip if already processed (resume mode)
+                if idx in processed_ids:
+                    continue
 
-            self.progress.current_narrative_id = idx
-            self._notify_progress()
+                self.progress.current_narrative_id = idx
+                self._notify_progress()
 
-            try:
-                # Create narrative record
-                narrative_id = self.create_narrative_record(narrative_text, user_id)
+                try:
+                    # Create narrative record
+                    narrative_id = self.create_narrative_record(narrative_text, user_id)
 
-                # Create experiment record
-                experiment_id = self.db_manager.register_new_experiment(
-                    {
-                        "experiments_group_id": group_id,
-                        "user_id": user_id,
-                        "narrative_id": narrative_id,
-                        "model_provider": "openai",
-                        "model": self.config.model,
-                        "exp_type": "batch",
-                        "repo_sha": git_sha,
-                        "succeeded": False,
-                        "parsed_answers": False,
-                        "calculated_metrics": False,
-                    }
-                )
+                    # Create experiment record
+                    experiment_id = self.db_manager.register_new_experiment(
+                        {
+                            "experiments_group_id": group_id,
+                            "user_id": user_id,
+                            "narrative_id": narrative_id,
+                            "model_provider": self.config.model_provider,
+                            "model": self.config.model,
+                            "exp_type": "batch",
+                            "repo_sha": git_sha,
+                            "succeeded": False,
+                            "parsed_answers": False,
+                            "calculated_metrics": False,
+                            "prompt_version": self.config.prompt_version,
+                        }
+                    )
 
-                # Process narrative
-                result = self.process_single_narrative(
-                    narrative_text=narrative_text,
-                    narrative_id=narrative_id,
-                    experiment_id=experiment_id,
-                    group_id=group_id,
-                    user_id=user_id,
-                )
+                    # Process narrative
+                    result = self.process_single_narrative(
+                        narrative_text=narrative_text,
+                        narrative_id=narrative_id,
+                        experiment_id=experiment_id,
+                        group_id=group_id,
+                        user_id=user_id,
+                    )
 
-                results.append(result)
-                processed_ids.append(idx)
+                    results.append(result)
+                    processed_ids.append(idx)
 
-                # Update progress
-                self.progress.processed += 1
-                if result.dimension_success or (result.pcs_result and result.pcs_result.success):
-                    self.progress.successful += 1
-                else:
+                    # Update progress and consecutive-failure counter
+                    self.progress.processed += 1
+                    succeeded = result.dimension_success or (
+                        result.pcs_result and result.pcs_result.success
+                    )
+                    if succeeded:
+                        self.progress.successful += 1
+                        consecutive_failures = 0
+                    else:
+                        self.progress.failed += 1
+                        consecutive_failures += 1
+
+                    self._notify_progress()
+
+                    # Save checkpoint periodically
+                    if self.progress.processed % self.config.checkpoint_interval == 0:
+                        self._save_checkpoint(processed_ids, group_id)
+
+                    logger.info(
+                        f"Processed {self.progress.processed}/{self.progress.total}: "
+                        f"narrative_id={narrative_id}, experiment_id={experiment_id}"
+                    )
+
+                    # Tripwire: bail if too many consecutive narratives have failed.
+                    if consecutive_failures >= self.config.consecutive_failure_threshold:
+                        logger.error(
+                            "Aborting batch: %d consecutive failures (threshold=%d). "
+                            "Inspect the log for the root cause; re-run with --resume after fixing.",
+                            consecutive_failures,
+                            self.config.consecutive_failure_threshold,
+                        )
+                        raise RuntimeError(
+                            f"Aborting after {consecutive_failures} consecutive narrative failures"
+                        )
+
+                except BedrockAuthError as e:
+                    logger.error(
+                        "Bedrock auth failure mid-batch: %s. Save state and stop; "
+                        "refresh the bearer token in config.yaml and re-run with --resume.",
+                        e,
+                    )
+                    raise  # propagate after the finally-block saves the checkpoint
+                except Exception as e:
+                    logger.error(f"Failed to process narrative at index {idx}: {e}")
+                    self.progress.processed += 1
                     self.progress.failed += 1
-
-                self._notify_progress()
-
-                # Save checkpoint periodically
-                if self.progress.processed % self.config.checkpoint_interval == 0:
-                    self._save_checkpoint(processed_ids, group_id)
-
-                logger.info(
-                    f"Processed {self.progress.processed}/{self.progress.total}: "
-                    f"narrative_id={narrative_id}, experiment_id={experiment_id}"
-                )
-
-            except Exception as e:
-                logger.error(f"Failed to process narrative at index {idx}: {e}")
-                self.progress.processed += 1
-                self.progress.failed += 1
-                processed_ids.append(idx)
-                self._notify_progress()
-
-        # Final checkpoint save
-        self._save_checkpoint(processed_ids, group_id)
+                    consecutive_failures += 1
+                    processed_ids.append(idx)
+                    self._notify_progress()
+        finally:
+            # Always save final checkpoint, even on abort
+            self._save_checkpoint(processed_ids, group_id)
 
         # Mark group as concluded
         self.db_manager.update_experiment_group(
@@ -870,6 +1031,10 @@ Patient narrative:
         """
         results: List[NarrativeEvaluationResult] = []
         processed_ids: List[int] = []
+        consecutive_failures = 0
+
+        # Pre-flight: credentials, model access. Halts before any DB writes.
+        self.preflight()
 
         # Load checkpoint if resuming
         checkpoint = self._load_checkpoint() if resume else {}
@@ -894,77 +1059,109 @@ Patient narrative:
         git_sha = get_git_sha()
 
         logger.info(f"Starting batch with {len(narratives)} existing narratives, run_number={run_number}")
-        logger.info(f"Using model: {self.config.model}")
+        logger.info(
+            "Using provider=%s model=%s prompt_version=%s thinking=%s",
+            self.config.model_provider,
+            self.config.model,
+            self.config.prompt_version,
+            self.config.thinking_enabled,
+        )
 
-        for idx, narr_data in enumerate(narratives):
-            narrative_id = narr_data["narrative_id"]
-            narrative_text = narr_data["narrative_text"]
+        try:
+            for idx, narr_data in enumerate(narratives):
+                narrative_id = narr_data["narrative_id"]
+                narrative_text = narr_data["narrative_text"]
 
-            # Skip if already processed (resume mode)
-            if narrative_id in processed_ids:
-                continue
+                # Skip if already processed (resume mode)
+                if narrative_id in processed_ids:
+                    continue
 
-            self.progress.current_narrative_id = narrative_id
-            self._notify_progress()
+                self.progress.current_narrative_id = narrative_id
+                self._notify_progress()
 
-            try:
-                # Create experiment record (reusing existing narrative_id)
-                # The 'repeated' field tracks the run number
-                experiment_id = self.db_manager.register_new_experiment(
-                    {
-                        "experiments_group_id": group_id,
-                        "user_id": user_id,
-                        "narrative_id": narrative_id,
-                        "model_provider": "openai",
-                        "model": self.config.model,
-                        "exp_type": "batch_repetition",
-                        "repo_sha": git_sha,
-                        "repeated": run_number,
-                        "succeeded": False,
-                        "parsed_answers": False,
-                        "calculated_metrics": False,
-                    }
-                )
+                try:
+                    # Create experiment record (reusing existing narrative_id).
+                    # The 'repeated' field tracks the run number; prompt_version
+                    # records which prompt set this row used.
+                    experiment_id = self.db_manager.register_new_experiment(
+                        {
+                            "experiments_group_id": group_id,
+                            "user_id": user_id,
+                            "narrative_id": narrative_id,
+                            "model_provider": self.config.model_provider,
+                            "model": self.config.model,
+                            "exp_type": "batch_repetition",
+                            "repo_sha": git_sha,
+                            "repeated": run_number,
+                            "succeeded": False,
+                            "parsed_answers": False,
+                            "calculated_metrics": False,
+                            "prompt_version": self.config.prompt_version,
+                        }
+                    )
 
-                # Process narrative
-                result = self.process_single_narrative(
-                    narrative_text=narrative_text,
-                    narrative_id=narrative_id,
-                    experiment_id=experiment_id,
-                    group_id=group_id,
-                    user_id=user_id,
-                )
+                    # Process narrative
+                    result = self.process_single_narrative(
+                        narrative_text=narrative_text,
+                        narrative_id=narrative_id,
+                        experiment_id=experiment_id,
+                        group_id=group_id,
+                        user_id=user_id,
+                    )
 
-                results.append(result)
-                processed_ids.append(narrative_id)
+                    results.append(result)
+                    processed_ids.append(narrative_id)
 
-                # Update progress
-                self.progress.processed += 1
-                if result.dimension_success or (result.pcs_result and result.pcs_result.success):
-                    self.progress.successful += 1
-                else:
+                    # Update progress + tripwire counter
+                    self.progress.processed += 1
+                    succeeded = result.dimension_success or (
+                        result.pcs_result and result.pcs_result.success
+                    )
+                    if succeeded:
+                        self.progress.successful += 1
+                        consecutive_failures = 0
+                    else:
+                        self.progress.failed += 1
+                        consecutive_failures += 1
+
+                    self._notify_progress()
+
+                    # Save checkpoint periodically
+                    if self.progress.processed % self.config.checkpoint_interval == 0:
+                        self._save_checkpoint(processed_ids, group_id)
+
+                    logger.info(
+                        f"Processed {self.progress.processed}/{self.progress.total}: "
+                        f"narrative_id={narrative_id}, experiment_id={experiment_id}, run={run_number}"
+                    )
+
+                    if consecutive_failures >= self.config.consecutive_failure_threshold:
+                        logger.error(
+                            "Aborting batch: %d consecutive failures (threshold=%d). "
+                            "Re-run with --resume after diagnosing the root cause.",
+                            consecutive_failures,
+                            self.config.consecutive_failure_threshold,
+                        )
+                        raise RuntimeError(
+                            f"Aborting after {consecutive_failures} consecutive narrative failures"
+                        )
+
+                except BedrockAuthError as e:
+                    logger.error(
+                        "Bedrock auth failure mid-batch: %s. Refresh the bearer "
+                        "token in config.yaml and re-run with --resume.",
+                        e,
+                    )
+                    raise
+                except Exception as e:
+                    logger.error(f"Failed to process narrative_id={narrative_id}: {e}")
+                    self.progress.processed += 1
                     self.progress.failed += 1
-
-                self._notify_progress()
-
-                # Save checkpoint periodically
-                if self.progress.processed % self.config.checkpoint_interval == 0:
-                    self._save_checkpoint(processed_ids, group_id)
-
-                logger.info(
-                    f"Processed {self.progress.processed}/{self.progress.total}: "
-                    f"narrative_id={narrative_id}, experiment_id={experiment_id}, run={run_number}"
-                )
-
-            except Exception as e:
-                logger.error(f"Failed to process narrative_id={narrative_id}: {e}")
-                self.progress.processed += 1
-                self.progress.failed += 1
-                processed_ids.append(narrative_id)
-                self._notify_progress()
-
-        # Final checkpoint save
-        self._save_checkpoint(processed_ids, group_id)
+                    consecutive_failures += 1
+                    processed_ids.append(narrative_id)
+                    self._notify_progress()
+        finally:
+            self._save_checkpoint(processed_ids, group_id)
 
         # Mark group as concluded
         self.db_manager.update_experiment_group(
