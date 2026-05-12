@@ -1,0 +1,232 @@
+# Simplified Prompts (version: simplified_v1)
+#
+# Companion to `default_prompts.yaml`. Used by the revision experiments
+# (DeepSeek-R1, Claude Sonnet 4.5 with extended thinking) when the runner is
+# invoked with --prompt-version simplified_v1.
+#
+# Differences vs the original (default_prompts.yaml):
+# - System roles compressed to a single short paragraph.
+# - "Explain your reasoning" / "Write free-text fields" instructions removed.
+# - Output JSON schema is answer-values-only: drops `persona.*` and `model_reasoning`.
+# - Validated Spanish question text is preserved verbatim.
+#
+# Rationale: the simplified plan in docs/revision/SIMPLIFIED_EXPERIMENT_PLAN.md
+# decided to not use human evaluators to score LLM explanations for the
+# revision, so the LLM no longer needs to produce explanations.
+
+prompt_version: simplified_v1
+
+# ============================================================================
+# Narrative Evaluation Prompts
+# ============================================================================
+
+narrative_evaluation:
+  system_role: |
+    You are a clinical assistant analysing a chronic-pain narrative. Return only the structured fields in the response schema. Do not include explanations, justifications, or commentary outside the schema. If a value cannot be determined from the narrative, return null.
+
+  base_prompt: |
+    Score each dimension based on what the narrative actually describes; do not inflate. Output JSON only, conforming exactly to the schema.
+
+  dimensions:
+    - name: "Severidad del dolor"
+      definition: 'La magnitud percibida del problema de salud descrito por la persona en relación con el dolor y el sufrimiento general, donde 0 representa "nada" y 10 "el nivel máximo".'
+      min: 0
+      max: 10
+      active: true
+
+    - name: "Discapacidad"
+      definition: 'El grado percibido en que el problema de salud descrito por la persona altera sus actividades habituales y su vida, siendo 0 "nada" y 10 "el nivel máximo posible"'
+      min: 0
+      max: 10
+      active: true
+
+  # Output JSON schema (for reference; runner concatenates this with base_prompt and dimensions):
+  output_schema: |
+    Output JSON only, with this schema and no additional fields:
+    {
+      "severidad_del_dolor": <integer 0-10 or null>,
+      "discapacidad": <integer 0-10 or null>
+    }
+
+# ============================================================================
+# Questionnaire Prompts
+# ============================================================================
+
+questionnaires:
+  PCS:
+    system_role: |
+      You are answering the Pain Catastrophizing Scale (PCS) on behalf of the person whose pain narrative is provided. Return only the score values; no explanations, no commentary outside the JSON.
+
+    instructions: |
+      1. Read the pain narrative below.
+      2. Answer each item as the person in the narrative would, using the scale provided.
+      3. Output JSON only, conforming exactly to the schema. Do not include any explanation outside the JSON.
+
+      #### **PCS Questionnaire Instruction**
+
+      Estamos interesados en lo que piensas y sientes cuando te duele alguna cosa. A continuación hay 13 frases sobre diferentes pensamientos y sentimientos que puedes tener cuando tienes dolor. Dí si lo piensas o lo sientes cuando tienes dolor utilizando las siguientes opciones:
+         * 0: Nada
+         * 1: Algo
+         * 2: Bastante
+         * 3: Mucho
+         * 4: Muchísimo
+
+      1. Estoy preocupado todo el tiempo pensando si el dolor desaparecerá
+      2. Siento que ya no puedo más.
+      3. Es terrible y pienso que esto nunca va a mejorar
+      4. Esto es horrible y siento que esto es más fuerte que yo
+      5. Siento que no puedo soportarlo más
+      6. Temo que el dolor empeore.
+      7. No dejo de pensar en otras situaciones en las que experimento dolor
+      8. Deseo desesperadamente que desaparezca el dolor
+      9. No puedo apartar el dolor de mi mente
+      10. No dejo de pensar en lo mucho que me duele
+      11. No dejo de pensar en lo mucho que deseo que desaparezca el dolor
+      12. No hay nada que pueda hacer para aliviar la intensidad del dolor
+      13. Me pregunto si me pude pasar algo grave
+      ---
+      #### **Pain narrative**
+      {narrative}
+      ---
+
+      **Output format (JSON only, no commentary, no preamble):**
+      ```json
+      {
+        "questionnaire_id": "PCS",
+        "scores": {
+          "1": <0-4>,
+          "2": <0-4>,
+          "3": <0-4>,
+          "4": <0-4>,
+          "5": <0-4>,
+          "6": <0-4>,
+          "7": <0-4>,
+          "8": <0-4>,
+          "9": <0-4>,
+          "10": <0-4>,
+          "11": <0-4>,
+          "12": <0-4>,
+          "13": <0-4>
+        }
+      }
+      ```
+
+  BPI-IS:
+    system_role: |
+      You are answering the Brief Pain Inventory (BPI) on behalf of the person whose pain narrative is provided. Return only the score values; no explanations, no commentary outside the JSON.
+
+    instructions: |
+      1. Read the pain narrative below.
+      2. Answer each item as the person in the narrative would, using the scale provided.
+      3. Output JSON only, conforming exactly to the schema. Do not include any explanation outside the JSON.
+
+      #### **BPI Questionnaire**
+
+      **Q1. Interferencia del dolor (última semana)**
+      Marque el número que mejor describa hasta qué punto el dolor le ha perturbado en los siguientes aspectos de la vida, durante LA ÚLTIMA SEMANA, siendo 0 = "No le perturba nada" y 10 = "Le perturba totalmente":
+
+      - BPI_Q1_1: Actividad general [0..10]
+      - BPI_Q1_2: Estado de ánimo [0..10]
+      - BPI_Q1_3: Capacidad de andar [0..10]
+      - BPI_Q1_5: Relaciones con otras personas [0..10]
+      - BPI_Q1_6: Sueño [0..10]
+      - BPI_Q1_7: Disfrute de la vida [0..10]
+
+      **Q2. Peor dolor (últimas 24 horas)**
+      Puntúe EL PEOR DOLOR QUE HA SENTIDO EN LAS ÚLTIMAS 24 HORAS del 0 al 10, donde 0 representa "sin dolor" y 10 representa "el peor dolor que se pueda imaginar":
+
+      - BPI_Q2_8: Peor Dolor [0..10]
+
+      **Q3. Dolor más leve (últimas 24 horas)**
+      El DOLOR MÁS LEVE QUE HA SENTIDO EN LAS ÚLTIMAS 24 HORAS del 0 al 10, donde 0 representa "sin dolor" y 10 representa "el peor dolor que se pueda imaginar":
+
+      - BPI_Q3_9: Dolor Más Leve [0..10]
+
+      **Q4. Dolor promedio (últimas 24 horas)**
+      El DOLOR PROMEDIO EN LAS ÚLTIMAS 24 HORAS del 0 al 10, donde 0 representa "sin dolor" y 10 representa "el peor dolor que se pueda imaginar":
+
+      - BPI_Q4_10: Dolor Promedio [0..10]
+
+      **Q5. Dolor ahora mismo**
+      Puntúe EL DOLOR AHORA MISMO del 0 al 10, donde 0 representa "sin dolor" y 10 representa "el peor dolor que se pueda imaginar":
+
+      - BPI_Q5_11: Dolor Ahora Mismo [0..10]
+      ---
+      #### **Pain narrative**
+      {narrative}
+      ---
+
+      **Output format (JSON only, no commentary, no preamble):**
+      ```json
+      {
+        "questionnaire_id": "BPI-IS",
+        "responses": [
+          {"code": "BPI_Q1_1", "value": <0-10>},
+          {"code": "BPI_Q1_2", "value": <0-10>},
+          {"code": "BPI_Q1_3", "value": <0-10>},
+          {"code": "BPI_Q1_5", "value": <0-10>},
+          {"code": "BPI_Q1_6", "value": <0-10>},
+          {"code": "BPI_Q1_7", "value": <0-10>},
+          {"code": "BPI_Q2_8", "value": <0-10>},
+          {"code": "BPI_Q3_9", "value": <0-10>},
+          {"code": "BPI_Q4_10", "value": <0-10>},
+          {"code": "BPI_Q5_11", "value": <0-10>}
+        ]
+      }
+      ```
+
+  TSK-11SV:
+    system_role: |
+      You are answering the Tampa Scale of Kinesiophobia 11-item Short Version (TSK-11SV) on behalf of the person whose pain narrative is provided. Return only the score values; no explanations, no commentary outside the JSON.
+
+    instructions: |
+      1. Read the pain narrative below.
+      2. Answer each item as the person in the narrative would, using the scale provided.
+      3. Output JSON only, conforming exactly to the schema. Do not include any explanation outside the JSON.
+
+      #### **TSK-11SV Questionnaire Instruction**
+
+      **Instrucciones:** A continuación se enumeran una serie de afirmaciones. Lo que usted ha de hacer es indicar hasta qué punto eso ocurre en su caso según la siguiente escala:
+
+      **Escala de respuesta:**
+      - 1 = "Totalmente en desacuerdo"
+      - 2 = "En desacuerdo"
+      - 3 = "De acuerdo"
+      - 4 = "Totalmente de acuerdo"
+
+      **Afirmaciones:**
+      - TSK_01: Tengo miedo de lesionarme si hago ejercicio físico [1..4]
+      - TSK_02: Si me dejara vencer por el dolor, el dolor aumentaría [1..4]
+      - TSK_03: Mi cuerpo me está diciendo que tengo algo serio [1..4]
+      - TSK_04: Tener dolor siempre quiere decir que en el cuerpo hay una lesión [1..4]
+      - TSK_05: Tengo miedo a lesionarme sin querer [1..4]
+      - TSK_06: Lo más seguro para evitar que aumente el dolor es tener cuidado y no hacer movimientos innecesarios [1..4]
+      - TSK_07: No me dolería tanto si no tuviese algo serio en mi cuerpo [1..4]
+      - TSK_08: El dolor me dice cuándo debo parar la actividad para no lesionarme [1..4]
+      - TSK_09: No es seguro para una persona con mi enfermedad hacer actividades físicas [1..4]
+      - TSK_10: No puedo hacer todo lo que la gente normal hace porque me podría lesionar con facilidad [1..4]
+      - TSK_11: Nadie debería hacer actividades físicas cuando tiene dolor [1..4]
+      ---
+      #### **Pain narrative**
+      {narrative}
+      ---
+
+      **Output format (JSON only, no commentary, no preamble):**
+      ```json
+      {
+        "questionnaire_id": "TSK-11SV",
+        "responses": [
+          {"code": "TSK_01", "value": <1-4>},
+          {"code": "TSK_02", "value": <1-4>},
+          {"code": "TSK_03", "value": <1-4>},
+          {"code": "TSK_04", "value": <1-4>},
+          {"code": "TSK_05", "value": <1-4>},
+          {"code": "TSK_06", "value": <1-4>},
+          {"code": "TSK_07", "value": <1-4>},
+          {"code": "TSK_08", "value": <1-4>},
+          {"code": "TSK_09", "value": <1-4>},
+          {"code": "TSK_10", "value": <1-4>},
+          {"code": "TSK_11", "value": <1-4>}
+        ]
+      }
+      ```

@@ -17,32 +17,38 @@ logger = logging.getLogger(__name__)
 # Path to the default prompts YAML file
 PROMPTS_CONFIG_FILE = Path(__file__).parent / "default_prompts.yaml"
 
+# Map of prompt-version name -> YAML file. "original" is what was used in the
+# published GPT-5 baseline; "simplified_v1" is the revision-experiment variant.
+PROMPT_VERSION_FILES: Dict[str, Path] = {
+    "original": PROMPTS_CONFIG_FILE,
+    "simplified_v1": Path(__file__).parent / "simplified_v1_prompts.yaml",
+}
+
+
+@lru_cache(maxsize=4)
+def load_prompts_version(version: str = "original") -> Dict[str, Any]:
+    """Load a versioned prompts configuration.
+
+    `version="original"` returns the pre-revision baseline used by the published
+    GPT-5 experiments (groups 38, 39, 40); `version="simplified_v1"` returns the
+    structured-answer-only variant used by the DeepSeek-R1 / Claude Sonnet 4.5
+    revision runs.
+    """
+    if version not in PROMPT_VERSION_FILES:
+        raise ValueError(
+            f"Unknown prompt version {version!r}; known versions: {list(PROMPT_VERSION_FILES)}"
+        )
+    path = PROMPT_VERSION_FILES[version]
+    with open(path, "r", encoding="utf-8") as f:
+        config = yaml.safe_load(f)
+    logger.info(f"Loaded prompts version {version!r} from {path}")
+    return config
+
 
 @lru_cache(maxsize=1)
 def load_prompts_config() -> Dict[str, Any]:
-    """
-    Load the default prompts configuration from YAML file.
-
-    This function is cached to avoid repeated file I/O operations.
-
-    Returns:
-        Dict containing all prompt configurations
-
-    Raises:
-        FileNotFoundError: If the prompts config file doesn't exist
-        yaml.YAMLError: If the YAML file is malformed
-    """
-    try:
-        with open(PROMPTS_CONFIG_FILE, "r", encoding="utf-8") as f:
-            config = yaml.safe_load(f)
-        logger.info(f"Loaded prompts configuration from {PROMPTS_CONFIG_FILE}")
-        return config
-    except FileNotFoundError:
-        logger.error(f"Prompts configuration file not found: {PROMPTS_CONFIG_FILE}")
-        raise
-    except yaml.YAMLError as e:
-        logger.error(f"Error parsing prompts YAML file: {e}")
-        raise
+    """Backward-compatible loader: returns the original-version prompts."""
+    return load_prompts_version("original")
 
 
 def get_narrative_evaluation_config() -> Dict[str, Any]:
@@ -181,18 +187,26 @@ def get_questionnaire_prompts() -> Dict[str, Dict[str, str]]:
     return result
 
 
-def get_questionnaire_prompt(questionnaire_type: str) -> Optional[Dict[str, str]]:
-    """
-    Get prompts for a specific questionnaire type.
+def get_questionnaire_prompt(questionnaire_type: str, version: str = "original") -> Optional[Dict[str, str]]:
+    """Get prompts for a specific questionnaire type and prompt version.
 
     Args:
         questionnaire_type: One of 'PCS', 'BPI-IS', 'TSK-11SV'
-
-    Returns:
-        Dict with 'system_role' and 'instructions' keys, or None if not found
+        version: prompt version key from PROMPT_VERSION_FILES (default: "original")
     """
-    prompts = get_questionnaire_prompts()
-    return prompts.get(questionnaire_type)
+    config = load_prompts_version(version)
+    q = config.get("questionnaires", {}).get(questionnaire_type)
+    if not q:
+        return None
+    return {
+        "system_role": q.get("system_role", "").strip(),
+        "instructions": q.get("instructions", "").strip(),
+    }
+
+
+def get_narrative_evaluation_config_v(version: str = "original") -> Dict[str, Any]:
+    """Versioned variant of get_narrative_evaluation_config."""
+    return load_prompts_version(version).get("narrative_evaluation", {})
 
 
 def get_prompt_library() -> Dict[str, Dict[str, Any]]:
