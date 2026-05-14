@@ -38,7 +38,7 @@ which are sensitive personal data. The repository structure reflects this:
 - `config.yaml.example` is the only file in the repo that describes the shape
   of the credentials; it contains placeholder values.
 - Database migrations are additive where possible; the active head and
-  rollback notes are documented in `docs/consolidation/CONSOLIDATION_PLAN.md`.
+  rollback notes are documented in `docs/architecture.md`.
 
 If you find any committed file that contains a real credential, API key,
 patient identifier, or other piece of sensitive information, **report it the
