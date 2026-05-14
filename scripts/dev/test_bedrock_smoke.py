@@ -18,6 +18,7 @@ import argparse
 import logging
 import sys
 
+from pain_narratives.config.settings import get_settings
 from pain_narratives.core.bedrock_client import (
     BedrockAuthError,
     BedrockClient,
@@ -25,7 +26,6 @@ from pain_narratives.core.bedrock_client import (
     BedrockTransientError,
     inspect_bearer_token,
 )
-from pain_narratives.config.settings import get_settings
 
 _PRESETS: dict[str, dict] = {
     "deepseek-r1": {
