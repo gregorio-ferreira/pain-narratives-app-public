@@ -57,23 +57,82 @@ connection error.
 
 ## 2. systemd hardening
 
-Covered in detail in [`deployment.md`](deployment.md#systemd-service). The
-changes against the current unit:
+**Current.** [`deploy/pain-narratives.service`](../deploy/pain-narratives.service)
+is a minimal unit with `Restart=always` and no resource limits. A runaway
+Streamlit worker (leaked frame, large upload) can OOM the EC2 and take out
+sshd/journald alongside it; a startup crash restarts every 10 s indefinitely.
 
-- Add `MemoryMax=2G`, `MemoryHigh=1500M`, `CPUQuota=200%`, `TasksMax=256`,
-  `LimitNOFILE=4096`.
-- `Restart=on-failure` instead of `Restart=always`.
-- `StartLimitIntervalSec=300` + `StartLimitBurst=5` so a crash loop stops
-  filling the journal after five restarts in five minutes.
-- `NoNewPrivileges=true`, `ProtectSystem=strict`, `ProtectHome=read-only`,
-  `PrivateTmp=true`, `ReadWritePaths=<APP_ROOT>/logs <APP_ROOT>/checkpoints
-  <APP_ROOT>/data`.
-- `LogRateLimitIntervalSec=10` + `LogRateLimitBurst=200`.
-- Optional `EnvironmentFile=-/etc/pain-narratives.env` for per-host tunables.
+**Fix.** Replace the template with the hardened block below; the diff is
+limits, restart-policy ceiling, filesystem protections, and a journal rate
+limit. None of these change runtime behaviour while the app is healthy.
 
-Validate with `systemd-analyze security pain-narratives` (target exposure
-score < 5.0) and a `stress-ng` test to confirm `MemoryMax` kills the service
-rather than the EC2 OOM-killing unrelated processes.
+```ini
+[Unit]
+Description=Pain Narratives Streamlit App
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=<APP_USER>
+Group=<APP_GROUP>
+WorkingDirectory=<APP_ROOT>
+
+# --- limits ---
+MemoryMax=2G
+MemoryHigh=1500M
+CPUQuota=200%
+TasksMax=256
+LimitNOFILE=4096
+
+# --- hardening ---
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+ReadWritePaths=<APP_ROOT>/logs <APP_ROOT>/checkpoints <APP_ROOT>/data
+
+# --- restart policy ---
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+# --- environment ---
+Environment="PATH=<UV_BIN_DIR>:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="STREAMLIT_SERVER_ENABLE_STATIC_SERVING=true"
+Environment="STREAMLIT_SERVER_ENABLE_CORS=false"
+Environment="STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION=true"
+EnvironmentFile=-/etc/pain-narratives.env
+
+ExecStart=<UV_BIN_DIR>/uv run streamlit run scripts/run_app.py
+
+# --- logging ---
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=pain-narratives
+LogRateLimitIntervalSec=10
+LogRateLimitBurst=200
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Key choices:
+
+- `Restart=on-failure` rather than `always` so a clean `systemctl stop` is not
+  followed by a restart.
+- `StartLimitBurst=5` over 5 minutes stops crash-loop log explosions.
+- `ProtectSystem=strict` makes `/usr`, `/boot`, `/etc` read-only;
+  `ReadWritePaths` re-enables writes only where the app actually needs them.
+- `EnvironmentFile=-/etc/pain-narratives.env` (note the leading `-`) is
+  optional and useful for per-host tunables outside the unit file.
+
+**Validate.** `systemd-analyze security pain-narratives` (target exposure
+score < 5.0); a `stress-ng --vm 1 --vm-bytes 3G --timeout 30s` confirms
+`MemoryMax=2G` kills the service rather than the EC2 OOM-killing unrelated
+processes; a deliberate startup error confirms `StartLimitBurst=5` halts the
+crash loop after five restarts.
 
 ## 3. Streamlit caching and session reuse
 

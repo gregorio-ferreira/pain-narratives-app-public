@@ -136,82 +136,23 @@ The current Bedrock account is **730335551675** (UOC academic account, user
 
 ## `systemd` service
 
-The runtime unit is at `/etc/systemd/system/pain-narratives.service`; the
-in-repo template is [`deploy/pain-narratives.service`](../deploy/pain-narratives.service).
-A hardened configuration:
-
-```ini
-[Unit]
-Description=Pain Narratives Streamlit App
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-User=<APP_USER>
-Group=<APP_GROUP>
-WorkingDirectory=<APP_ROOT>
-
-# --- limits ---
-MemoryMax=2G
-MemoryHigh=1500M
-CPUQuota=200%
-TasksMax=256
-LimitNOFILE=4096
-
-# --- hardening ---
-NoNewPrivileges=true
-ProtectSystem=strict
-ProtectHome=read-only
-PrivateTmp=true
-ReadWritePaths=<APP_ROOT>/logs <APP_ROOT>/checkpoints <APP_ROOT>/data
-
-# --- restart policy ---
-Restart=on-failure
-RestartSec=10
-StartLimitIntervalSec=300
-StartLimitBurst=5
-
-# --- environment ---
-Environment="PATH=<UV_BIN_DIR>:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-Environment="STREAMLIT_SERVER_ENABLE_STATIC_SERVING=true"
-Environment="STREAMLIT_SERVER_ENABLE_CORS=false"
-Environment="STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION=true"
-EnvironmentFile=-/etc/pain-narratives.env
-
-ExecStart=<UV_BIN_DIR>/uv run streamlit run scripts/run_app.py
-
-# --- logging ---
-StandardOutput=journal
-StandardError=journal
-SyslogIdentifier=pain-narratives
-LogRateLimitIntervalSec=10
-LogRateLimitBurst=200
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Key choices:
-
-- `Restart=on-failure` rather than `always` so a clean `systemctl stop` is not
-  followed by a restart.
-- `StartLimitBurst=5` over 5 minutes stops crash-loop log explosions.
-- `ProtectSystem=strict` makes `/usr`, `/boot`, `/etc` read-only; `ReadWritePaths`
-  re-enables writes only where the app actually needs them.
-- `EnvironmentFile=-/etc/pain-narratives.env` (note the leading `-`) is optional
-  and useful for per-host tunables.
-
-After updating the unit:
+The runtime unit lives at `/etc/systemd/system/pain-narratives.service`. The
+in-repo template is [`deploy/pain-narratives.service`](../deploy/pain-narratives.service):
+a minimal `Restart=always` configuration with placeholders for `<APP_USER>`,
+`<APP_ROOT>`, and `<UV_BIN_DIR>`. To deploy:
 
 ```bash
+sudo cp deploy/pain-narratives.service /etc/systemd/system/
+sudo $EDITOR /etc/systemd/system/pain-narratives.service   # fill placeholders
 sudo systemctl daemon-reload
-sudo systemctl restart pain-narratives
-systemd-analyze security pain-narratives   # target exposure score < 5.0
+sudo systemctl enable --now pain-narratives
 ```
 
-For deeper rationale (memory limits, restart policy, read-write paths), see
-[`improvements.md`](improvements.md#systemd-hardening).
+For production hosts, the template should be hardened with memory limits, a
+crash-loop ceiling, and filesystem protections. The full hardened unit and the
+rationale for each directive are in
+[`improvements.md`](improvements.md#2-systemd-hardening) (Track 2 of the
+backlog).
 
 ## Post-deploy smoke test
 

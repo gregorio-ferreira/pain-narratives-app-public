@@ -65,7 +65,10 @@ The prompt is versioned as `simplified_v1` in
 
 ## Cost model
 
-Per-1M-token Bedrock pricing (May 2026):
+Per-1M-token Bedrock pricing snapshotted **May 2026**; check the AWS Bedrock
+pricing page before quoting these numbers anywhere durable. The analysis
+notebook reconstructs cost from `reasoning_tokens × current $/1M` and is the
+source of truth post-run.
 
 | Model | Input $/1M | Output $/1M |
 |---|---:|---:|
@@ -124,6 +127,9 @@ populate correctly, and (for Sonnet) the request omits `temperature`, `top_p`,
 `top_k` when thinking is enabled.
 
 ### 3. Full runs, in `tmux`
+
+The runner exposes every option below as a flag; full reference is
+`uv run python scripts/run_batch_evaluation.py --help`.
 
 DeepSeek-R1 — repeat for runs 2, 3, 4:
 
