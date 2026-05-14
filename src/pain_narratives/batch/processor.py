@@ -27,7 +27,6 @@ from pain_narratives.config.prompts import (
 from pain_narratives.core.bedrock_client import (
     BedrockAuthError,
     BedrockClient,
-    BedrockError,
     BedrockModelError,
     BedrockOpenAIAdapter,
     BedrockTransientError,
@@ -170,9 +169,9 @@ class BatchProcessor:
 
         When `config.model_provider` is `"openai"`, the OpenAI client is used
         as before. When it starts with `"bedrock"`, a `BedrockClient` is
-        constructed and wrapped in `BedrockOpenAIAdapter` so existing call
-        sites (`run_questionnaire(openai_client=self.openai_client, ...)`)
-        keep working unchanged.
+        constructed and wrapped in `BedrockOpenAIAdapter` so call sites can
+        pass `self.openai_client` to `run_questionnaire(llm_client=...)`
+        regardless of provider.
         """
         self.db_manager = db_manager or DatabaseManager()
         self.config = config or BatchConfig()
@@ -517,37 +516,24 @@ Patient narrative:
         questionnaire_type: str,
     ) -> QuestionnaireResult:
         """Run a questionnaire with retry logic, using the configured prompt
-        version. Bedrock auth errors propagate to the caller so the batch halts."""
+        version. `BedrockAuthError` propagates out of `run_questionnaire` so the
+        batch halts immediately; transient/parse failures retry."""
         prompts = get_questionnaire_prompt(questionnaire_type, version=self.config.prompt_version)
 
-        def _do_call() -> QuestionnaireResult:
-            return run_questionnaire(
+        result: Optional[QuestionnaireResult] = None
+        for attempt in range(1, self.config.max_retries + 1):
+            result = run_questionnaire(
                 narrative=narrative_text,
                 questionnaire_type=questionnaire_type,
-                openai_client=self.openai_client,
+                llm_client=self.openai_client,
                 model=self.config.model,
                 temperature=self.config.temperature,
                 system_role=prompts.get("system_role"),
                 instructions=prompts.get("instructions"),
                 max_tokens=self.config.max_tokens,
             )
-
-        # run_questionnaire catches Exception internally and returns
-        # QuestionnaireResult(success=False, error=...). But it doesn't catch
-        # BedrockAuthError because that subclasses Exception. So a BedrockAuthError
-        # raised inside the client will be caught by run_questionnaire's
-        # except Exception and turned into a non-success result with the
-        # error message. We re-raise BedrockAuthError ourselves by checking the
-        # error message; that's brittle but minimally invasive.
-        result: Optional[QuestionnaireResult] = None
-        for attempt in range(1, self.config.max_retries + 1):
-            result = _do_call()
             if result.success:
                 return result
-            # Detect auth failure on the error string and halt the batch.
-            err_text = (result.error or "").lower()
-            if any(s in err_text for s in ("bearer token", "accessdenied", "expired", "invalid api key")):
-                raise BedrockAuthError(result.error or "auth failure during questionnaire")
             logger.warning(
                 "%s attempt %d/%d failed: %s",
                 questionnaire_type,
