@@ -23,6 +23,7 @@ class BedrockConfig:
     """AWS Bedrock configuration."""
 
     aws_credentials: str
+    aws_profile: str
     aws_access_key: str
     aws_secret_key: str
     aws_region: str
@@ -133,8 +134,10 @@ class ConfigManager:
         """Get AWS Bedrock configuration."""
         config: dict[str, Any] = self._config or {}
         bedrock_data: dict[str, Any] = config.get("bedrock", {})
+        aws_profile = bedrock_data.get("aws_profile", bedrock_data.get("aws_credentials", ""))
         return BedrockConfig(
             aws_credentials=bedrock_data.get("aws_credentials", ""),
+            aws_profile=aws_profile,
             aws_access_key=bedrock_data.get("aws_access_key", ""),
             aws_secret_key=bedrock_data.get("aws_secret_key", ""),
             aws_region=bedrock_data.get("aws_region", "us-east-1"),

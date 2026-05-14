@@ -16,9 +16,10 @@ drop-in replacement for `OpenAIClient.create_completion`. Reasoning text is
 additionally exposed at top level as `reasoning_content` and the unmodified
 Bedrock response is preserved under `raw_response`.
 
-Authentication uses a Bedrock API key (bearer token). The client reads it from
-`BedrockConfig.api_key`, exports it as `AWS_BEARER_TOKEN_BEDROCK`, and lets
-boto3 pick it up natively.
+Authentication prefers AWS credentials resolved by boto3 (for example an MFA
+session profile or EC2 instance profile). If `bedrock.api_key` is configured,
+the client exports it as `AWS_BEARER_TOKEN_BEDROCK` and uses Bedrock bearer-token
+auth instead.
 """
 
 from __future__ import annotations
@@ -42,6 +43,7 @@ logger = logging.getLogger(__name__)
 # from model errors (skip and log).
 # -----------------------------------------------------------------------------
 
+
 class BedrockError(Exception):
     """Base for all Bedrock-specific errors."""
 
@@ -64,6 +66,7 @@ class BedrockModelError(BedrockError):
 # Bearer-token introspection
 # -----------------------------------------------------------------------------
 
+
 @dataclass
 class BearerTokenInfo:
     """Decoded metadata for a Bedrock API key.
@@ -81,6 +84,27 @@ class BearerTokenInfo:
         if self.expires_at is None:
             return False
         return datetime.now(timezone.utc) >= self.expires_at
+
+    def time_remaining(self) -> Optional[timedelta]:
+        if self.expires_at is None:
+            return None
+        return self.expires_at - datetime.now(timezone.utc)
+
+
+@dataclass
+class BedrockAuthStatus:
+    """Resolved Bedrock authentication status.
+
+    `expires_at = None` means the active credential source does not expose a
+    local expiry, not that it is necessarily permanent.
+    """
+
+    auth_method: str
+    region: str
+    profile_name: Optional[str] = None
+    principal_arn: Optional[str] = None
+    account_id: Optional[str] = None
+    expires_at: Optional[datetime] = None
 
     def time_remaining(self) -> Optional[timedelta]:
         if self.expires_at is None:
@@ -123,9 +147,7 @@ def is_anthropic_thinking_model(model_id: str) -> bool:
     """True when the model id is an Anthropic Claude variant that supports
     `additionalModelRequestFields.thinking` (i.e. extended thinking)."""
     return "anthropic.claude" in model_id and (
-        "claude-sonnet-4-5" in model_id
-        or "claude-opus-4" in model_id
-        or "claude-haiku-4-5" in model_id
+        "claude-sonnet-4-5" in model_id or "claude-opus-4" in model_id or "claude-haiku-4-5" in model_id
     )
 
 
@@ -136,6 +158,7 @@ def is_deepseek_reasoning_model(model_id: str) -> bool:
 # -----------------------------------------------------------------------------
 # Response parsing
 # -----------------------------------------------------------------------------
+
 
 def extract_text_and_reasoning(content_blocks: list[dict[str, Any]]) -> tuple[str, str]:
     """Scan Bedrock Converse content blocks for `text` and `reasoningContent`.
@@ -164,31 +187,33 @@ def extract_text_and_reasoning(content_blocks: list[dict[str, Any]]) -> tuple[st
 class BedrockClient:
     """Bedrock Converse API client.
 
-    Lazy-initialises a boto3 client; instances are cached per region. Reads the
-    Bedrock API key from `BedrockConfig.api_key` and exports it into
-    `AWS_BEARER_TOKEN_BEDROCK` exactly once, on first use.
+    Lazy-initialises boto3 clients; instances are cached per region. When a
+    Bedrock API key is configured, exports it into `AWS_BEARER_TOKEN_BEDROCK`.
+    Otherwise boto3 uses either `bedrock.aws_profile` / `bedrock.aws_credentials`
+    or the standard provider chain, including EC2 instance-profile credentials.
     """
 
-    def __init__(self, region: Optional[str] = None) -> None:
+    def __init__(self, region: Optional[str] = None, profile_name: Optional[str] = None) -> None:
         self.settings = get_settings()
         bedrock_cfg = self.settings.bedrock_config
         self._region = region or bedrock_cfg.default_region or bedrock_cfg.aws_region or "us-east-1"
         self._clients: dict[str, Any] = {}  # region -> boto3 bedrock-runtime client
+        self._session: Optional[Any] = None
         self._api_key = bedrock_cfg.api_key
-        if not self._api_key:
-            raise BedrockAuthError(
-                "bedrock.api_key is missing from config.yaml. "
-                "See docs/revision/AWS_BEDROCK_SETUP.md."
-            )
-        # Export the bearer token so any boto3 client in this process picks it up.
-        # Always overwrite — config.yaml is the source of truth and may differ
-        # from a stale shell-exported value.
-        os.environ["AWS_BEARER_TOKEN_BEDROCK"] = self._api_key
-        # Bearer-token auth and sigv4-credentials auth coexist poorly in boto3.
-        # Clear AWS_PROFILE and any inline sigv4 env vars so the bearer token is
-        # used unambiguously. This affects only the current process.
-        for k in ("AWS_PROFILE", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"):
-            os.environ.pop(k, None)
+        self._profile_name = profile_name or bedrock_cfg.aws_profile or None
+        if self._api_key:
+            # Export the bearer token so any boto3 client in this process picks it up.
+            # Always overwrite — config is the source of truth and may differ
+            # from a stale shell-exported value.
+            os.environ["AWS_BEARER_TOKEN_BEDROCK"] = self._api_key
+            # Bearer-token auth and sigv4-credentials auth coexist poorly in boto3.
+            # Clear AWS_PROFILE and any inline sigv4 env vars so the bearer token is
+            # used unambiguously. This affects only the current process.
+            for k in ("AWS_PROFILE", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"):
+                os.environ.pop(k, None)
+        else:
+            # Prefer IAM instance-profile auth when no bearer token is configured.
+            os.environ.pop("AWS_BEARER_TOKEN_BEDROCK", None)
 
     @property
     def region(self) -> str:
@@ -196,19 +221,85 @@ class BedrockClient:
 
     def _client_for(self, region: str) -> Any:
         if region not in self._clients:
-            import boto3
-            self._clients[region] = boto3.client("bedrock-runtime", region_name=region)
+            self._clients[region] = self._boto3_session().client("bedrock-runtime", region_name=region)
         return self._clients[region]
 
-    def check_credentials(self, min_remaining: timedelta = timedelta(hours=2)) -> BearerTokenInfo:
-        """Decode the bearer token and raise BedrockAuthError if it's already
-        expired or has less than `min_remaining` time left. Returns the decoded
-        info on success."""
+    def _boto3_session(self) -> Any:
+        if self._session is None:
+            import boto3
+
+            if self._profile_name:
+                self._session = boto3.Session(profile_name=self._profile_name)
+            else:
+                self._session = boto3.Session()
+        return self._session
+
+    def _credential_expiry(self) -> Optional[datetime]:
+        credentials = self._boto3_session().get_credentials()
+        if credentials is None:
+            return None
+        expiry = getattr(credentials, "_expiry_time", None)
+        if expiry is None:
+            return None
+        if expiry.tzinfo is None:
+            return expiry.replace(tzinfo=timezone.utc)
+        return expiry.astimezone(timezone.utc)
+
+    def _check_boto3_credentials(self, min_remaining: timedelta) -> BedrockAuthStatus:
+        try:
+            session = self._boto3_session()
+            credentials = session.get_credentials()
+            if credentials is None:
+                raise BedrockAuthError(
+                    "No AWS credentials found. Configure AWS_PROFILE, an EC2 "
+                    "instance profile, or bedrock.aws_profile in config.yaml. "
+                    "See docs/revision/AWS_BEDROCK_SETUP.md."
+                )
+            credentials.get_frozen_credentials()
+
+            expires_at = self._credential_expiry()
+            if expires_at is not None:
+                remaining = expires_at - datetime.now(timezone.utc)
+                if remaining <= timedelta(0):
+                    raise BedrockAuthError(
+                        f"AWS credentials expired at {expires_at.isoformat()}. " "Refresh the MFA session and retry."
+                    )
+                if remaining < min_remaining:
+                    raise BedrockAuthError(
+                        f"AWS credentials have only {remaining} remaining (less than "
+                        f"{min_remaining} required by pre-flight). Refresh the MFA session."
+                    )
+
+            identity = session.client("sts", region_name=self._region).get_caller_identity()
+            return BedrockAuthStatus(
+                auth_method="aws_profile" if self._profile_name else "aws_default_chain",
+                region=self._region,
+                profile_name=self._profile_name or os.environ.get("AWS_PROFILE"),
+                principal_arn=identity.get("Arn"),
+                account_id=identity.get("Account"),
+                expires_at=expires_at,
+            )
+        except BedrockAuthError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            translated = _translate_boto_error(exc)
+            if isinstance(translated, BedrockAuthError):
+                raise translated from exc
+            raise BedrockAuthError(str(translated)) from exc
+
+    def check_credentials(self, min_remaining: timedelta = timedelta(hours=2)) -> BedrockAuthStatus:
+        """Validate Bedrock authentication before an expensive batch starts.
+
+        Bearer-token auth is checked locally for expiry. AWS-credential auth is
+        resolved through boto3, frozen once to catch missing/partial credentials,
+        and verified with STS so MFA/profile failures appear before the batch.
+        """
+        if not self._api_key:
+            return self._check_boto3_credentials(min_remaining=min_remaining)
         info = inspect_bearer_token(self._api_key)
         if info.is_expired:
             raise BedrockAuthError(
-                f"Bedrock API key already expired at {info.expires_at}. "
-                "Generate a new key and re-run."
+                f"Bedrock API key already expired at {info.expires_at}. " "Generate a new key and re-run."
             )
         remaining = info.time_remaining()
         if remaining is not None and remaining < min_remaining:
@@ -216,7 +307,11 @@ class BedrockClient:
                 f"Bedrock API key has only {remaining} remaining (less than "
                 f"{min_remaining} required by pre-flight). Generate a fresh key."
             )
-        return info
+        return BedrockAuthStatus(
+            auth_method="bedrock_api_key",
+            region=self._region,
+            expires_at=info.expires_at,
+        )
 
     def create_completion(
         self,
@@ -244,20 +339,19 @@ class BedrockClient:
         # Split system messages from user/assistant
         system_msgs = [m["content"] for m in messages if m.get("role") == "system"]
         ua_msgs = [
-            {"role": m["role"], "content": [{"text": m["content"]}]}
-            for m in messages
-            if m.get("role") != "system"
+            {"role": m["role"], "content": [{"text": m["content"]}]} for m in messages if m.get("role") != "system"
         ]
 
         # Inference config — strictly omit temp/top_p/top_k when thinking is on.
-        infcfg: dict[str, Any] = {"maxTokens": max(max_tokens, thinking_budget_tokens + 200) if thinking_enabled else max_tokens}
+        infcfg: dict[str, Any] = {
+            "maxTokens": max(max_tokens, thinking_budget_tokens + 200) if thinking_enabled else max_tokens
+        }
         additional_fields: dict[str, Any] = {}
 
         if thinking_enabled:
             if not is_anthropic_thinking_model(model):
                 raise BedrockModelError(
-                    f"thinking_enabled=True is only valid for Anthropic Claude 4.x; "
-                    f"got model={model!r}"
+                    f"thinking_enabled=True is only valid for Anthropic Claude 4.x; " f"got model={model!r}"
                 )
             additional_fields["thinking"] = {
                 "type": "enabled",
@@ -333,22 +427,30 @@ def _translate_boto_error(exc: Exception) -> BedrockError:
     """Map a botocore ClientError to one of our typed exceptions."""
     code = ""
     msg = str(exc)
+    exc_name = type(exc).__name__
     if hasattr(exc, "response"):
         err = getattr(exc, "response", {}).get("Error", {})  # type: ignore[union-attr]
         code = err.get("Code", "")
         msg = err.get("Message", msg)
 
     lower = msg.lower()
+    if exc_name in ("NoCredentialsError", "PartialCredentialsError", "CredentialRetrievalError"):
+        return BedrockAuthError(f"{exc_name}: {msg}")
     if code in ("AccessDeniedException", "UnrecognizedClientException", "ExpiredTokenException"):
         if "expired" in lower or "valid" in lower or "token" in lower:
             return BedrockAuthError(f"{code}: {msg}")
         return BedrockAuthError(f"{code}: {msg}")
-    if code in ("ThrottlingException", "ServiceUnavailableException", "ModelTimeoutException", "InternalServerException"):
+    if code in (
+        "ThrottlingException",
+        "ServiceUnavailableException",
+        "ModelTimeoutException",
+        "InternalServerException",
+    ):
         return BedrockTransientError(f"{code}: {msg}")
     if code in ("ValidationException", "ResourceNotFoundException", "ModelNotReadyException"):
         return BedrockModelError(f"{code}: {msg}")
     # Unknown — treat as transient so retry kicks in; the runner caps attempts.
-    return BedrockTransientError(f"{code or type(exc).__name__}: {msg}")
+    return BedrockTransientError(f"{code or exc_name}: {msg}")
 
 
 def _count_tokens_approx(text: str) -> int:
@@ -359,6 +461,7 @@ def _count_tokens_approx(text: str) -> int:
         return 0
     try:
         import tiktoken
+
         return len(tiktoken.get_encoding("o200k_base").encode(text))
     except Exception:
         # Fallback: ~4 chars per token rough heuristic
