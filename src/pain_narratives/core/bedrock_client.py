@@ -139,9 +139,6 @@ def inspect_bearer_token(key: str) -> BearerTokenInfo:
 # Per-model request shaping
 # -----------------------------------------------------------------------------
 
-_DEEPSEEK_R1 = "us.deepseek.r1-v1:0"
-_SONNET_45 = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
-
 
 def is_anthropic_thinking_model(model_id: str) -> bool:
     """True when the model id is an Anthropic Claude variant that supports
