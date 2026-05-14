@@ -5,7 +5,8 @@
 Operator-supplied runtime config. Gitignored. Use
 [`config.yaml.example`](../config.yaml.example) as the schema reference. Top-level keys:
 
-- `database:` connection to the `pain_narratives_app` Postgres schema.
+- `pg-prod:` connection to the `pain_narratives_app` Postgres schema.
+- `openai:` API key and organization id.
 - `models:` evaluation and translation model selection (see below).
 - `bedrock:` AWS auth + region for Bedrock-served models (see [`deployment.md`](deployment.md)).
 - `app:` Streamlit-side options (theme, default language).
@@ -96,17 +97,12 @@ text from each sub-call so the model returns only structured answer values. See
 
 ## Translation model
 
-The translation service (`src/pain_narratives/core/translation_service.py`)
-uses a dedicated, smaller model so the evaluation model can stay frontier-tier.
-Configured under `models:` in `config.yaml`:
-
-```yaml
-models:
-  default_model: gpt-5-nano          # used for evaluations
-  translation_model: gpt-5-mini      # used for translations
-  translation_temperature: 0.0       # consistent translations
-  translation_max_tokens: 2000       # enough for medical content
-```
+The translation service ([`src/pain_narratives/core/translation_service.py`](../src/pain_narratives/core/translation_service.py))
+can use a dedicated translation model so the evaluation model can stay
+frontier-tier. The shipped defaults in
+[`config.yaml.example`](../config.yaml.example) use the same model for both
+(`gpt-5-mini`); override `translation_model` / `translation_temperature` /
+`translation_max_tokens` under the `models:` block to split them.
 
 The service translates both the `reasoning` and `explanations` fields and
 preserves the JSON shape. Independent of which evaluation model the operator
@@ -121,5 +117,5 @@ compatibility with CLI scripts/tests. If removal is desired, plan to:
 
 1. Drop the table via an alembic migration.
 2. Remove `UserPrompt` from `models_sqlmodel.py`.
-3. Remove the related `save/get/set/delete_user_prompt` methods from `DatabaseManager`.
+3. Remove `save_user_prompt` / `get_user_prompts` / `delete_user_prompt` from `DatabaseManager`.
 4. Remove `tests/test_user_prompt_current.py` and any CLI references in `scripts/manage_users.py`.

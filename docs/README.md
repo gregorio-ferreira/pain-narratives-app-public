@@ -27,12 +27,6 @@ who need to extend, deploy, or rerun the system.
   contains no narrative text. Regenerate with
   [`scripts/dev/build_narratives_inventory.py`](../scripts/dev/build_narratives_inventory.py).
 
-## Sphinx
-
-[`conf.py`](conf.py) is the Sphinx site config used by `make docs`. Source pages
-are this folder; the API reference is auto-generated from the docstrings under
-`src/pain_narratives/`.
-
 ## Local-only notes
 
 The `local/` subfolder is gitignored (see [`.gitignore`](../.gitignore)) and is
