@@ -41,8 +41,6 @@ def test_narrative_evaluation_config():
     full_prompt = get_default_prompt()
     print(f"\n✓ Full Default Prompt generated ({len(full_prompt)} chars)")
 
-    return True
-
 
 def test_questionnaire_prompts():
     """Test questionnaire prompts loading."""
@@ -55,15 +53,10 @@ def test_questionnaire_prompts():
 
     for q_type in ["PCS", "BPI-IS", "TSK-11SV"]:
         prompt = get_questionnaire_prompt(q_type)
-        if prompt:
-            print(f"\n  {q_type}:")
-            print(f"    System Role: {len(prompt['system_role'])} chars")
-            print(f"    Instructions: {len(prompt['instructions'])} chars")
-        else:
-            print(f"\n  ✗ {q_type}: Not found!")
-            return False
-
-    return True
+        assert prompt, f"{q_type} prompt not found"
+        print(f"\n  {q_type}:")
+        print(f"    System Role: {len(prompt['system_role'])} chars")
+        print(f"    Instructions: {len(prompt['instructions'])} chars")
 
 
 def test_prompt_library():
@@ -81,8 +74,6 @@ def test_prompt_library():
         print(f"    Category: {template['category']}")
         print(f"    Template: {len(template['template'])} chars")
 
-    return True
-
 
 def test_spanish_dimensions():
     """Test that Spanish dimensions from experiment group 12 are loaded correctly."""
@@ -92,23 +83,20 @@ def test_spanish_dimensions():
 
     dimensions = get_default_dimensions()
 
-    # Check for Spanish dimension names
     expected_names = ["Severidad del dolor", "Discapacidad"]
     actual_names = [dim["name"] for dim in dimensions if dim.get("active", True)]
 
     print(f"\n  Expected dimensions: {expected_names}")
     print(f"  Actual dimensions: {actual_names}")
 
-    if set(expected_names) == set(actual_names):
-        print("\n✓ Spanish dimensions from experiment group 12 loaded correctly!")
-        return True
-    else:
-        print("\n✗ Dimension names don't match expected values from experiment group 12")
-        return False
+    assert set(expected_names) == set(
+        actual_names
+    ), f"Dimension names don't match experiment group 12: expected {expected_names}, got {actual_names}"
+    print("\n✓ Spanish dimensions from experiment group 12 loaded correctly!")
 
 
 def main():
-    """Run all tests."""
+    """Run all tests as a CLI tool (pytest discovers them separately)."""
     print("\n" + "=" * 80)
     print("YAML-BASED PROMPTS CONFIGURATION TEST")
     print("=" * 80)
@@ -123,30 +111,25 @@ def main():
     results = []
     for test_name, test_func in tests:
         try:
-            result = test_func()
-            results.append((test_name, result))
+            test_func()
+            results.append((test_name, True))
         except Exception as e:
             print(f"\n✗ {test_name} FAILED with error:")
             print(f"  {type(e).__name__}: {e}")
             results.append((test_name, False))
 
-    # Summary
     print("\n" + "=" * 80)
     print("TEST SUMMARY")
     print("=" * 80)
-
-    for test_name, result in results:
-        status = "✓ PASS" if result else "✗ FAIL"
+    for test_name, passed in results:
+        status = "✓ PASS" if passed else "✗ FAIL"
         print(f"{status}: {test_name}")
 
-    all_passed = all(result for _, result in results)
-
-    if all_passed:
+    if all(passed for _, passed in results):
         print("\n✓ All tests passed! YAML configuration system is working correctly.")
         return 0
-    else:
-        print("\n✗ Some tests failed. Please check the configuration.")
-        return 1
+    print("\n✗ Some tests failed. Please check the configuration.")
+    return 1
 
 
 if __name__ == "__main__":
