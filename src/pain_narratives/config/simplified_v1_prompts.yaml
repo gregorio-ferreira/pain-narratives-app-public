@@ -10,9 +10,9 @@
 # - Output JSON schema is answer-values-only: drops `persona.*` and `model_reasoning`.
 # - Validated Spanish question text is preserved verbatim.
 #
-# Rationale: the simplified plan in docs/revision/SIMPLIFIED_EXPERIMENT_PLAN.md
-# decided to not use human evaluators to score LLM explanations for the
-# revision, so the LLM no longer needs to produce explanations.
+# Rationale: the simplified plan in docs/revision_experiments.md decided to not
+# use human evaluators to score LLM explanations for the revision, so the LLM
+# no longer needs to produce explanations.
 
 prompt_version: simplified_v1
 
