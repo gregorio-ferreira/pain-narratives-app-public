@@ -1,0 +1,31 @@
+# Example systemd unit for the AINarratives Streamlit app.
+#
+# Copy this file to /etc/systemd/system/pain-narratives.service on the target
+# host, then replace the <APP_USER>, <APP_ROOT>, and <UV_BIN> placeholders with
+# values that match your deployment. After editing:
+#
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now pain-narratives
+#
+# This file is a template; it is intentionally not consumed as-is.
+
+[Unit]
+Description=Pain Narratives Streamlit App
+After=network.target
+
+[Service]
+Type=simple
+User=<APP_USER>
+WorkingDirectory=<APP_ROOT>
+Environment="PATH=<UV_BIN_DIR>:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="STREAMLIT_SERVER_ENABLE_STATIC_SERVING=true"
+Environment="STREAMLIT_SERVER_ENABLE_CORS=false"
+Environment="STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION=true"
+ExecStart=<UV_BIN_DIR>/uv run streamlit run scripts/run_app.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
