@@ -252,7 +252,7 @@ pcs = get_questionnaire_prompt("PCS")
 1. Edit `src/pain_narratives/config/default_prompts.yaml`
 2. Changes take effect on next import (cached per session)
 3. Test with: `uv run python tests/test_yaml_prompts_config.py`
-4. See full guide: `docs/DEFAULT_PROMPTS_GUIDE.md`
+4. See full guide: `docs/configuration.md` (Default prompts section)
 
 ### Migration from Old System
 

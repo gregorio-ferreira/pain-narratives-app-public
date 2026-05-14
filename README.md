@@ -321,7 +321,7 @@ uv run python scripts/manage_users.py delete username
 - **Admin Users**: Can access all Evaluation groups, manage other users, and perform administrative tasks
 - **Regular Users**: Can login, create their own Evaluation groups, and run evaluations
 
-See [docs/archive/USER_MANAGEMENT.md](docs/archive/USER_MANAGEMENT.md) for detailed user management documentation.
+See [docs/user_management.md](docs/user_management.md) for detailed user management documentation.
 
 ## �📊 Features
 
@@ -976,7 +976,7 @@ For questions, issues, or contributions:
 
 - **Issues**: Please use the GitHub issue tracker
 - **Documentation**: See the `/docs` directory and inline docstrings
-- **User Management**: See [docs/archive/USER_MANAGEMENT.md](docs/archive/USER_MANAGEMENT.md)
+- **User Management**: See [docs/user_management.md](docs/user_management.md)
 - **Research Inquiries**: Contact the research team for collaboration opportunities
 
 ## 📋 Changelog
