@@ -9,12 +9,30 @@ the Streamlit UI (via wrappers) and the batch processing CLI.
 import json
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Protocol, Tuple
 
 from pain_narratives.config.prompts import get_questionnaire_prompt
-from pain_narratives.core.openai_client import OpenAIClient
+from pain_narratives.core.bedrock_client import BedrockAuthError
 
 logger = logging.getLogger(__name__)
+
+
+class LLMClient(Protocol):
+    """Minimal interface satisfied by both `OpenAIClient` and `BedrockOpenAIAdapter`.
+
+    Defined as a Protocol so callers don't pull a concrete dependency on either
+    provider's module. Both clients return an OpenAI Chat Completions shaped dict.
+    """
+
+    def create_completion(
+        self,
+        messages: List[Dict[str, str]],
+        model: str,
+        temperature: Optional[float] = ...,
+        max_tokens: int = ...,
+        response_format: Optional[str] = ...,
+        **kwargs: Any,
+    ) -> Dict[str, Any]: ...
 
 
 @dataclass
@@ -119,7 +137,7 @@ def parse_questionnaire_response(content: str, questionnaire_type: str) -> Tuple
 def run_questionnaire(
     narrative: str,
     questionnaire_type: str,
-    openai_client: OpenAIClient,
+    llm_client: LLMClient,
     model: str,
     temperature: float,
     system_role: Optional[str] = None,
@@ -129,18 +147,9 @@ def run_questionnaire(
     """
     Run a questionnaire evaluation on a narrative.
 
-    Args:
-        narrative: The pain narrative text
-        questionnaire_type: One of 'PCS', 'BPI-IS', 'TSK-11SV'
-        openai_client: OpenAI client instance
-        model: Model to use (e.g., 'gpt-5-mini')
-        temperature: Temperature for generation
-        system_role: Optional custom system role (uses YAML default if None)
-        instructions: Optional custom instructions (uses YAML default if None)
-        max_tokens: Maximum tokens for response
-
-    Returns:
-        QuestionnaireResult with success status and data
+    `BedrockAuthError` propagates so the caller can halt the batch immediately;
+    every other exception is captured in the returned result so a per-narrative
+    failure does not abort the run.
     """
     # Get prompts from YAML config if not provided
     if system_role is None or instructions is None:
@@ -160,7 +169,7 @@ def run_questionnaire(
     logger.info(f"Running {questionnaire_type} questionnaire evaluation")
 
     try:
-        response = openai_client.create_completion(
+        response = llm_client.create_completion(
             messages=messages,
             model=model,
             temperature=temperature,
@@ -194,6 +203,9 @@ def run_questionnaire(
             error=error,
         )
 
+    except BedrockAuthError:
+        # Halt the batch — refreshing credentials is the only recourse.
+        raise
     except Exception as e:
         logger.error(f"{questionnaire_type} questionnaire failed: {str(e)}", exc_info=True)
         return QuestionnaireResult(
@@ -204,66 +216,6 @@ def run_questionnaire(
             messages=messages,
             error=str(e),
         )
-
-
-def run_pcs_questionnaire_pure(
-    narrative: str,
-    openai_client: OpenAIClient,
-    model: str,
-    temperature: float,
-    system_role: Optional[str] = None,
-    instructions: Optional[str] = None,
-) -> QuestionnaireResult:
-    """Run PCS questionnaire (Streamlit-free)."""
-    return run_questionnaire(
-        narrative=narrative,
-        questionnaire_type="PCS",
-        openai_client=openai_client,
-        model=model,
-        temperature=temperature,
-        system_role=system_role,
-        instructions=instructions,
-    )
-
-
-def run_bpi_is_questionnaire_pure(
-    narrative: str,
-    openai_client: OpenAIClient,
-    model: str,
-    temperature: float,
-    system_role: Optional[str] = None,
-    instructions: Optional[str] = None,
-) -> QuestionnaireResult:
-    """Run BPI-IS questionnaire (Streamlit-free)."""
-    return run_questionnaire(
-        narrative=narrative,
-        questionnaire_type="BPI-IS",
-        openai_client=openai_client,
-        model=model,
-        temperature=temperature,
-        system_role=system_role,
-        instructions=instructions,
-    )
-
-
-def run_tsk_11sv_questionnaire_pure(
-    narrative: str,
-    openai_client: OpenAIClient,
-    model: str,
-    temperature: float,
-    system_role: Optional[str] = None,
-    instructions: Optional[str] = None,
-) -> QuestionnaireResult:
-    """Run TSK-11SV questionnaire (Streamlit-free)."""
-    return run_questionnaire(
-        narrative=narrative,
-        questionnaire_type="TSK-11SV",
-        openai_client=openai_client,
-        model=model,
-        temperature=temperature,
-        system_role=system_role,
-        instructions=instructions,
-    )
 
 
 # Score calculation functions (copied from questionnaire.py for independence)
