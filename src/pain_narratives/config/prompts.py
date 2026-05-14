@@ -35,9 +35,7 @@ def load_prompts_version(version: str = "original") -> Dict[str, Any]:
     revision runs.
     """
     if version not in PROMPT_VERSION_FILES:
-        raise ValueError(
-            f"Unknown prompt version {version!r}; known versions: {list(PROMPT_VERSION_FILES)}"
-        )
+        raise ValueError(f"Unknown prompt version {version!r}; known versions: {list(PROMPT_VERSION_FILES)}")
     path = PROMPT_VERSION_FILES[version]
     with open(path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
@@ -51,83 +49,49 @@ def load_prompts_config() -> Dict[str, Any]:
     return load_prompts_version("original")
 
 
-def get_narrative_evaluation_config() -> Dict[str, Any]:
-    """
-    Get narrative evaluation prompt configuration.
-
-    Returns:
-        Dict with keys: system_role, base_prompt, dimensions
-    """
-    config = load_prompts_config()
-    return config.get("narrative_evaluation", {})
+def get_narrative_evaluation_config(version: str = "original") -> Dict[str, Any]:
+    """Return the `narrative_evaluation` block from the requested prompt version."""
+    return load_prompts_version(version).get("narrative_evaluation", {})
 
 
-def get_system_role() -> str:
-    """
-    Get the default system role for narrative evaluation.
-
-    Returns:
-        System role prompt as string
-    """
-    config = get_narrative_evaluation_config()
-    return config.get("system_role", "").strip()
+def get_system_role(version: str = "original") -> str:
+    """Return the system role for narrative evaluation in the requested version."""
+    return get_narrative_evaluation_config(version).get("system_role", "").strip()
 
 
-def get_base_prompt() -> str:
-    """
-    Get the default base prompt for narrative evaluation.
-
-    Returns:
-        Base prompt as string
-    """
-    config = get_narrative_evaluation_config()
-    return config.get("base_prompt", "").strip()
+def get_base_prompt(version: str = "original") -> str:
+    """Return the base prompt for narrative evaluation in the requested version."""
+    return get_narrative_evaluation_config(version).get("base_prompt", "").strip()
 
 
-def get_default_dimensions() -> List[Dict[str, Any]]:
-    """
-    Get the default evaluation dimensions.
+def get_default_dimensions(version: str = "original") -> List[Dict[str, Any]]:
+    """Return the dimension list for the requested prompt version, in app format
+    (string min/max, generated uuid per dimension)."""
+    dimensions = get_narrative_evaluation_config(version).get("dimensions", [])
 
-    Returns:
-        List of dimension dictionaries with keys: name, definition, min, max, active
-    """
-    config = get_narrative_evaluation_config()
-    dimensions = config.get("dimensions", [])
-
-    # Convert to format expected by the application (with uuid generation)
     import uuid
     from datetime import datetime
 
-    result = []
     timestamp = int(datetime.now().timestamp() * 1000000)
-
-    for dim in dimensions:
-        result.append(
-            {
-                "name": dim.get("name", ""),
-                "definition": dim.get("definition", ""),
-                "min": str(dim.get("min", 0)),
-                "max": str(dim.get("max", 10)),
-                "uuid": f"{timestamp}_{str(uuid.uuid4())}",
-                "active": dim.get("active", True),
-            }
-        )
-
-    return result
+    return [
+        {
+            "name": dim.get("name", ""),
+            "definition": dim.get("definition", ""),
+            "min": str(dim.get("min", 0)),
+            "max": str(dim.get("max", 10)),
+            "uuid": f"{timestamp}_{str(uuid.uuid4())}",
+            "active": dim.get("active", True),
+        }
+        for dim in dimensions
+    ]
 
 
-def get_default_prompt() -> str:
-    """
-    Generate the complete default prompt for narrative evaluation.
-
-    This combines system_role, base_prompt, and dimensions into a full prompt template.
-
-    Returns:
-        Complete prompt template with {narrative} placeholder
-    """
-    system_role = get_system_role()
-    base_prompt = get_base_prompt()
-    dimensions = get_default_dimensions()
+def get_default_prompt(version: str = "original") -> str:
+    """Generate the complete prompt template for the requested version, with a
+    `{narrative}` placeholder at the end."""
+    system_role = get_system_role(version)
+    base_prompt = get_base_prompt(version)
+    dimensions = get_default_dimensions(version)
 
     # Build the dimensions section
     dimension_lines = [
@@ -167,24 +131,17 @@ def get_default_prompt() -> str:
     return "\n\n".join(parts)
 
 
-def get_questionnaire_prompts() -> Dict[str, Dict[str, str]]:
-    """
-    Get all questionnaire prompts (PCS, BPI-IS, TSK-11SV).
-
-    Returns:
-        Dict mapping questionnaire types to their system_role and instructions
-    """
-    config = load_prompts_config()
-    questionnaires = config.get("questionnaires", {})
-
-    result = {}
-    for q_type, q_config in questionnaires.items():
-        result[q_type] = {
+def get_questionnaire_prompts(version: str = "original") -> Dict[str, Dict[str, str]]:
+    """Return all questionnaire prompts (PCS, BPI-IS, TSK-11SV) for the requested
+    prompt version, as a dict mapping type → {system_role, instructions}."""
+    questionnaires = load_prompts_version(version).get("questionnaires", {})
+    return {
+        q_type: {
             "system_role": q_config.get("system_role", "").strip(),
             "instructions": q_config.get("instructions", "").strip(),
         }
-
-    return result
+        for q_type, q_config in questionnaires.items()
+    }
 
 
 def get_questionnaire_prompt(questionnaire_type: str, version: str = "original") -> Optional[Dict[str, str]]:
@@ -202,11 +159,6 @@ def get_questionnaire_prompt(questionnaire_type: str, version: str = "original")
         "system_role": q.get("system_role", "").strip(),
         "instructions": q.get("instructions", "").strip(),
     }
-
-
-def get_narrative_evaluation_config_v(version: str = "original") -> Dict[str, Any]:
-    """Versioned variant of get_narrative_evaluation_config."""
-    return load_prompts_version(version).get("narrative_evaluation", {})
 
 
 def get_prompt_library() -> Dict[str, Dict[str, Any]]:

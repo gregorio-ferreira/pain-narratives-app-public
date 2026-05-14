@@ -291,16 +291,22 @@ class DatabaseManager:
         base_prompt: Optional[str] = None,
         owner_id: int = 1,
         dimensions: Optional[List[Dict[str, Any]]] = None,
+        prompt_version: str = "original",
     ) -> int:
-        """Register a new experiment group and return its ID."""
+        """Register a new experiment group and return its ID.
+
+        When `system_role` / `base_prompt` / `dimensions` are omitted, the YAML
+        defaults for `prompt_version` are used. The per-group `questionnaire_prompts`
+        rows are also seeded from the same version so the group's metadata
+        matches the actual prompts the experiments run with.
+        """
 
         if not self.is_user_admin(owner_id):
             raise PermissionError("Only admin users can create experiment groups")
 
-        # Resolve YAML defaults when parameters are not provided
-        resolved_system_role = system_role or yaml_get_system_role()
-        resolved_base_prompt = base_prompt or yaml_get_base_prompt()
-        resolved_dimensions = dimensions or yaml_get_default_dimensions()
+        resolved_system_role = system_role or yaml_get_system_role(prompt_version)
+        resolved_base_prompt = base_prompt or yaml_get_base_prompt(prompt_version)
+        resolved_dimensions = dimensions or yaml_get_default_dimensions(prompt_version)
 
         group = self.create_experiment_group(
             owner_id=owner_id,
@@ -312,10 +318,10 @@ class DatabaseManager:
 
         group_id = group.experiments_group_id or -1
 
-        # Initialize questionnaire prompts for this group from YAML defaults (idempotent)
+        # Seed questionnaire_prompts for this group from the same version (idempotent)
         if group_id != -1:
             try:
-                yaml_prompts = yaml_get_questionnaire_prompts()
+                yaml_prompts = yaml_get_questionnaire_prompts(prompt_version)
                 with self.get_session() as session:
                     for q_type, prompts in yaml_prompts.items():
                         existing = session.exec(
