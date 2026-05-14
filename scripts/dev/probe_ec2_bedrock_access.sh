@@ -2,10 +2,10 @@
 # Probe an EC2 instance for Bedrock authentication options.
 #
 # Run this script on the EC2 itself. It checks, in priority order:
-#   1. Whether an IAM instance profile is attached, and what role it assumes
-#   2. Whether that role can list Bedrock foundation models in us-east-1
+#   1. Whether an IAM instance profile is attached
+#   2. Whether active AWS credentials can list Bedrock foundation models in us-east-1
 #   3. Whether the two revision-experiment models are accessible
-#   4. As a fall-back, whether a Bedrock API key in config.yaml works
+#   4. As a fall-back, whether a Bedrock API key in app config works
 #
 # Prints a clear "USE THIS AUTH" recommendation at the end. Exits 0 if any
 # working path is found, non-zero otherwise.
@@ -40,7 +40,7 @@ else
   AZ=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/placement/availability-zone 2>/dev/null || true)
   IAM_INFO=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/iam/info 2>/dev/null || true)
   green "  Instance: $INSTANCE_ID  AZ: $AZ"
-  if [ -n "$IAM_INFO" ]; then
+  if echo "$IAM_INFO" | grep -q '"Code"[[:space:]]*:[[:space:]]*"Success"'; then
     green "  IAM info from IMDS:"
     echo "$IAM_INFO" | sed 's/^/    /'
   else
@@ -51,6 +51,11 @@ echo ""
 
 bold "========== STEP 2: AWS STS identity =========="
 if command -v aws >/dev/null 2>&1; then
+  if [ -n "${AWS_PROFILE:-}" ]; then
+    green "  AWS_PROFILE=${AWS_PROFILE}"
+  else
+    yellow "  AWS_PROFILE is not set; using AWS CLI default credential chain."
+  fi
   IDENT=$(aws sts get-caller-identity 2>&1 || true)
   if echo "$IDENT" | grep -q "Account"; then
     green "  $IDENT"
@@ -61,6 +66,7 @@ if command -v aws >/dev/null 2>&1; then
     fi
   else
     red "  STS failed: $IDENT"
+    yellow "  If this account requires MFA, refresh your MFA session helper and export AWS_PROFILE=<your-mfa-profile>."
   fi
 else
   yellow "  aws CLI not installed; skipping STS check. Install with: dnf install -y aws-cli"
@@ -82,7 +88,7 @@ if command -v aws >/dev/null 2>&1; then
 fi
 echo ""
 
-bold "========== STEP 4: Try invoking each model via the IAM role =========="
+bold "========== STEP 4: Try invoking each model via active AWS credentials =========="
 ROLE_INVOKE_WORKS=false
 if command -v aws >/dev/null 2>&1; then
   for M in "${MODELS[@]}"; do
@@ -92,7 +98,7 @@ if command -v aws >/dev/null 2>&1; then
       --inference-config '{"maxTokens":50}' \
       --region "$REGION" 2>&1 || true)
     if echo "$OUT" | grep -q '"stopReason"'; then
-      green "  $M -> OK (IAM role can invoke)"
+      green "  $M -> OK (active AWS credentials can invoke)"
       ROLE_INVOKE_WORKS=true
     else
       yellow "  $M -> denied / error:"
@@ -105,16 +111,23 @@ echo ""
 bold "========== STEP 5: Bedrock API-key fall-back (if config.yaml exists) =========="
 KEY_INVOKE_WORKS=false
 CONFIG_DIR="${CONFIG_DIR:-$(pwd)}"
-if [ -f "$CONFIG_DIR/config.yaml" ]; then
-  KEY=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_DIR/config.yaml')).get('bedrock',{}).get('api_key',''))" 2>/dev/null || true)
+CONFIG_FILE=""
+for CANDIDATE in "$CONFIG_DIR/config.yaml" "$CONFIG_DIR/.yaml" "$HOME/.yaml"; do
+  if [ -f "$CANDIDATE" ]; then
+    CONFIG_FILE="$CANDIDATE"
+    break
+  fi
+done
+if [ -n "$CONFIG_FILE" ]; then
+  KEY=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_FILE')).get('bedrock',{}).get('api_key',''))" 2>/dev/null || true)
   if [ -n "$KEY" ] && [ "${KEY:0:16}" = "bedrock-api-key-" ]; then
-    yellow "  Found Bedrock API key in config.yaml"
+    yellow "  Found Bedrock API key in $CONFIG_FILE"
     # Decode expiry, briefly
     python3 - <<PY 2>/dev/null || true
 import base64, yaml
 from urllib.parse import parse_qs
 from datetime import datetime, timezone, timedelta
-key = yaml.safe_load(open("$CONFIG_DIR/config.yaml"))["bedrock"]["api_key"]
+key = yaml.safe_load(open("$CONFIG_FILE"))["bedrock"]["api_key"]
 qs = base64.b64decode(key.removeprefix("bedrock-api-key-") + "==").decode().split("?", 1)[1]
 p = {k: v[0] for k, v in parse_qs(qs).items()}
 if "X-Amz-Date" in p and "X-Amz-Expires" in p:
@@ -138,19 +151,19 @@ PY
       head -3 /tmp/bedrock_key_probe.out | sed 's/^/      /'
     fi
   else
-    yellow "  No bedrock.api_key in $CONFIG_DIR/config.yaml"
+    yellow "  No bedrock.api_key in $CONFIG_FILE"
   fi
 else
-  yellow "  $CONFIG_DIR/config.yaml not found"
+  yellow "  No config file found at $CONFIG_DIR/config.yaml, $CONFIG_DIR/.yaml, or $HOME/.yaml"
 fi
 echo ""
 
 bold "========== RECOMMENDATION =========="
 if $ROLE_INVOKE_WORKS; then
-  green "USE THIS AUTH: IAM instance-profile role."
-  green "  - boto3 picks it up automatically; do NOT set AWS_BEARER_TOKEN_BEDROCK"
-  green "  - Drop bedrock.api_key from config.yaml (or leave it; the env var will not be exported if absent)"
-  green "  - Long-term auth, no 12h refresh dance"
+  green "USE THIS AUTH: active AWS credentials."
+  green "  - boto3 can use the same credentials as the AWS CLI"
+  green "  - For MFA sessions, run: export AWS_PROFILE=${AWS_PROFILE:-mfa}"
+  green "  - Do NOT set bedrock.api_key unless you intentionally want bearer-token auth"
   exit 0
 elif $KEY_INVOKE_WORKS; then
   yellow "USE THIS AUTH: Bedrock API key in config.yaml (fall-back)."
@@ -160,13 +173,13 @@ elif $KEY_INVOKE_WORKS; then
   exit 0
 else
   red "NEITHER PATH WORKS."
-  red "  - The IAM principal here (if any) does not have Bedrock permissions in $REGION"
-  red "  - And no working Bedrock API key was found in $CONFIG_DIR/config.yaml"
+  red "  - The active AWS credentials do not have working Bedrock access in $REGION"
+  red "  - And no working Bedrock API key was found in app config"
   red "Next steps:"
-  red "  1. Confirm the EC2's instance profile has an attached IAM policy granting"
-  red "     bedrock:InvokeModel + bedrock:Converse against the model ARNs"
-  red "     (or request model access in the Bedrock console for the relevant region)"
-  red "  2. Or generate a Bedrock API key in us-east-1 and put it in config.yaml"
+  red "  1. If using MFA, refresh your MFA session helper and export AWS_PROFILE=<your-mfa-profile>"
+  red "  2. Confirm the principal has bedrock:InvokeModel + bedrock:Converse"
+  red "     and model access in the Bedrock console for $REGION"
+  red "  3. Or generate a Bedrock API key in us-east-1 and put it in config.yaml"
   red "     (see docs/revision/AWS_BEDROCK_SETUP.md)"
   exit 1
 fi
