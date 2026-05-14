@@ -38,7 +38,6 @@ from pain_narratives.db.models_sqlmodel import (
     RequestResponse,
 )
 
-
 # The three groups that make up the published GPT-5 ACM baseline.
 ACM_BASELINE_GROUPS = (38, 39, 40)
 
@@ -101,11 +100,10 @@ def run_model(
     processor = BatchProcessor(db_manager=db_manager, config=config)
     processor.preflight()
 
-    group_id = processor.create_experiment_group(
-        user_id=user_id, description=f"Pilot — {label} — simplified_v1"
-    )
+    group_id = processor.create_experiment_group(user_id=user_id, description=f"Pilot — {label} — simplified_v1")
 
     from pain_narratives.batch.processor import get_git_sha
+
     experiment_id = db_manager.register_new_experiment(
         {
             "experiments_group_id": group_id,
@@ -147,10 +145,16 @@ def run_model(
     # Verify rows in DB
     with db_manager.get_session() as session:
         exp = session.exec(select(ExperimentList).where(ExperimentList.experiment_id == experiment_id)).first()
-        rr_count = len(session.exec(select(RequestResponse).where(RequestResponse.experiment_id == experiment_id)).all())
-        ev_count = len(session.exec(select(EvaluationResult).where(EvaluationResult.experiment_id == experiment_id)).all())
-        print(f"  Rows: experiments_list.reasoning_tokens={exp.reasoning_tokens}  prompt_version={exp.prompt_version!r}  "
-              f"request_response_rows={rr_count}  evaluation_result_rows={ev_count}")
+        rr_count = len(
+            session.exec(select(RequestResponse).where(RequestResponse.experiment_id == experiment_id)).all()
+        )
+        ev_count = len(
+            session.exec(select(EvaluationResult).where(EvaluationResult.experiment_id == experiment_id)).all()
+        )
+        print(
+            f"  Rows: experiments_list.reasoning_tokens={exp.reasoning_tokens}  prompt_version={exp.prompt_version!r}  "
+            f"request_response_rows={rr_count}  evaluation_result_rows={ev_count}"
+        )
 
     return experiment_id
 
@@ -158,8 +162,12 @@ def run_model(
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     ap = argparse.ArgumentParser()
-    ap.add_argument("--narrative-id", type=int, default=None,
-                    help="Specific narrative to use (default: first ACM-baseline narrative)")
+    ap.add_argument(
+        "--narrative-id",
+        type=int,
+        default=None,
+        help="Specific narrative to use (default: first ACM-baseline narrative)",
+    )
     ap.add_argument("--skip-deepseek", action="store_true", help="Skip DeepSeek-R1 run")
     ap.add_argument("--skip-sonnet", action="store_true", help="Skip Claude Sonnet 4.5 run")
     args = ap.parse_args()

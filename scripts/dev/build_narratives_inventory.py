@@ -153,12 +153,14 @@ def main() -> None:
 
     print("\nToken-count summary (o200k_base, gpt-5 / gpt-4o):")
     for label, subset in (
-        ("all rows",            out),
-        ("ACM baseline only",   out[out["in_acm_baseline"]]),
-        ("human-comparable",    out[out["hash_human_comparable"] & out["in_acm_baseline"]]),
+        ("all rows", out),
+        ("ACM baseline only", out[out["in_acm_baseline"]]),
+        ("human-comparable", out[out["hash_human_comparable"] & out["in_acm_baseline"]]),
     ):
         desc = subset["tokens_o200k"].describe()
-        print(f"  {label:<22} n={int(desc['count']):3d}  min={int(desc['min']):4d}  median={int(desc['50%']):4d}  mean={desc['mean']:6.1f}  max={int(desc['max']):5d}")
+        print(
+            f"  {label:<22} n={int(desc['count']):3d}  min={int(desc['min']):4d}  median={int(desc['50%']):4d}  mean={desc['mean']:6.1f}  max={int(desc['max']):5d}"
+        )
 
 
 if __name__ == "__main__":
