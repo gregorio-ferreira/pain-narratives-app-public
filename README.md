@@ -442,10 +442,10 @@ app:
 
 # Optional: AWS Bedrock configuration for alternative AI models
 bedrock:
-  aws_credentials: your_aws_profile_name
-  aws_access_key: your_aws_access_key
-  aws_secret_key: your_aws_secret_key
-  aws_region: your_aws_region
+  api_key: ""          # Leave empty for normal AWS credentials.
+  aws_profile: mfa     # Optional; omit to use AWS_PROFILE/default/instance role.
+  default_region: us-east-1
+  aws_region: us-east-1
 ```
 
 ### Configuration Benefits
