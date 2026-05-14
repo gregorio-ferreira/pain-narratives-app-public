@@ -1,8 +1,9 @@
 """
 Build a per-narrative inventory CSV with size metadata and provenance flags.
 
-The CSV is the source of truth for `docs/revision/NARRATIVES_INVENTORY.md`. It
-records, for every non-empty narrative in `pain_narratives_app.narratives`:
+The CSV is the source of truth for the narratives summary in
+`docs/architecture.md`. It records, for every non-empty narrative in
+`pain_narratives_app.narratives`:
 
 - char / word counts (already populated by the dedup migration)
 - token counts under `o200k_base` (gpt-5 / gpt-4o) and `cl100k_base` (gpt-3.5 / gpt-4)

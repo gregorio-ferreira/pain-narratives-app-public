@@ -169,7 +169,7 @@ elif $KEY_INVOKE_WORKS; then
   yellow "USE THIS AUTH: Bedrock API key in config.yaml (fall-back)."
   yellow "  - The runner exports AWS_BEARER_TOKEN_BEDROCK at startup"
   yellow "  - If key is short-term (12h), monitor expiry; runner halts cleanly and supports --resume"
-  yellow "  - Strongly consider asking UOC IT to attach an IAM role with Bedrock perms — see docs/EC2_HANDOFF.md §3.1"
+  yellow "  - Strongly consider asking UOC IT to attach an IAM role with Bedrock perms — see docs/deployment.md (AWS Bedrock authentication → IAM instance profile)"
   exit 0
 else
   red "NEITHER PATH WORKS."
@@ -180,6 +180,6 @@ else
   red "  2. Confirm the principal has bedrock:InvokeModel + bedrock:Converse"
   red "     and model access in the Bedrock console for $REGION"
   red "  3. Or generate a Bedrock API key in us-east-1 and put it in config.yaml"
-  red "     (see docs/revision/AWS_BEDROCK_SETUP.md)"
+  red "     (see docs/deployment.md → AWS Bedrock authentication)"
   exit 1
 fi

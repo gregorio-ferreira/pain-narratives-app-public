@@ -253,7 +253,7 @@ class BedrockClient:
                 raise BedrockAuthError(
                     "No AWS credentials found. Configure AWS_PROFILE, an EC2 "
                     "instance profile, or bedrock.aws_profile in config.yaml. "
-                    "See docs/revision/AWS_BEDROCK_SETUP.md."
+                    "See docs/deployment.md (AWS Bedrock authentication)."
                 )
             credentials.get_frozen_credentials()
 
