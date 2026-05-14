@@ -17,12 +17,15 @@ openai:
   org_id: "YOUR_OPENAI_ORG_ID"
 
 # AWS Bedrock — required for the revision experiments (DeepSeek-R1, Claude Sonnet 4.5).
-# See docs/revision/AWS_BEDROCK_SETUP.md for how to obtain the API key.
-# The api_key is a Bedrock-scoped bearer token; boto3 reads it from the
-# AWS_BEARER_TOKEN_BEDROCK env var, which the app populates from this config.
+# Preferred auth is AWS credentials from the standard boto3 chain:
+#   - EC2 instance profile, or
+#   - a named AWS profile (for example an MFA-refreshed session)
+# Leave api_key empty unless you intentionally want Bedrock bearer-token auth.
 bedrock:
-  api_key: "YOUR_BEDROCK_API_KEY"
+  api_key: ""
+  aws_profile: ""  # Example: "mfa"; leave empty to use AWS_PROFILE/default/instance role.
   default_region: us-east-1
+  aws_region: us-east-1
 
 # Database configuration - matches docker-compose.yml defaults
 pg-prod:
