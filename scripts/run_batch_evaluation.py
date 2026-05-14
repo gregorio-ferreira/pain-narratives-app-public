@@ -450,8 +450,7 @@ def main():
     )
     parser.add_argument(
         "--checkpoint",
-        help="Path to checkpoint file for resume capability "
-        "(default: checkpoints/<model>-<description-slug>.json)",
+        help="Path to checkpoint file for resume capability " "(default: checkpoints/<model>-<description-slug>.json)",
     )
     parser.add_argument(
         "--model-provider",
@@ -482,6 +481,12 @@ def main():
         "--bedrock-region",
         default=None,
         help="AWS region for Bedrock calls (default: from config.yaml bedrock.default_region).",
+    )
+    parser.add_argument(
+        "--bedrock-profile",
+        default=None,
+        help="AWS profile for Bedrock calls (for example: mfa). Defaults to "
+        "config.yaml bedrock.aws_profile or the normal boto3 credential chain.",
     )
     parser.add_argument(
         "--consecutive-failure-threshold",
@@ -549,6 +554,7 @@ def main():
     checkpoint_path = args.checkpoint
     if checkpoint_path is None:
         import re as _re
+
         slug_model = _re.sub(r"[^A-Za-z0-9._-]", "_", args.model)[:48]
         slug_desc = _re.sub(r"[^A-Za-z0-9._-]", "_", args.description)[:48]
         checkpoint_path = f"checkpoints/{slug_model}__{slug_desc}.json"
@@ -570,6 +576,7 @@ def main():
         thinking_enabled=args.thinking_enabled,
         thinking_budget_tokens=args.thinking_budget_tokens,
         bedrock_region=args.bedrock_region,
+        bedrock_profile=args.bedrock_profile,
         consecutive_failure_threshold=args.consecutive_failure_threshold,
     )
 

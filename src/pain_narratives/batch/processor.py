@@ -116,6 +116,7 @@ class BatchConfig:
     thinking_enabled: bool = False
     thinking_budget_tokens: int = 8000
     bedrock_region: Optional[str] = None
+    bedrock_profile: Optional[str] = None
 
     # Safety net — abort batch after N consecutive narrative-level failures
     # (likely indicates auth expiry, quota exhaustion, or a programming bug)
@@ -179,7 +180,10 @@ class BatchProcessor:
         # The attribute remains named `openai_client` for compatibility with
         # the rest of the codebase; it is the LLM adapter regardless of provider.
         if self.config.model_provider.startswith("bedrock"):
-            self._bedrock_client = BedrockClient(region=self.config.bedrock_region)
+            self._bedrock_client = BedrockClient(
+                region=self.config.bedrock_region,
+                profile_name=self.config.bedrock_profile,
+            )
             force_temp = self.config.temperature if not self.config.thinking_enabled else None
             self.openai_client = BedrockOpenAIAdapter(  # type: ignore[assignment]
                 self._bedrock_client,
@@ -205,18 +209,25 @@ class BatchProcessor:
         """
         if self._bedrock_client is not None:
             from datetime import timedelta
-            info = self._bedrock_client.check_credentials(
-                min_remaining=timedelta(hours=min_remaining_hours)
-            )
+
+            info = self._bedrock_client.check_credentials(min_remaining=timedelta(hours=min_remaining_hours))
             if info.expires_at:
                 remaining = info.time_remaining()
                 logger.info(
-                    "Bedrock pre-flight OK: token valid until %s (%s remaining)",
+                    "Bedrock pre-flight OK: %s credentials valid until %s (%s remaining)",
+                    info.auth_method,
                     info.expires_at.isoformat(),
                     remaining,
                 )
             else:
-                logger.info("Bedrock pre-flight OK: long-term token (no expiry)")
+                principal = f" principal={info.principal_arn}" if info.principal_arn else ""
+                profile = f" profile={info.profile_name}" if info.profile_name else ""
+                logger.info(
+                    "Bedrock pre-flight OK: %s credentials%s%s (no local expiry)",
+                    info.auth_method,
+                    profile,
+                    principal,
+                )
 
     def set_progress_callback(self, callback: Callable[[BatchProgress], None]) -> None:
         """Set a callback function for progress updates."""
@@ -408,9 +419,7 @@ class BatchProcessor:
                 "explanations, or commentary."
             )
         else:
-            output_instruction = (
-                "Please respond in JSON format with scores and explanations for each dimension."
-            )
+            output_instruction = "Please respond in JSON format with scores and explanations for each dimension."
 
         full_prompt = f"""{base_prompt}
 
@@ -509,9 +518,7 @@ Patient narrative:
     ) -> QuestionnaireResult:
         """Run a questionnaire with retry logic, using the configured prompt
         version. Bedrock auth errors propagate to the caller so the batch halts."""
-        prompts = get_questionnaire_prompt(
-            questionnaire_type, version=self.config.prompt_version
-        )
+        prompts = get_questionnaire_prompt(questionnaire_type, version=self.config.prompt_version)
 
         def _do_call() -> QuestionnaireResult:
             return run_questionnaire(
@@ -543,7 +550,10 @@ Patient narrative:
                 raise BedrockAuthError(result.error or "auth failure during questionnaire")
             logger.warning(
                 "%s attempt %d/%d failed: %s",
-                questionnaire_type, attempt, self.config.max_retries, result.error,
+                questionnaire_type,
+                attempt,
+                self.config.max_retries,
+                result.error,
             )
             if attempt < self.config.max_retries:
                 time.sleep(self.config.retry_delay * (2 ** (attempt - 1)))
@@ -643,9 +653,7 @@ Patient narrative:
         # 1. Dimension evaluation
         if self.config.include_dimensions:
             try:
-                dim_result, dim_reasoning_tokens = self._run_dimension_evaluation(
-                    narrative_text, experiment_id
-                )
+                dim_result, dim_reasoning_tokens = self._run_dimension_evaluation(narrative_text, experiment_id)
                 total_reasoning_tokens += dim_reasoning_tokens
                 result.dimension_success = "error" not in dim_result
                 result.dimension_result = dim_result
@@ -681,9 +689,7 @@ Patient narrative:
         # 2. PCS questionnaire
         if self.config.include_pcs:
             result.pcs_result = self._run_questionnaire_with_retry(narrative_text, "PCS")
-            total_reasoning_tokens += int(
-                (result.pcs_result.raw_response or {}).get("reasoning_tokens") or 0
-            )
+            total_reasoning_tokens += int((result.pcs_result.raw_response or {}).get("reasoning_tokens") or 0)
             result.pcs_questionnaire_id = self._save_questionnaire_result(
                 result.pcs_result, "PCS", experiment_id, group_id, narrative_id, user_id
             )
@@ -692,9 +698,7 @@ Patient narrative:
         # 3. BPI-IS questionnaire
         if self.config.include_bpi_is:
             result.bpi_is_result = self._run_questionnaire_with_retry(narrative_text, "BPI-IS")
-            total_reasoning_tokens += int(
-                (result.bpi_is_result.raw_response or {}).get("reasoning_tokens") or 0
-            )
+            total_reasoning_tokens += int((result.bpi_is_result.raw_response or {}).get("reasoning_tokens") or 0)
             result.bpi_is_questionnaire_id = self._save_questionnaire_result(
                 result.bpi_is_result, "BPI-IS", experiment_id, group_id, narrative_id, user_id
             )
@@ -703,9 +707,7 @@ Patient narrative:
         # 4. TSK-11SV questionnaire
         if self.config.include_tsk_11sv:
             result.tsk_11sv_result = self._run_questionnaire_with_retry(narrative_text, "TSK-11SV")
-            total_reasoning_tokens += int(
-                (result.tsk_11sv_result.raw_response or {}).get("reasoning_tokens") or 0
-            )
+            total_reasoning_tokens += int((result.tsk_11sv_result.raw_response or {}).get("reasoning_tokens") or 0)
             result.tsk_11sv_questionnaire_id = self._save_questionnaire_result(
                 result.tsk_11sv_result, "TSK-11SV", experiment_id, group_id, narrative_id, user_id
             )
@@ -713,9 +715,7 @@ Patient narrative:
 
         # Persist aggregate reasoning-token count for cost reconstruction.
         if total_reasoning_tokens > 0:
-            self.db_manager.update_experiment_status(
-                experiment_id, reasoning_tokens=total_reasoning_tokens
-            )
+            self.db_manager.update_experiment_status(experiment_id, reasoning_tokens=total_reasoning_tokens)
 
         return result
 
@@ -852,9 +852,7 @@ Patient narrative:
 
                     # Update progress and consecutive-failure counter
                     self.progress.processed += 1
-                    succeeded = result.dimension_success or (
-                        result.pcs_result and result.pcs_result.success
-                    )
+                    succeeded = result.dimension_success or (result.pcs_result and result.pcs_result.success)
                     if succeeded:
                         self.progress.successful += 1
                         consecutive_failures = 0
@@ -881,9 +879,7 @@ Patient narrative:
                             consecutive_failures,
                             self.config.consecutive_failure_threshold,
                         )
-                        raise RuntimeError(
-                            f"Aborting after {consecutive_failures} consecutive narrative failures"
-                        )
+                        raise RuntimeError(f"Aborting after {consecutive_failures} consecutive narrative failures")
 
                 except BedrockAuthError as e:
                     logger.error(
@@ -1114,9 +1110,7 @@ Patient narrative:
 
                     # Update progress + tripwire counter
                     self.progress.processed += 1
-                    succeeded = result.dimension_success or (
-                        result.pcs_result and result.pcs_result.success
-                    )
+                    succeeded = result.dimension_success or (result.pcs_result and result.pcs_result.success)
                     if succeeded:
                         self.progress.successful += 1
                         consecutive_failures = 0
@@ -1142,9 +1136,7 @@ Patient narrative:
                             consecutive_failures,
                             self.config.consecutive_failure_threshold,
                         )
-                        raise RuntimeError(
-                            f"Aborting after {consecutive_failures} consecutive narrative failures"
-                        )
+                        raise RuntimeError(f"Aborting after {consecutive_failures} consecutive narrative failures")
 
                 except BedrockAuthError as e:
                     logger.error(
