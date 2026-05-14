@@ -52,6 +52,14 @@ def main() -> int:
         help="User prompt to send",
     )
     ap.add_argument("--verbose", "-v", action="store_true")
+    ap.add_argument(
+        "--region",
+        help="AWS region for Bedrock calls. Defaults to bedrock.default_region from config.",
+    )
+    ap.add_argument(
+        "--profile",
+        help="AWS profile to use for boto3 credential auth (for example: mfa).",
+    )
     args = ap.parse_args()
 
     logging.basicConfig(
@@ -63,23 +71,40 @@ def main() -> int:
 
     # Diagnostic: token info
     cfg = get_settings().bedrock_config
-    info = inspect_bearer_token(cfg.api_key)
-    if info.expires_at is not None:
+    if cfg.api_key:
+        info = inspect_bearer_token(cfg.api_key)
+    else:
+        info = None
+    if info is not None and info.expires_at is not None:
         remaining = info.time_remaining()
         print(f"Bearer token expires at {info.expires_at.isoformat()} (in {remaining})")
-    else:
+    elif cfg.api_key:
         print("Bearer token: no expiry recorded (likely a long-term key)")
+    else:
+        print("Bearer token: not configured; using boto3 credential chain (for example EC2 IAM role)")
 
     print(f"Region: {cfg.default_region}")
+    if args.region:
+        print(f"Region override: {args.region}")
+    if args.profile:
+        print(f"AWS profile override: {args.profile}")
     print(f"Model:  {preset['model']}")
     print(f"Kwargs: {preset['kwargs']}\n")
 
-    client = BedrockClient()
+    client = BedrockClient(region=args.region, profile_name=args.profile)
     try:
-        client.check_credentials()
+        auth = client.check_credentials()
     except BedrockAuthError as e:
         print(f"PRE-FLIGHT FAILED: {e}")
         return 2
+    print(f"Auth:   {auth.auth_method}")
+    if auth.profile_name:
+        print(f"Profile: {auth.profile_name}")
+    if auth.principal_arn:
+        print(f"STS:    {auth.principal_arn}")
+    if auth.expires_at:
+        print(f"Expires: {auth.expires_at.isoformat()} (in {auth.time_remaining()})")
+    print("")
 
     messages = [{"role": "user", "content": args.prompt}]
     try:
@@ -99,8 +124,10 @@ def main() -> int:
     usage = resp["usage"]
 
     print(f"Finish reason: {resp['choices'][0]['finish_reason']}")
-    print(f"Usage:         prompt={usage['prompt_tokens']}  completion={usage['completion_tokens']}  "
-          f"total={usage['total_tokens']}  (reasoning≈{resp['reasoning_tokens']})")
+    print(
+        f"Usage:         prompt={usage['prompt_tokens']}  completion={usage['completion_tokens']}  "
+        f"total={usage['total_tokens']}  (reasoning≈{resp['reasoning_tokens']})"
+    )
     print("\n--- Answer ---")
     print(answer)
     if reasoning:
