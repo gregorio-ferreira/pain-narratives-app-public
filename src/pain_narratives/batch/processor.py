@@ -20,7 +20,7 @@ import pandas as pd
 from pain_narratives.config.prompts import (
     get_base_prompt,
     get_default_dimensions,
-    get_narrative_evaluation_config_v,
+    get_narrative_evaluation_config,
     get_questionnaire_prompt,
     get_system_role,
 )
@@ -343,25 +343,19 @@ class BatchProcessor:
         user_id: int,
         description: str,
     ) -> int:
-        """
-        Create a new experiment group for the batch.
+        """Create a new experiment group for the batch.
 
-        Args:
-            user_id: Owner user ID (batch user)
-            description: Description for the experiment group
-
-        Returns:
-            Experiment group ID
+        Seeds the group's `system_role`/`base_prompt`/`dimensions` and per-group
+        `questionnaire_prompts` rows from `self.config.prompt_version` so the
+        group metadata matches the prompts the experiments actually run with.
         """
         group_id = self.db_manager.register_new_experiments_group(
             description=description,
-            system_role=get_system_role(),
-            base_prompt=get_base_prompt(),
             owner_id=user_id,
-            dimensions=get_default_dimensions(),
+            prompt_version=self.config.prompt_version,
         )
 
-        logger.info(f"Created experiment group: {group_id}")
+        logger.info(f"Created experiment group: {group_id} (prompt_version={self.config.prompt_version})")
         return group_id
 
     def create_narrative_record(
@@ -396,10 +390,11 @@ class BatchProcessor:
     ) -> tuple[Dict[str, Any], int]:
         """Run dimension evaluation. Returns (parsed_result, reasoning_tokens).
         Versioned via `self.config.prompt_version`."""
-        ne_cfg = get_narrative_evaluation_config_v(self.config.prompt_version)
-        system_role = ne_cfg.get("system_role", "").strip() or get_system_role()
-        base_prompt = ne_cfg.get("base_prompt", "").strip() or get_base_prompt()
-        dimensions = ne_cfg.get("dimensions", []) or get_default_dimensions()
+        version = self.config.prompt_version
+        ne_cfg = get_narrative_evaluation_config(version)
+        system_role = ne_cfg.get("system_role", "").strip() or get_system_role(version)
+        base_prompt = ne_cfg.get("base_prompt", "").strip() or get_base_prompt(version)
+        dimensions = ne_cfg.get("dimensions", []) or get_default_dimensions(version)
 
         # Build the full prompt
         dimension_descriptions = []
