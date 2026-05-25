@@ -6,6 +6,8 @@ import pytest
 
 from pain_narratives.core.database import DatabaseManager
 
+pytestmark = pytest.mark.live_db
+
 
 def test_update_user_experiment_groups():
     """Test updating user experiment groups with validation."""
