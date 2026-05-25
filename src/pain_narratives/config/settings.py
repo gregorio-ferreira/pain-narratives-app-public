@@ -87,7 +87,11 @@ class ConfigManager:
             logger (Logger, optional): Logger instance.
         """
         if config_path is None:
-            # Use project-level .yaml by default (need 4 dirname calls: settings.py -> config -> pain_narratives -> src -> project_root)
+            env_config_path = os.environ.get("PAIN_NARRATIVES_CONFIG")
+            if env_config_path:
+                config_path = env_config_path
+        if config_path is None:
+            # settings.py -> config -> pain_narratives -> src -> project root
             project_yaml = os.path.join(
                 os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), ".yaml"
             )

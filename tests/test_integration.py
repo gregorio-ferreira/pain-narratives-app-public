@@ -3,6 +3,10 @@
 Integration test script to verify the centralized configuration system works properly.
 """
 
+import pytest
+
+pytestmark = pytest.mark.live_db
+
 
 def test_configuration():
     """Test that configuration loads correctly."""
@@ -12,10 +16,9 @@ def test_configuration():
         settings = get_settings()
 
         print("✅ Configuration loaded successfully")
-        print(f"  - Database URL: {settings.database_url[:50]}...")
+        print(f"  - Database configured: {bool(settings.pg_config.host and settings.pg_config.user)}")
         print(f"  - OpenAI API key configured: {bool(settings.openai_api_key)}")
         print(f"  - Default model: {settings.model_config.default_model}")
-        print(f"  - Database host: {settings.pg_config.host}")
         assert True
     except Exception as e:
         print(f"❌ Configuration loading failed: {e}")
