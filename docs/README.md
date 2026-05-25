@@ -1,33 +1,27 @@
-# Documentation Index
+# Documentation
 
-AINarratives is a Streamlit research app that uses LLMs to evaluate chronic-pain
-patient narratives across clinical dimensions and validated questionnaires
-(PCS, BPI-IS, TSK-11SV). It was first published in *Software Impacts* and is
-under revision for ACM HEALTH-2026-0160.
+This directory contains public, reusable documentation for AINarratives. It is
+organized by topic rather than by one-off project history.
 
-Start with the project [`README.md`](../README.md) for installation and a feature
-tour. This folder holds reference material for operators and coding assistants
-who need to extend, deploy, or rerun the system.
-
-## Topics
-
-| File | What's in it |
+| Topic | File |
 |---|---|
-| [`architecture.md`](architecture.md) | Layout of the codebase, key database tables, alembic state, and the narratives dataset (152 ACM baseline narratives, 40 with human ground truth). |
-| [`configuration.md`](configuration.md) | `config.yaml` shape, YAML-based default prompts, translation-model settings, deprecated `user_prompts` table. |
-| [`deployment.md`](deployment.md) | EC2 deploy steps, AWS Bedrock auth (IAM role / MFA profile / bearer token), `systemd` service template. |
-| [`user_management.md`](user_management.md) | Admin UI for creating users, toggling admin rights, resetting passwords, deleting users, and assigning experiment groups. |
-| [`revision_experiments.md`](revision_experiments.md) | Active rebuttal experiments: DeepSeek-R1 and Claude Sonnet 4.5 (with extended thinking) on the 152-narrative baseline. |
-| [`improvements.md`](improvements.md) | Backlog of performance and hardening tracks (DB pooling, systemd limits, Streamlit caching, batch parallelism). |
+| Codebase layout, runtime components, database tables | [architecture.md](architecture.md) |
+| Config files, environment override, OpenAI/Bedrock settings | [configuration.md](configuration.md) |
+| EC2/systemd deployment and production smoke tests | [deployment.md](deployment.md) |
+| Batch runs, prompt versions, providers, checkpoints | [experiments.md](experiments.md) |
+| Notebooks, revision data layer, generated outputs | [analysis.md](analysis.md) |
+| Operational hardening and maintenance guidance | [operations.md](operations.md) |
+| Admin UI and user/group management | [user_management.md](user_management.md) |
 
-## Generated reference data
+## Generated and Private Material
 
-- [`revision/narratives_inventory.csv`](revision/narratives_inventory.csv) — one
-  row per non-empty narrative, with size metadata and provenance flags. The CSV
-  contains no narrative text. Regenerate with
-  [`scripts/dev/build_narratives_inventory.py`](../scripts/dev/build_narratives_inventory.py).
+Generated analysis outputs are not tracked. Recreate them from the documented
+commands when needed. Private inputs such as patient data, local workbooks,
+checkpoints, credentials, and operator notes must stay outside git.
 
-## Local-only notes
+`docs/local/` is intentionally ignored and can be used for machine-specific
+handoff notes.
 
-The `local/` subfolder is gitignored (see [`.gitignore`](../.gitignore)) and is
-where operators keep machine-specific runbooks and handoff notes.
+The metadata-only file [revision/narratives_inventory.csv](revision/narratives_inventory.csv)
+is safe to track because it contains counts, hashes, and provenance flags, not
+narrative text.

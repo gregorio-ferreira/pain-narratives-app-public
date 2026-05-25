@@ -1,180 +1,113 @@
 # Deployment
 
-The production AINarratives app runs on an EC2 instance in `eu-central-1`
-serving a Streamlit UI, with Postgres on RDS in the same region and AWS Bedrock
-inference in `us-east-1`. This page covers the deploy layout, AWS Bedrock
-authentication, and the recommended `systemd` configuration.
+This guide describes a generic EC2-style deployment. Adapt paths, users, and
+domains to your environment.
 
-## EC2 host layout
-
-Recommended path: `/opt/pain-narratives-app-public` (or wherever the operator
-prefers). The repo manages dependencies with `uv`:
+## Host Setup
 
 ```bash
 cd /opt
-git clone https://github.com/gregorio-ferreira/pain-narratives-app-public.git
+git clone <repository-url> pain-narratives-app-public
 cd pain-narratives-app-public
-git checkout main && git pull
 
-# uv (skip if already installed)
 curl -LsSf https://astral.sh/uv/install.sh | sh
-
 uv sync
-uv run python -c "import boto3, sqlmodel, streamlit; print('deps OK')"
 ```
 
-Operator-specific configs are gitignored — copy them from a safe location after
-cloning:
+Copy private runtime files from your secret store:
 
-- `config.yaml` (DB credentials, Bedrock auth, model selection)
-- `.streamlit/config.toml` (port, base URL, theme)
+- `config.yaml` or another YAML file referenced by `PAIN_NARRATIVES_CONFIG`
+- Optional `.streamlit/config.toml`
 
-Validate the DB connection and alembic head before launching:
+Run migrations:
 
 ```bash
-cd /opt/pain-narratives-app-public/src/pain_narratives/db
-uv run alembic current   # expected: 2026051100rev
+cd src/pain_narratives/db
+uv run alembic upgrade head
+cd ../../..
 ```
 
-If the head is older, run `uv run alembic upgrade head` (the revision-experiment
-columns are additive and nullable, so the running app is not affected).
-
-## AWS Bedrock authentication
-
-The revision experiments call Bedrock in `us-east-1`. Authentication options,
-in order of preference:
-
-### 1. EC2 IAM instance profile (preferred)
-
-If the EC2 has an instance profile with `bedrock:InvokeModel` and
-`bedrock:Converse` permissions on the revision model ARNs, boto3 picks the
-credentials up automatically — no token to refresh. Strongly recommended given
-each model takes ~3 hours of wall time.
-
-Diagnostic script:
+Create an admin user if this is a new database:
 
 ```bash
-bash scripts/dev/probe_ec2_bedrock_access.sh
+uv run python scripts/register_user.py
 ```
 
-It checks the IMDS instance profile, STS identity, `bedrock list-foundation-models`,
-attempts a real call against each revision model, and finally falls back to
-the `config.yaml` bearer token. Ends with a `USE THIS AUTH: ...` recommendation.
+## Running the App
 
-Manual checks:
+Development-style launch:
 
 ```bash
-curl -s http://169.254.169.254/latest/meta-data/iam/info && echo
-aws sts get-caller-identity
-aws bedrock list-foundation-models --region us-east-1 | head -50
-uv run python scripts/dev/test_bedrock_smoke.py --model deepseek-r1
+make app
 ```
 
-### 2. MFA-backed AWS profile
+Production deployments should use a process manager such as `systemd`.
 
-If the EC2 has no Bedrock-capable instance profile, use a local MFA helper to
-write temporary STS credentials into a profile named `mfa`:
+## systemd Template
+
+The repository includes `deploy/pain-narratives.service`. Copy it to the host
+unit directory and fill in placeholders:
 
 ```bash
-/home/ubuntu/aws_mfa_session.sh
-export AWS_PROFILE=mfa
-aws sts get-caller-identity
-```
-
-`config.yaml`:
-
-```yaml
-bedrock:
-  api_key: ""
-  aws_profile: mfa
-  default_region: us-east-1
-  aws_region: us-east-1
-```
-
-You can also leave `aws_profile` unset and pass it on the command line:
-
-```bash
-uv run python scripts/run_batch_evaluation.py \
-  --bedrock-profile mfa --bedrock-region us-east-1 ...
-```
-
-Refresh the session before long runs if fewer than a few hours remain.
-
-### 3. Bedrock bearer token (fallback)
-
-If neither instance profile nor MFA is available:
-
-1. AWS Console → Bedrock → API keys → Generate API key, in `us-east-1`.
-2. Add to `config.yaml`:
-   ```yaml
-   bedrock:
-     api_key: bedrock-api-key-<the-long-base64>
-     default_region: us-east-1
-   ```
-3. Smoke-test: `uv run python scripts/dev/test_bedrock_smoke.py --model deepseek-r1`
-
-When the 12-hour token expires the batch runner halts cleanly with a clear
-`Bedrock auth failure mid-batch` log line and writes a checkpoint. Refresh the
-key and rerun with `--resume`.
-
-### Model access in `us-east-1`
-
-Confirm the revision model IDs are accessible to your IAM principal:
-
-```bash
-uv run python scripts/dev/test_bedrock_smoke.py --model deepseek-r1
-uv run python scripts/dev/test_bedrock_smoke.py --model sonnet-4-5-thinking
-```
-
-If you see `AccessDeniedException: You don't have access to the model with the
-specified model ID`, request access in the Bedrock console (Model access page)
-for that model in `us-east-1`. Non-Anthropic approvals are typically minutes;
-Anthropic can take longer.
-
-The current Bedrock account is **730335551675** (UOC academic account, user
-`jferreirade`). RDS lives in a different account in `eu-central-1`.
-
-## `systemd` service
-
-The runtime unit lives at `/etc/systemd/system/pain-narratives.service`. The
-in-repo template is [`deploy/pain-narratives.service`](../deploy/pain-narratives.service):
-a minimal `Restart=always` configuration with placeholders for `<APP_USER>`,
-`<APP_ROOT>`, and `<UV_BIN_DIR>`. To deploy:
-
-```bash
-sudo cp deploy/pain-narratives.service /etc/systemd/system/
-sudo $EDITOR /etc/systemd/system/pain-narratives.service   # fill placeholders
+sudo cp deploy/pain-narratives.service /etc/systemd/system/pain-narratives.service
+sudo $EDITOR /etc/systemd/system/pain-narratives.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now pain-narratives
 ```
 
-For production hosts, the template should be hardened with memory limits, a
-crash-loop ceiling, and filesystem protections. The full hardened unit and the
-rationale for each directive are in
-[`improvements.md`](improvements.md#2-systemd-hardening) (Track 2 of the
-backlog).
+Use an environment file for host-specific settings:
 
-## Post-deploy smoke test
-
-```bash
-# UI
-make app    # then open http://<host>:8501
-
-# Click through:
-#   - language toggle (en/es)
-#   - log in and list experiment groups 38/39/40
-#   - load a narrative for evaluation
-#   - questionnaire feedback page
-
-# Batch dry-run (no tokens spent)
-uv run python scripts/run_batch_evaluation.py --input data/narratives.xlsx --dry-run
+```ini
+EnvironmentFile=-/etc/pain-narratives.env
 ```
 
-The notebook smoke test (cheapest one):
+Example `/etc/pain-narratives.env`:
+
+```text
+PAIN_NARRATIVES_CONFIG=/etc/pain-narratives/config.yaml
+```
+
+## Bedrock Access
+
+Bedrock-backed models use standard AWS credential resolution unless a profile or
+bearer token is configured. Preferred order:
+
+1. IAM role or instance profile.
+2. Named AWS profile via `bedrock.aws_profile` or `--bedrock-profile`.
+3. Bedrock bearer token in private config.
+
+Validate before running a batch:
 
 ```bash
-uv run jupyter nbconvert --to notebook --execute \
-  notebooks/02_patient_demographics_for_publication.ipynb \
-  --output notebooks/_smoke_test_02.ipynb
-rm notebooks/_smoke_test_02.ipynb
+aws sts get-caller-identity
+uv run python scripts/dev/test_bedrock_smoke.py --model deepseek-r1
+uv run python scripts/dev/test_bedrock_smoke.py --model sonnet-4-5-thinking
+```
+
+## Smoke Test
+
+After deployment:
+
+```bash
+systemctl status pain-narratives
+journalctl -u pain-narratives -n 100 --no-pager
+```
+
+Then verify in the UI:
+
+- Login works.
+- Evaluation groups load.
+- A narrative can be selected.
+- Admin user management is available to admin users.
+
+Run the local test suite on the host without live integrations:
+
+```bash
+uv run pytest
+```
+
+Run live integration checks only with explicit private config:
+
+```bash
+RUN_LIVE_DB_TESTS=1 PAIN_NARRATIVES_CONFIG=/secure/path/config.yaml uv run pytest -m live_db
 ```
