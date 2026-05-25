@@ -95,11 +95,16 @@ tmp/
 
 # Data files (should not be committed)
 data/
+checkpoints/
 *.csv
 *.xlsx
 *.xls
 # Metadata-only inventory (counts/hashes/flags, no narrative text) — safe to track.
 !docs/revision/narratives_inventory.csv
+docs/revision/data/
+docs/revision/*.md
+docs/rebuttal/
+docs/rebuttal.zip
 
 # Database files
 *.db

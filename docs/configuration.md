@@ -1,121 +1,111 @@
 # Configuration
 
-## `config.yaml`
+Runtime configuration is YAML-based and must stay out of git. Use
+`config.yaml.example` as the public schema reference.
 
-Operator-supplied runtime config. Gitignored. Use
-[`config.yaml.example`](../config.yaml.example) as the schema reference. Top-level keys:
+## Load Order
 
-- `pg-prod:` connection to the `pain_narratives_app` Postgres schema.
-- `openai:` API key and organization id.
-- `models:` evaluation and translation model selection (see below).
-- `bedrock:` AWS auth + region for Bedrock-served models (see [`deployment.md`](deployment.md)).
-- `app:` Streamlit-side options (theme, default language).
+The settings loader resolves configuration in this order:
 
-`.streamlit/config.toml` holds operator-specific Streamlit settings (server
-port, base URL, theme). The example template is at
-[`.streamlit/config.toml.example`](../.streamlit/config.toml.example); the live
-file is gitignored.
+1. An explicit path passed to `ConfigManager`.
+2. `PAIN_NARRATIVES_CONFIG`.
+3. Project `.yaml`.
+4. `~/.yaml`.
 
-## Default prompts (YAML-based)
+Example:
 
-The Streamlit UI loads all default prompts from
-[`src/pain_narratives/config/default_prompts.yaml`](../src/pain_narratives/config/default_prompts.yaml).
-Researchers update prompts by editing the YAML and restarting the app, no code
-changes needed. The YAML was seeded from experiment group 12 (October 2025).
+```bash
+PAIN_NARRATIVES_CONFIG=/secure/path/pain-narratives.yaml make app
+```
 
-Structure:
+## Main Sections
 
 ```yaml
-narrative_evaluation:
-  system_role: |
-    <one paragraph describing the assistant's role>
-  base_prompt: |
-    <general scoring instructions>
-  dimensions:
-    - name: "Severidad del dolor"   # Spanish per group 12
-      definition: "..."
-      min: 0
-      max: 10
-      active: true
-    - name: "Discapacidad"
-      definition: "..."
-      min: 0
-      max: 10
-      active: true
+openai:
+  api_key: ""
+  api_key_pain_narratives: ""
+  org_id: ""
 
-questionnaires:
-  PCS: { system_role: "...", instructions: "..." }   # 13 Spanish items
-  BPI-IS: { ... }                                    # 7 Spanish items
-  TSK-11SV: { ... }                                  # 11 Spanish items
+pg-prod:
+  host: localhost
+  database: pain_narratives
+  user: pain_narratives
+  password: pain_narratives_dev
+  port: 5432
 
-prompt_library:
-  - { id, label, description, system_role, base_prompt }   # 4 templates
+models:
+  default_model: gpt-5-mini
+  default_temperature: 1.0
+  default_top_p: 1.0
+  default_max_tokens: 8000
+  translation_model: gpt-5-mini
+  translation_temperature: 1.0
+  translation_max_tokens: 8000
+
+bedrock:
+  api_key: ""
+  aws_profile: ""
+  default_region: us-east-1
+  aws_region: us-east-1
+
+app:
+  data_root_path: ./data
+  environment: development
+  streamlit_server_port: 8501
+  streamlit_server_address: localhost
 ```
 
-The loader is [`src/pain_narratives/config/prompts.py`](../src/pain_narratives/config/prompts.py).
-Public API:
+`config.yaml`, `.yaml`, `.env`, and Streamlit secrets are ignored. Never force
+add them.
 
-```python
-from pain_narratives.config.prompts import (
-    get_system_role, get_base_prompt, get_default_dimensions,
-    get_default_prompt, get_questionnaire_prompt, get_prompt_library,
-    reload_prompts_config,
-)
+## Prompt Configuration
+
+Default UI prompts are stored in
+`src/pain_narratives/config/default_prompts.yaml`. Revision/batch experiments
+can use a separate prompt file, such as
+`src/pain_narratives/config/simplified_v1_prompts.yaml`, selected by
+`--prompt-version`.
+
+Validate prompt YAML with:
+
+```bash
+uv run pytest tests/test_yaml_prompts_config.py
 ```
 
-Validation: `uv run python tests/test_yaml_prompts_config.py`.
+## OpenAI
 
-### Updating from an existing experiment group
+Set `openai.api_key` for direct OpenAI evaluation calls. The UI also accepts a
+user-provided key in supported workflows.
 
-If a researcher has saved a better prompt in an experiment group, copy it into
-the YAML:
+## AWS Bedrock
 
-```sql
--- Narrative evaluation prompts
-SELECT system_role, base_prompt, dimensions
-FROM pain_narratives_app.experiments_groups
-WHERE experiments_group_id = <id>;
+Bedrock can use standard AWS credential resolution, an AWS profile, or a
+Bedrock bearer token:
 
--- Questionnaire prompts
-SELECT questionnaire_type, system_role, instructions
-FROM pain_narratives_app.questionnaire_prompts
-WHERE experiments_group_id = <id>;
+- Prefer IAM role or normal AWS profile credentials.
+- Set `bedrock.aws_profile` when a named profile should be used.
+- Set `bedrock.api_key` only when intentionally using Bedrock bearer-token
+  authentication.
+
+Smoke-test Bedrock access with:
+
+```bash
+uv run python scripts/dev/test_bedrock_smoke.py --model deepseek-r1
 ```
 
-Then paste the values into `default_prompts.yaml` and restart the app. YAML
-gotchas: use spaces (not tabs) for indentation; use the `|` block-scalar marker
-for multi-line strings; use single quotes around YAML strings that themselves
-contain double quotes.
+## Local Database
 
-### Revision experiments use a separate prompt set
+For local development:
 
-The DeepSeek-R1 / Sonnet-4.5 rebuttal runs use
-[`src/pain_narratives/config/simplified_v1_prompts.yaml`](../src/pain_narratives/config/simplified_v1_prompts.yaml),
-not `default_prompts.yaml`. The simplified prompts strip explanation/reasoning
-text from each sub-call so the model returns only structured answer values. See
-[`revision_experiments.md`](revision_experiments.md) for the rationale.
+```bash
+docker compose up -d postgres
+cp config.yaml.example config.yaml
+cd src/pain_narratives/db
+uv run alembic upgrade head
+```
 
-## Translation model
+Then create an admin user:
 
-The translation service ([`src/pain_narratives/core/translation_service.py`](../src/pain_narratives/core/translation_service.py))
-can use a dedicated translation model so the evaluation model can stay
-frontier-tier. The shipped defaults in
-[`config.yaml.example`](../config.yaml.example) use the same model for both
-(`gpt-5-mini`); override `translation_model` / `translation_temperature` /
-`translation_max_tokens` under the `models:` block to split them.
-
-The service translates both the `reasoning` and `explanations` fields and
-preserves the JSON shape. Independent of which evaluation model the operator
-selects.
-
-## Deprecated: `user_prompts` table
-
-The `user_prompts` table (SQLModel: `UserPrompt`) is **deprecated**. The
-Streamlit UI no longer reads or writes it. The YAML config is the authoritative
-source for default prompts. The table is kept in the schema for backward
-compatibility with CLI scripts/tests. If removal is desired, plan to:
-
-1. Drop the table via an alembic migration.
-2. Remove `UserPrompt` from `models_sqlmodel.py`.
-3. Remove `save_user_prompt` / `get_user_prompts` / `delete_user_prompt` from `DatabaseManager`.
-4. Remove `tests/test_user_prompt_current.py` and any CLI references in `scripts/manage_users.py`.
+```bash
+uv run python scripts/register_user.py
+```
