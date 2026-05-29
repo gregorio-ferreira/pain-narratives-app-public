@@ -146,3 +146,4 @@ docs/_build/
 # Alembic versions (kept under version control by intent)
 # src/pain_narratives/db/alembic/versions/*.py
 docs/local/*
+docs/multimodel/*
