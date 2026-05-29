@@ -1,20 +1,15 @@
-"""Schema-free data layer for multi-model revision analyses.
+"""Data layer for multi-model revision analyses.
 
-Loads real ground truth and per-model LLM-synthetic results into clean pandas
-DataFrames. Designed so each model's data flows through a single function and
-adding a new model is a one-line change to ``MODEL_CONFIGS``.
+Primary source: the ``ai_narratives_original`` PostgreSQL schema (created by
+the alembic migration ``2026051500ai_narratives`` and populated by the scripts
+under ``scripts/migrate/``). Run those once to fill the schema, then every
+``load_*`` function in this module is just a SQL query against it.
 
-Source files:
-- Publication Excel:  Data_RealQuest (real patient ground truth, 157 patients),
-                      Data_PCS / Data_BPI / Data_TSK (GPT-5 synthetic aggregated),
-                      Map_ExcelToDB (narrative_hash <-> db_narrative_id <-> excel_id).
-- Expert Excel:       Real_Scores_AllItems (41-narrative subset, item-level real),
-                      Synth_PCS/BPI/TSK_AllRuns (GPT-5 per-run results, 41 narratives).
-- DB:                 pain_narratives_app.evaluation_results.result_json
-                      (DeepSeek-R1 group 45/46/47, Sonnet 4.5 group 48+).
-
-Run ``scripts/dev/build_revision_parquets.py`` to materialise the outputs to
-``docs/revision/data/processed/``.
+Legacy helpers (Excel-based) are kept below the schema-readers for historical
+reproduction of the publication paper outputs. The legacy parsers
+(_parse_dimensions/pcs/bpi/tsk and MODEL_CONFIGS) remain because the migration
+scripts reuse them when reading the raw ``pain_narratives_app.evaluation_results``
+rows; downstream analysis code should use the new schema readers.
 """
 
 from __future__ import annotations
@@ -88,7 +83,120 @@ _GPT5_GROUP_TO_RUN = {35: 1, 36: 1, 38: 2, 39: 3, 40: 4}
 
 
 # ---------------------------------------------------------------------------
-# Bridge tables
+# Primary schema: ai_narratives_original
+# Use these for all new analyses; everything below is legacy / paper-reproduction.
+# ---------------------------------------------------------------------------
+
+SCHEMA = "ai_narratives_original"
+
+
+def load_real_from_schema(db: DatabaseManager | None = None) -> pd.DataFrame:
+    """Real patient ground truth from the schema (152 narratives).
+
+    One row per narrative_hash with: participant_id, narrative_hash, all real PCS / BPI / TSK
+    items and totals + the four BPI subscale aggregates. Demographics are *not* joined here
+    (use ``load_demographics_from_schema``).
+    """
+    db = db or DatabaseManager()
+    with db.engine.connect() as conn:
+        return pd.read_sql(text(f"""
+            SELECT n.narrative_id AS participant_id, n.narrative_hash, n.word_count,
+                   p.pcs_total, p.pcs_rumination, p.pcs_magnification, p.pcs_helplessness,
+                   p.pcs_01, p.pcs_02, p.pcs_03, p.pcs_04, p.pcs_05, p.pcs_06, p.pcs_07,
+                   p.pcs_08, p.pcs_09, p.pcs_10, p.pcs_11, p.pcs_12, p.pcs_13,
+                   b.bpi_total_mean, b.bpi_interference_mean, b.bpi_intensity_mean,
+                   b.bpiq11, b.bpiq12, b.bpiq13, b.bpiq14, b.bpiq15, b.bpiq16, b.bpiq17,
+                   b.bpiq28, b.bpiq39, b.bpiq410, b.bpiq511,
+                   t.tsk_total,
+                   t.tsk_01, t.tsk_02, t.tsk_03, t.tsk_04, t.tsk_05, t.tsk_06,
+                   t.tsk_07, t.tsk_08, t.tsk_09, t.tsk_10, t.tsk_11
+            FROM {SCHEMA}.narratives n
+            JOIN {SCHEMA}.real_patient_pcs p ON p.participant_id = n.narrative_id
+            JOIN {SCHEMA}.real_patient_bpi b ON b.participant_id = n.narrative_id
+            JOIN {SCHEMA}.real_patient_tsk t ON t.participant_id = n.narrative_id
+            ORDER BY n.narrative_id
+        """), conn)
+
+
+def load_demographics_from_schema(db: DatabaseManager | None = None) -> pd.DataFrame:
+    db = db or DatabaseManager()
+    with db.engine.connect() as conn:
+        return pd.read_sql(text(
+            f"SELECT * FROM {SCHEMA}.real_patient_demographics ORDER BY participant_id"
+        ), conn)
+
+
+def load_synth_from_schema(
+    model_tag: str | None = None, db: DatabaseManager | None = None
+) -> pd.DataFrame:
+    """LLM synthetic results joined across the four llm_* tables.
+
+    Long format: one row per (participant_id, model, run_number). All four PK
+    columns plus the dimension scores, all PCS/BPI/TSK items + scores, and
+    narrative_hash. When ``model_tag`` is None, returns rows for every model.
+    """
+    db = db or DatabaseManager()
+    where = "WHERE d.model = :model" if model_tag else ""
+    params = {"model": model_tag} if model_tag else {}
+    with db.engine.connect() as conn:
+        return pd.read_sql(text(f"""
+            SELECT d.participant_id, d.model, d.run_number,
+                   d.experiment_id, d.experiments_group_id,
+                   d.severidad_score, d.severidad_explicacion,
+                   d.discapacidad_score, d.discapacidad_explicacion,
+                   p.pcs_total, p.pcs_rumination, p.pcs_magnification, p.pcs_helplessness,
+                   p.pcs_01, p.pcs_02, p.pcs_03, p.pcs_04, p.pcs_05, p.pcs_06, p.pcs_07,
+                   p.pcs_08, p.pcs_09, p.pcs_10, p.pcs_11, p.pcs_12, p.pcs_13,
+                   b.bpi_total, b.bpi_total_mean,
+                   b.bpi_interference_avg, b.bpi_intensity_avg,
+                   b.bpi_interference_total, b.bpi_intensity_total,
+                   b.bpiq11, b.bpiq12, b.bpiq13, b.bpiq14, b.bpiq15, b.bpiq16, b.bpiq17,
+                   b.bpiq28, b.bpiq39, b.bpiq410, b.bpiq511,
+                   t.tsk_total,
+                   t.tsk_01, t.tsk_02, t.tsk_03, t.tsk_04, t.tsk_05, t.tsk_06,
+                   t.tsk_07, t.tsk_08, t.tsk_09, t.tsk_10, t.tsk_11,
+                   n.narrative_hash
+            FROM {SCHEMA}.llm_dimension_evaluation d
+            LEFT JOIN {SCHEMA}.llm_pcs_results p
+              ON p.participant_id = d.participant_id AND p.model = d.model AND p.run_number = d.run_number
+            LEFT JOIN {SCHEMA}.llm_bpi_results b
+              ON b.participant_id = d.participant_id AND b.model = d.model AND b.run_number = d.run_number
+            LEFT JOIN {SCHEMA}.llm_tsk_results t
+              ON t.participant_id = d.participant_id AND t.model = d.model AND t.run_number = d.run_number
+            LEFT JOIN {SCHEMA}.narratives n ON n.narrative_id = d.participant_id
+            {where}
+            ORDER BY d.model, d.run_number, d.participant_id
+        """), conn, params=params)
+
+
+def load_expert_dimension_from_schema(db: DatabaseManager | None = None) -> pd.DataFrame:
+    db = db or DatabaseManager()
+    with db.engine.connect() as conn:
+        return pd.read_sql(text(
+            f"SELECT * FROM {SCHEMA}.expert_dimension_evaluation"
+        ), conn)
+
+
+def load_expert_questionnaire_from_schema(db: DatabaseManager | None = None) -> pd.DataFrame:
+    db = db or DatabaseManager()
+    with db.engine.connect() as conn:
+        return pd.read_sql(text(
+            f"SELECT * FROM {SCHEMA}.expert_questionnaire_feedback"
+        ), conn)
+
+
+def available_models(db: DatabaseManager | None = None) -> list[str]:
+    """Models that currently have data in the schema."""
+    db = db or DatabaseManager()
+    with db.engine.connect() as conn:
+        rows = conn.execute(text(
+            f"SELECT DISTINCT model FROM {SCHEMA}.llm_dimension_evaluation ORDER BY model"
+        )).fetchall()
+    return [m for (m,) in rows]
+
+
+# ---------------------------------------------------------------------------
+# Legacy bridge tables (paper-reproduction only)
 # ---------------------------------------------------------------------------
 
 
