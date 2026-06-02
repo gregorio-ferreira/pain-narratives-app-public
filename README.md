@@ -67,12 +67,12 @@ Configuration is loaded in this order:
 
 1. Explicit path passed in code.
 2. `PAIN_NARRATIVES_CONFIG`.
-3. Project `.yaml`.
-4. `~/.yaml`.
+3. `<repo_root>/config.yaml`.
+4. `~/config.yaml`.
 
-For normal local development, copy `config.yaml.example` to `config.yaml` or
-`.yaml` and keep it untracked. See [docs/configuration.md](docs/configuration.md)
-for the full schema and provider-specific notes.
+For normal local development, copy `config.yaml.example` to `config.yaml` and
+keep it untracked. See [docs/configuration.md](docs/configuration.md) for the
+full schema and provider-specific notes.
 
 ## Common Commands
 

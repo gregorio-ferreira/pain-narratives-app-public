@@ -83,7 +83,11 @@ class ConfigManager:
         Initialize configuration manager.
 
         Args:
-            config_path (str, optional): Path to config file. Defaults to ~/.yaml.
+            config_path (str, optional): Path to config file. Resolution order:
+                1. explicit ``config_path`` argument
+                2. ``PAIN_NARRATIVES_CONFIG`` environment variable
+                3. ``<repo_root>/config.yaml``
+                4. ``~/config.yaml``
             logger (Logger, optional): Logger instance.
         """
         if config_path is None:
@@ -93,12 +97,12 @@ class ConfigManager:
         if config_path is None:
             # settings.py -> config -> pain_narratives -> src -> project root
             project_yaml = os.path.join(
-                os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), ".yaml"
+                os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "config.yaml"
             )
             if os.path.exists(project_yaml):
                 config_path = project_yaml
             else:
-                config_path = os.path.expanduser("~/.yaml")
+                config_path = os.path.expanduser("~/config.yaml")
         self.config_path = config_path
         self.logger = logger
         self._config: dict[str, Any] = {}
