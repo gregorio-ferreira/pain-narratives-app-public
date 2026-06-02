@@ -146,3 +146,4 @@ docs/_build/
 # src/pain_narratives/db/alembic/versions/*.py
 docs/local/*
 docs/multimodel/*
+docs/multimodel.zip
