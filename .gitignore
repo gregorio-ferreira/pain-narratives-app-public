@@ -77,7 +77,6 @@ dmypy.json
 .ipynb_checkpoints
 
 # Configuration files with secrets
-.yaml
 config.yaml
 *.yaml.bak
 secrets.yaml

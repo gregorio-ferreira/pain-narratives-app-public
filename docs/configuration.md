@@ -9,8 +9,8 @@ The settings loader resolves configuration in this order:
 
 1. An explicit path passed to `ConfigManager`.
 2. `PAIN_NARRATIVES_CONFIG`.
-3. Project `.yaml`.
-4. `~/.yaml`.
+3. `<repo_root>/config.yaml`.
+4. `~/config.yaml`.
 
 Example:
 
