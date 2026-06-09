@@ -9,6 +9,7 @@ from typing import Any, Dict, List
 import streamlit as st
 
 from pain_narratives.core.openai_client import OpenAIClient
+from pain_narratives.core.questionnaire_runner import loads_with_repair
 
 logger = logging.getLogger(__name__)
 
@@ -337,7 +338,6 @@ def run_pcs_questionnaire(
     narrative: str,
     openai_client: OpenAIClient,
     model: str,
-    temperature: float,
     pcs_system_role: str = PCS_SYSTEM_ROLE,
     pcs_instructions: str = PCS_INSTRUCTIONS,
 ) -> Dict[str, Any]:
@@ -355,7 +355,6 @@ def run_pcs_questionnaire(
     response = openai_client.create_completion(
         messages=messages,
         model=model,
-        temperature=temperature,
         max_tokens=8000,  # Increased for GPT-5 reasoning tokens + full JSON output
         response_format="json_object",  # Force JSON output
     )
@@ -406,7 +405,7 @@ def run_pcs_questionnaire(
     logger.info(f"Cleaned JSON content: {cleaned_content[:200]}...")
 
     try:
-        data = json.loads(cleaned_content)
+        data = loads_with_repair(cleaned_content)
         logger.info("Successfully parsed JSON response")
 
         # Validate the response structure
@@ -454,7 +453,6 @@ def run_bpi_is_questionnaire(
     narrative: str,
     openai_client: OpenAIClient,
     model: str,
-    temperature: float,
     bpi_system_role: str = BPI_IS_SYSTEM_ROLE,
     bpi_instructions: str = BPI_IS_INSTRUCTIONS,
 ) -> Dict[str, Any]:
@@ -468,7 +466,6 @@ def run_bpi_is_questionnaire(
     response = openai_client.create_completion(
         messages=messages,
         model=model,
-        temperature=temperature,
         max_tokens=8000,  # Increased for GPT-5 reasoning tokens + full JSON output
         response_format="json_object",  # Force JSON output
     )
@@ -520,7 +517,7 @@ def run_bpi_is_questionnaire(
     logger.info(f"Cleaned BPI-IS JSON content: {cleaned_content[:200]}...")
 
     try:
-        data = json.loads(cleaned_content)
+        data = loads_with_repair(cleaned_content)
         logger.info("Successfully parsed BPI-IS JSON response")
 
         # Validate the response structure
@@ -555,7 +552,6 @@ def run_tsk_11sv_questionnaire(
     narrative: str,
     openai_client: OpenAIClient,
     model: str,
-    temperature: float,
     tsk_system_role: str = TSK_11SV_SYSTEM_ROLE,
     tsk_instructions: str = TSK_11SV_INSTRUCTIONS,
 ) -> Dict[str, Any]:
@@ -569,7 +565,6 @@ def run_tsk_11sv_questionnaire(
     response = openai_client.create_completion(
         messages=messages,
         model=model,
-        temperature=temperature,
         max_tokens=8000,  # Increased for GPT-5 reasoning tokens + full JSON output
         response_format="json_object",  # Force JSON output
     )
@@ -621,7 +616,7 @@ def run_tsk_11sv_questionnaire(
     logger.info(f"Cleaned TSK-11SV JSON content: {cleaned_content[:200]}...")
 
     try:
-        data = json.loads(cleaned_content)
+        data = loads_with_repair(cleaned_content)
         logger.info("Successfully parsed TSK-11SV JSON response")
 
         # Validate the response structure

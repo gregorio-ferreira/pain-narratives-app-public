@@ -92,6 +92,65 @@ def extract_json_from_text(text: str) -> str:
     return text.strip()
 
 
+def repair_json_brackets(text: str) -> str:
+    """Fix mismatched closing brackets that some LLMs produce.
+
+    Observed failure mode: Claude Sonnet 4.5 with thinking sometimes closes an
+    array (``[``) with ``}`` instead of ``]`` (and vice versa). This walks the
+    text character by character, tracks the open-bracket stack, and rewrites a
+    mismatched close to whatever the stack actually wants. String literals
+    (with backslash escapes) are passed through verbatim so we never touch
+    brackets inside quoted text.
+    """
+    out: list[str] = []
+    stack: list[str] = []
+    i = 0
+    in_string = False
+    while i < len(text):
+        ch = text[i]
+        if in_string:
+            out.append(ch)
+            if ch == "\\" and i + 1 < len(text):
+                out.append(text[i + 1])
+                i += 2
+                continue
+            if ch == '"':
+                in_string = False
+            i += 1
+            continue
+        if ch == '"':
+            in_string = True
+            out.append(ch)
+            i += 1
+            continue
+        if ch in "[{":
+            stack.append(ch)
+            out.append(ch)
+        elif ch in "]}":
+            if stack:
+                open_ch = stack.pop()
+                want = "]" if open_ch == "[" else "}"
+                out.append(want)  # rewrite if mismatched, else identity
+            else:
+                # Closing bracket without a matching open; keep as-is. The
+                # subsequent json.loads will fail loudly which is the right
+                # behaviour for genuinely broken output.
+                out.append(ch)
+        else:
+            out.append(ch)
+        i += 1
+    return "".join(out)
+
+
+def loads_with_repair(text: str) -> Any:
+    """Parse JSON, retrying once with bracket repair if the first parse fails."""
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        repaired = repair_json_brackets(text)
+        return json.loads(repaired)
+
+
 def parse_questionnaire_response(content: str, questionnaire_type: str) -> Tuple[bool, Dict[str, Any], Optional[str]]:
     """
     Parse questionnaire response JSON.
@@ -110,7 +169,7 @@ def parse_questionnaire_response(content: str, questionnaire_type: str) -> Tuple
     logger.debug(f"Cleaned {questionnaire_type} JSON content: {cleaned_content[:200]}...")
 
     try:
-        data = json.loads(cleaned_content)
+        data = loads_with_repair(cleaned_content)
 
         if not isinstance(data, dict):
             return False, {}, f"Invalid {questionnaire_type} response: expected JSON object"
