@@ -681,33 +681,50 @@ def management_tab_ui(db_manager: DatabaseManager, user_info: Dict[str, Any]) ->
     st.header(t("management.header"))
     st.write(t("management.description"))
 
-    # Sub-tabs for different management areas
+    # The Management section previously used st.tabs(), which resets to the
+    # first tab on every Streamlit rerun (e.g. when an admin selects a user
+    # in the User Administration dropdown). We use st.segmented_control
+    # instead — visually similar to tabs but its selection is stored in
+    # st.session_state and survives reruns.
     if user_info["is_admin"]:
-        mgmt_tab1, mgmt_tab2, mgmt_tab3, mgmt_tab4 = st.tabs(
-            [
-                t("management.evaluation_groups_tab"),
-                t("management.user_administration_tab"),
-                t("management.questionnaire_prompts_tab"),
-                t("management.system_info_tab"),
-            ]
-        )
+        section_labels = [
+            t("management.evaluation_groups_tab"),
+            t("management.user_administration_tab"),
+            t("management.questionnaire_prompts_tab"),
+            t("management.system_info_tab"),
+        ]
     else:
-        mgmt_tab1, mgmt_tab4 = st.tabs([t("management.evaluation_groups_tab"), t("management.system_info_tab")])
-        mgmt_tab2 = None
-        mgmt_tab3 = None
+        section_labels = [
+            t("management.evaluation_groups_tab"),
+            t("management.system_info_tab"),
+        ]
 
-    with mgmt_tab1:
+    # Drop any stale selection (e.g. admin demoted between renders and the
+    # previously-selected section is no longer in the list). The widget
+    # otherwise manages its own state via the `key` argument.
+    if st.session_state.get("mgmt_active_section") not in section_labels:
+        st.session_state.pop("mgmt_active_section", None)
+
+    selected = st.segmented_control(
+        label="management_sections",
+        options=section_labels,
+        default=section_labels[0],
+        key="mgmt_active_section",
+        label_visibility="collapsed",
+    )
+
+    # segmented_control briefly returns None on the very first render before
+    # the default takes effect; fall back to the first section in that case.
+    if selected is None:
+        selected = section_labels[0]
+
+    if selected == t("management.evaluation_groups_tab"):
         experiment_group_management_ui(db_manager, user_info)
-
-    if mgmt_tab2 and user_info["is_admin"]:
-        with mgmt_tab2:
-            user_administration_ui(db_manager, user_info)
-
-    if mgmt_tab3 and user_info["is_admin"]:
-        with mgmt_tab3:
-            questionnaire_prompts_management_ui(db_manager, user_info)
-
-    with mgmt_tab4:
+    elif selected == t("management.user_administration_tab") and user_info["is_admin"]:
+        user_administration_ui(db_manager, user_info)
+    elif selected == t("management.questionnaire_prompts_tab") and user_info["is_admin"]:
+        questionnaire_prompts_management_ui(db_manager, user_info)
+    elif selected == t("management.system_info_tab"):
         system_info_ui(db_manager, user_info)
 
 

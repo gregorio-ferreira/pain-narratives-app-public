@@ -160,14 +160,85 @@ class DatabaseManager:
             return False
 
     def delete_user(self, user_id: int) -> bool:
-        """Delete a user (admin only operation)."""
+        """Delete a user.
+
+        Two-step delete:
+
+        1. Pre-flight check for heavy data the user owns: narratives,
+           experiment groups, experiments, questionnaires, evaluations,
+           feedback, prompts. If any are present, refuse to delete and raise
+           ``ValueError`` with a per-table count so the caller can show a
+           meaningful message. This is intentional: deleting an admin who
+           still owns experiment data would orphan the dataset.
+
+        2. Clean up lightweight join rows in ``experiment_group_users``
+           (these have a NOT NULL ``user_id`` so SQLAlchemy's default cascade
+           cannot nullify them), then delete the user row.
+
+        Returns True on success, False if the user does not exist.
+        """
+        from pain_narratives.db.models_sqlmodel import (
+            AssessmentFeedback,
+            EvaluationResult,
+            ExperimentGroup,
+            ExperimentGroupUser,
+            ExperimentList,
+            Narrative,
+            Questionnaire,
+            QuestionnaireFeedback,
+            UserPrompt,
+        )
+        from sqlmodel import delete as sql_delete
+
         with self.get_session() as session:
             user = session.exec(select(User).where(User.id == user_id)).first()
-            if user:
-                session.delete(user)
-                session.commit()
-                return True
-            return False
+            if user is None:
+                return False
+
+            # Pre-flight: count any owned rows that would orphan if dropped.
+            owned_counts = {
+                "narratives": session.exec(
+                    select(func.count()).select_from(Narrative).where(Narrative.owner_id == user_id)
+                ).one(),
+                "experiments_groups": session.exec(
+                    select(func.count()).select_from(ExperimentGroup).where(ExperimentGroup.owner_id == user_id)
+                ).one(),
+                "experiments_list": session.exec(
+                    select(func.count()).select_from(ExperimentList).where(ExperimentList.user_id == user_id)
+                ).one(),
+                "questionnaires": session.exec(
+                    select(func.count()).select_from(Questionnaire).where(Questionnaire.user_id == user_id)
+                ).one(),
+                "evaluation_results": session.exec(
+                    select(func.count()).select_from(EvaluationResult).where(EvaluationResult.user_id == user_id)
+                ).one(),
+                "assessment_feedback": session.exec(
+                    select(func.count()).select_from(AssessmentFeedback).where(AssessmentFeedback.user_id == user_id)
+                ).one(),
+                "questionnaire_feedback": session.exec(
+                    select(func.count()).select_from(QuestionnaireFeedback).where(
+                        QuestionnaireFeedback.user_id == user_id
+                    )
+                ).one(),
+                "user_prompts": session.exec(
+                    select(func.count()).select_from(UserPrompt).where(UserPrompt.user_id == user_id)
+                ).one(),
+            }
+            non_empty = {tbl: n for tbl, n in owned_counts.items() if n}
+            if non_empty:
+                detail = ", ".join(f"{tbl}={n}" for tbl, n in non_empty.items())
+                raise ValueError(
+                    f"User {user.username!r} owns data that would be orphaned by deletion "
+                    f"({detail}). Reassign or delete that data first, then retry."
+                )
+
+            # Safe to remove the lightweight group-membership rows.
+            session.exec(
+                sql_delete(ExperimentGroupUser).where(ExperimentGroupUser.user_id == user_id)
+            )
+            session.delete(user)
+            session.commit()
+            return True
 
     def get_user_experiment_groups(self, user_id: int) -> List[int]:
         """Get list of experiment group IDs that a user belongs to."""
