@@ -16,7 +16,6 @@ import streamlit as st
 from sqlmodel import select
 
 from pain_narratives.core.database import DatabaseManager
-from pain_narratives.core.openai_client import OpenAIClient
 
 # Direct import for questionnaire prompts to avoid circular dependency
 from pain_narratives.db.models_sqlmodel import QuestionnairePrompt
@@ -305,7 +304,14 @@ class PainNarrativesApp:
 
         st.sidebar.title(t("sidebar.header"))
 
-        # OpenAI Configuration
+        # Model + provider selection. Every logged-in user picks from the same
+        # registry; the Claude entry routes to Bedrock with extended thinking
+        # using the research-validated defaults (no inference-parameter UI).
+        from pain_narratives.core.llm_factory import (
+            UI_MODEL_REGISTRY,
+            DEFAULT_UI_MODEL_KEY,
+        )
+
         st.sidebar.subheader(t("sidebar.model_selection"))
         api_key = st.sidebar.text_input(
             t("sidebar.openai_api_key"),
@@ -314,38 +320,16 @@ class PainNarrativesApp:
             key="api_key_input",
         )
 
-        # Non-admin users: fixed model and temperature
-        # Admins: full control
-        if st.session_state.is_admin:
-            model = st.sidebar.selectbox(t("sidebar.model_selection"), ["gpt-5", "gpt-5-mini", "gpt-5-nano"], index=0)
-            temperature = st.sidebar.slider(
-                t("sidebar.temperature"),
-                min_value=0.0,
-                max_value=1.5,
-                value=1.0,
-                step=0.1,
-                help=t("sidebar.temperature_help"),
-            )
-        else:
-            # Non-admin users get fixed model and temperature
-            model = "gpt-5"
-            temperature = 1.0
-            st.sidebar.selectbox(
-                t("sidebar.model_selection"),
-                ["gpt-5"],
-                index=0,
-                disabled=True,
-                help=t("sidebar.model_help"),
-            )
-            st.sidebar.slider(
-                t("sidebar.temperature"),
-                min_value=0.0,
-                max_value=1.5,
-                value=1.0,
-                step=0.1,
-                disabled=True,
-                help=t("sidebar.temperature_help"),
-            )
+        model_options = list(UI_MODEL_REGISTRY.keys())
+        default_index = model_options.index(DEFAULT_UI_MODEL_KEY) if DEFAULT_UI_MODEL_KEY in model_options else 0
+        model_key = st.sidebar.selectbox(
+            t("sidebar.model_selection"),
+            options=model_options,
+            format_func=lambda k: UI_MODEL_REGISTRY[k].display,
+            index=default_index,
+            key="ui_model_key",
+        )
+        model = UI_MODEL_REGISTRY[model_key].model_id
 
         # Evaluation group Selection (database is initialized automatically)
         st.sidebar.subheader(t("sidebar.evaluation_groups"))
@@ -416,34 +400,52 @@ class PainNarrativesApp:
             # Clear selected Evaluation group when no database connection
             st.session_state.selected_experiment_group_id = None
 
-        # Automatically initialize connections if needed
-        if st.session_state.openai_client is None:
-            self.initialize_connections(api_key, True)
+        # Build / rebuild the LLM client whenever the selected model or the API
+        # key changes. Both clients are cheap to construct so we just rebuild.
+        client_signature = (model_key, bool(api_key))
+        if (st.session_state.openai_client is None
+                or st.session_state.get("active_model_signature") != client_signature):
+            self.initialize_connections(api_key, True, model_key=model_key)
+            st.session_state.active_model_signature = client_signature
 
         return {
             "model": model,
-            "temperature": temperature,
+            "model_key": model_key,
             "use_database": True,
             "experiment_group_id": experiment_group_id,
         }
 
-    def initialize_connections(self, api_key: str, use_database: bool) -> None:
-        """Initialize OpenAI and database connections."""
+    def initialize_connections(
+        self,
+        api_key: str,
+        use_database: bool,
+        model_key: Optional[str] = None,
+    ) -> None:
+        """Initialize the LLM client + (optionally) the database connection.
+
+        The LLM client is built via ``llm_factory.make_llm_client`` so the
+        Streamlit UI and the batch CLI share one client-construction path.
+        ``model_key`` controls which entry of ``UI_MODEL_REGISTRY`` to use
+        (default ``DEFAULT_UI_MODEL_KEY``).
+        """
+        from pain_narratives.core.llm_factory import (
+            DEFAULT_UI_MODEL_KEY,
+            make_llm_client,
+        )
+
         t = get_translator(st.session_state.get("language", "en"))
+        resolved_model_key = model_key or DEFAULT_UI_MODEL_KEY
         try:
             logger.info(
-                "Initializing connections - API Key provided: %s, Use DB: %s",
-                bool(api_key),
-                use_database,
+                "Initializing connections - model_key=%s, api_key_provided=%s, use_db=%s",
+                resolved_model_key, bool(api_key), use_database,
             )
 
-            # Initialize OpenAI client
-            if api_key:
-                logger.info("Using provided API key")
-                st.session_state.openai_client = OpenAIClient(api_key=api_key)
-            else:
-                logger.info("Using environment API key")
-                st.session_state.openai_client = OpenAIClient()  # Initialize database if requested
+            st.session_state.openai_client = make_llm_client(
+                resolved_model_key,
+                openai_api_key=api_key or None,
+            )
+
             if use_database:
                 logger.info("Initializing database connection")
                 st.session_state.db_manager = DatabaseManager()
@@ -726,7 +728,7 @@ class PainNarrativesApp:
         """Evaluate a single narrative."""
         t = get_translator(st.session_state.language)
         logger.info("Starting single narrative evaluation")
-        logger.info("Model: %s, Temperature: %s", config["model"], config["temperature"])
+        logger.info("Model: %s", config["model"])
 
         try:
             with st.spinner(t("welcome.evaluating_narrative_spinner")):
@@ -818,7 +820,6 @@ class PainNarrativesApp:
                     "narrative": narrative_text,
                     "result": evaluations,
                     "model": config["model"],
-                    "temperature": config["temperature"],
                     "timestamp": datetime.now().isoformat(),
                     "consistency_test": True,
                 }
@@ -839,7 +840,7 @@ class PainNarrativesApp:
                 To use batch evaluation, please configure your OpenAI connection:
 
                 1. Enter your OpenAI API key in the sidebar (or ensure it's set in your environment)
-                2. Select your preferred model and temperature settings
+                2. Select your preferred model
                 3. Click **"Initialize Connections"** to enable batch processing
 
                 **Batch Processing Features:**
@@ -1029,8 +1030,13 @@ class PainNarrativesApp:
             st.metric(t("analytics.models_used"), unique_models)
 
         with col3:
-            avg_temp = eval_df["temperature"].mean()
-            st.metric(t("analytics.avg_temperature"), f"{avg_temp:.2f}")
+            # Historical evaluations may carry a `temperature` column; render it
+            # only if the column exists and has non-null values (new evaluations
+            # no longer record temperature since the UI does not expose it).
+            if "temperature" in eval_df.columns and eval_df["temperature"].notna().any():
+                st.metric(t("analytics.avg_temperature"), f"{eval_df['temperature'].mean():.2f}")
+            else:
+                st.empty()
 
         with col4:
             recent_count = len(
@@ -1226,7 +1232,6 @@ class PainNarrativesApp:
                             narrative=narrative_text,
                             openai_client=st.session_state.openai_client,
                             model=config["model"],
-                            temperature=config["temperature"],
                             pcs_system_role=custom_system_role or PCS_SYSTEM_ROLE,
                             pcs_instructions=custom_instructions or PCS_INSTRUCTIONS,
                         )
@@ -1236,7 +1241,6 @@ class PainNarrativesApp:
                             narrative=narrative_text,
                             openai_client=st.session_state.openai_client,
                             model=config["model"],
-                            temperature=config["temperature"],
                             bpi_system_role=custom_system_role or BPI_IS_SYSTEM_ROLE,
                             bpi_instructions=custom_instructions or BPI_IS_INSTRUCTIONS,
                         )
@@ -1246,7 +1250,6 @@ class PainNarrativesApp:
                             narrative=narrative_text,
                             openai_client=st.session_state.openai_client,
                             model=config["model"],
-                            temperature=config["temperature"],
                             tsk_system_role=custom_system_role or TSK_11SV_SYSTEM_ROLE,
                             tsk_instructions=custom_instructions or TSK_11SV_INSTRUCTIONS,
                         )
@@ -1910,7 +1913,6 @@ class PainNarrativesApp:
                         request_json = {
                             "model": openai_response.get("model", "gpt-5"),
                             "messages": prompt_messages,
-                            "temperature": 1.0,
                             "top_p": 1.0,
                         }
 

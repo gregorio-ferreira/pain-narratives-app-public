@@ -766,6 +766,31 @@ def system_info_ui(db_manager: DatabaseManager, user_info: Dict[str, Any]) -> No
             st.write(t("ui_text.run_evaluations_perm"))
             st.write(t("ui_text.manage_data_perm"))
 
+    # Self-service password change. The logged-in user can rotate their own
+    # password without admin intervention. Current password is required to
+    # prevent accidental hijacking via an unlocked session.
+    st.subheader("Change my password")
+    with st.form("change_my_password_form", clear_on_submit=True):
+        current_pwd = st.text_input("Current password", type="password")
+        new_pwd_1 = st.text_input(t("ui_text.new_password_label"), type="password")
+        new_pwd_2 = st.text_input("Confirm new password", type="password")
+        submitted = st.form_submit_button("Update password")
+        if submitted:
+            if not current_pwd or not new_pwd_1:
+                st.error("All fields are required.")
+            elif new_pwd_1 != new_pwd_2:
+                st.error("The new password and the confirmation do not match.")
+            elif len(new_pwd_1) < 3:
+                st.error("New password must be at least 3 characters.")
+            elif db_manager.authenticate_user(user_info["username"], current_pwd) is None:
+                st.error("Current password is incorrect.")
+            else:
+                ok = db_manager.reset_user_password(user_info["id"], new_pwd_1)
+                if ok:
+                    st.success("Password updated. Use the new password the next time you log in.")
+                else:
+                    st.error("Password update failed. Please try again or contact an admin.")
+
     # Database connection info
     st.subheader(t("ui_text.database_connection_header"))
     st.write(t("ui_text.schema_label"), db_manager.schema)

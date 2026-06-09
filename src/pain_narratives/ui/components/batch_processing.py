@@ -38,7 +38,6 @@ def run_batch_evaluation(
             response = openai_client.create_completion(
                 messages=[{"role": "user", "content": formatted_prompt}],
                 model=config["model"],
-                temperature=config["temperature"],
             )
             content = response["choices"][0]["message"]["content"]
             result = json.loads(content)
@@ -58,7 +57,6 @@ def run_batch_evaluation(
                         "narrative": row["narrative"],
                         "result": result,
                         "model": config["model"],
-                        "temperature": config["temperature"],
                         "timestamp": datetime.now().isoformat(),
                     }
                 )

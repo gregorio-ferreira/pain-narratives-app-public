@@ -178,21 +178,28 @@ class BatchProcessor:
 
         # The attribute remains named `openai_client` for compatibility with
         # the rest of the codebase; it is the LLM adapter regardless of provider.
-        if self.config.model_provider.startswith("bedrock"):
-            self._bedrock_client = BedrockClient(
-                region=self.config.bedrock_region,
-                profile_name=self.config.bedrock_profile,
-            )
-            force_temp = self.config.temperature if not self.config.thinking_enabled else None
-            self.openai_client = BedrockOpenAIAdapter(  # type: ignore[assignment]
-                self._bedrock_client,
-                thinking_enabled=self.config.thinking_enabled,
-                thinking_budget_tokens=self.config.thinking_budget_tokens,
-                force_temperature=force_temp,
-            )
-        else:
-            self._bedrock_client = None
-            self.openai_client = openai_client or OpenAIClient()
+        # All construction goes through llm_factory.build_llm_client so the UI
+        # and the batch share one client-construction path.
+        from pain_narratives.core.llm_factory import build_llm_client  # local import to avoid cycle
+
+        force_temp = (
+            self.config.temperature if not self.config.thinking_enabled else None
+        )
+        self.openai_client = build_llm_client(  # type: ignore[assignment]
+            provider=self.config.model_provider,
+            openai_client=openai_client,
+            thinking_enabled=self.config.thinking_enabled,
+            thinking_budget_tokens=self.config.thinking_budget_tokens,
+            force_temperature=force_temp,
+            bedrock_region=self.config.bedrock_region,
+            bedrock_profile=self.config.bedrock_profile,
+        )
+        # Kept for any downstream code that inspects the raw Bedrock client.
+        self._bedrock_client = (
+            getattr(self.openai_client, "_client", None)
+            if self.config.model_provider.startswith("bedrock")
+            else None
+        )
 
         self.progress = BatchProgress()
         self._checkpoint_data: Dict[str, Any] = {}

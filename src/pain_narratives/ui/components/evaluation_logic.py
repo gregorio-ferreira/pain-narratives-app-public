@@ -21,7 +21,6 @@ class EvaluationInput(BaseModel):
     narrative: str
     prompt: str
     model: str
-    temperature: float = 0.7
     max_tokens: int = 512
     # Add more fields as needed
 
@@ -54,7 +53,6 @@ class NarrativeEvaluator:
             response = openai_client.create_completion(
                 messages=[{"role": "user", "content": formatted_prompt}],
                 model=config["model"],
-                temperature=config["temperature"],
                 max_tokens=max_tokens,
             )
             logger.info("OpenAI client returned response type: %s", type(response))
@@ -86,7 +84,6 @@ class NarrativeEvaluator:
                 "narrative": narrative_text,
                 "result": result,
                 "model": config["model"],
-                "temperature": config["temperature"],
                 "timestamp": datetime.now().isoformat(),
                 "prompt_used": formatted_prompt,
             }
@@ -109,7 +106,6 @@ class NarrativeEvaluator:
                     "reasoning": f"Error during evaluation: {str(e)}",
                 },
                 "model": config["model"],
-                "temperature": config["temperature"],
                 "timestamp": datetime.now().isoformat(),
             }
             logger.info("Returning fallback result due to exception")
@@ -228,7 +224,6 @@ class NarrativeEvaluator:
                 response = openai_client.create_completion(
                     messages=[{"role": "user", "content": formatted_prompt}],
                     model=config["model"],
-                    temperature=config["temperature"],
                     max_tokens=max_tokens,
                 )
                 content = response["choices"][0]["message"]["content"]
@@ -264,7 +259,6 @@ def evaluate_narrative(input_data: EvaluationInput, openai_client: "OpenAIClient
             {"role": "user", "content": input_data.narrative},
         ],
         model=input_data.model,
-        temperature=input_data.temperature,
         max_tokens=input_data.max_tokens,
     )
     result: Dict[str, Any] = {

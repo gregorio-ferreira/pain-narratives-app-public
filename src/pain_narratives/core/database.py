@@ -67,9 +67,21 @@ class DatabaseManager:
 
     # User authentication methods
     def authenticate_user(self, username: str, password: str) -> Optional[Dict[str, Any]]:
-        """Authenticate a user by verifying username and hashed password."""
+        """Authenticate a user by verifying username and hashed password.
+
+        Username matching is case-insensitive and whitespace-tolerant on input
+        (the stored ``users.username`` value is preserved as originally typed).
+        Password matching is exact (SHA-256 of the byte-encoded password).
+        """
+        if username is None:
+            return None
+        normalized = username.strip()
+        if not normalized:
+            return None
         with self.get_session() as session:
-            user = session.exec(select(User).where(User.username == username)).first()
+            user = session.exec(
+                select(User).where(func.lower(User.username) == normalized.lower())
+            ).first()
             if user:
                 hashed_input = hashlib.sha256(password.encode()).hexdigest()
                 if hashed_input == user.hashed_password:
@@ -82,10 +94,26 @@ class DatabaseManager:
         return None
 
     def create_user(self, username: str, password: str, is_admin: bool = False) -> User:
-        """Create a new user."""
-        hashed_password = hashlib.sha256(password.encode()).hexdigest()
-        user = User(username=username, hashed_password=hashed_password, is_admin=is_admin)
+        """Create a new user.
+
+        Strips whitespace from the username and refuses to create a second
+        account that differs only in case (``Alice`` and ``alice`` cannot
+        coexist). Raises ``ValueError`` on empty username or duplicate.
+        """
+        if username is None or not username.strip():
+            raise ValueError("Username cannot be empty.")
+        normalized = username.strip()
         with self.get_session() as session:
+            existing = session.exec(
+                select(User).where(func.lower(User.username) == normalized.lower())
+            ).first()
+            if existing is not None:
+                raise ValueError(
+                    f"A user with username {existing.username!r} already exists "
+                    f"(case-insensitive match)."
+                )
+            hashed_password = hashlib.sha256(password.encode()).hexdigest()
+            user = User(username=normalized, hashed_password=hashed_password, is_admin=is_admin)
             session.add(user)
             session.commit()
             session.refresh(user)
