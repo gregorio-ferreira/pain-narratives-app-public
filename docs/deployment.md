@@ -84,6 +84,75 @@ uv run python scripts/dev/test_bedrock_smoke.py --model deepseek-r1
 uv run python scripts/dev/test_bedrock_smoke.py --model sonnet-4-5-thinking
 ```
 
+### EC2 IAM Role (recommended for production)
+
+Attach a role to the instance instead of storing long-lived IAM user keys in
+`~/.aws/credentials`. The role needs only Bedrock data-plane access for the
+foundation model + cross-region inference profile the app actually uses.
+
+If your IAM user does not have `iam:CreateRole`, send the snippets below to
+whoever administers your AWS account. After they attach the instance profile,
+clear `bedrock.aws_profile` in `config.yaml`, restart the service, and confirm
+`aws sts get-caller-identity` on the box returns the role ARN.
+
+Trust policy (allow EC2 to assume the role):
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {"Service": "ec2.amazonaws.com"},
+    "Action": "sts:AssumeRole"
+  }]
+}
+```
+
+Permissions policy (scope to the Claude Sonnet 4.5 cross-region profile; add
+other foundation-model ARNs as needed). Replace `<ACCOUNT_ID>`:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Sid": "InvokeClaudeSonnet45CrossRegion",
+    "Effect": "Allow",
+    "Action": [
+      "bedrock:InvokeModel",
+      "bedrock:InvokeModelWithResponseStream",
+      "bedrock:Converse",
+      "bedrock:ConverseStream"
+    ],
+    "Resource": [
+      "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0",
+      "arn:aws:bedrock:us-east-2::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0",
+      "arn:aws:bedrock:us-west-2::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0",
+      "arn:aws:bedrock:us-east-1:<ACCOUNT_ID>:inference-profile/us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+    ]
+  }]
+}
+```
+
+Admin commands (substitute `<ROLE_NAME>`, e.g. `pain-narratives-ec2-bedrock`,
+and `<INSTANCE_ID>`):
+
+```bash
+aws iam create-role --role-name <ROLE_NAME> \
+  --assume-role-policy-document file://ec2-trust.json
+aws iam put-role-policy --role-name <ROLE_NAME> \
+  --policy-name bedrock-claude-sonnet-4-5 \
+  --policy-document file://bedrock-policy.json
+aws iam create-instance-profile --instance-profile-name <ROLE_NAME>
+aws iam add-role-to-instance-profile --instance-profile-name <ROLE_NAME> \
+  --role-name <ROLE_NAME>
+aws ec2 associate-iam-instance-profile --instance-id <INSTANCE_ID> \
+  --iam-instance-profile Name=<ROLE_NAME>
+```
+
+Until the role is attached, the app falls through to whatever
+`~/.aws/credentials` provides. Restrict that file to `chmod 600` and prefer a
+non-MFA IAM user whose access keys are scoped to the same Bedrock actions.
+
 ## Smoke Test
 
 After deployment:

@@ -43,14 +43,19 @@ class UIModel:
     """One entry in the UI model dropdown.
 
     Attributes:
-        key:       canonical key; this is what gets stored in ``config["model"]``
-                   and in the DB ``experiment_list.model`` column.
-        display:   what the user sees in the dropdown.
-        provider:  ``"openai"`` or ``"bedrock_anthropic"`` (matches batch ``BatchConfig.model_provider``).
-        model_id:  exact model id passed to the underlying API
-                   (e.g. ``"us.anthropic.claude-sonnet-4-5-20250929-v1:0"``).
-        extra:     keyword arguments forwarded to the client constructor.
-                   For Claude with thinking: ``{"thinking_enabled": True, "thinking_budget_tokens": 8000}``.
+        key:            canonical key; this is what gets stored in ``config["model"]``
+                        and in the DB ``experiment_list.model`` column.
+        display:        what the user sees in the dropdown.
+        provider:       ``"openai"`` or ``"bedrock_anthropic"`` (matches batch ``BatchConfig.model_provider``).
+        model_id:       exact model id passed to the underlying API
+                        (e.g. ``"us.anthropic.claude-sonnet-4-5-20250929-v1:0"``).
+        extra:          keyword arguments forwarded to the client constructor.
+                        For Claude with thinking: ``{"thinking_enabled": True, "thinking_budget_tokens": 8000}``.
+        enabled_in_ui:  when ``False``, the entry stays in the registry (so stored
+                        experiment rows still resolve) but the Streamlit dropdown
+                        hides it. Used to temporarily disable a model whose backing
+                        infrastructure is not yet ready (e.g. waiting for an IAM
+                        role to grant Bedrock access).
     """
 
     key: str
@@ -58,6 +63,7 @@ class UIModel:
     provider: str
     model_id: str
     extra: dict[str, Any] = field(default_factory=dict)
+    enabled_in_ui: bool = True
 
 
 UI_MODEL_REGISTRY: dict[str, UIModel] = {
@@ -73,12 +79,15 @@ UI_MODEL_REGISTRY: dict[str, UIModel] = {
         key="gpt-5-nano", display="gpt-5-nano",
         provider="openai", model_id="gpt-5-nano",
     ),
+    # Re-enable once the EC2 instance profile granting Bedrock access is in place
+    # (see docs/deployment.md "EC2 IAM Role"). Flip enabled_in_ui back to True.
     "claude-sonnet-4-5-thinking": UIModel(
         key="claude-sonnet-4-5-thinking",
         display="Claude Sonnet 4.5 (thinking)",
         provider="bedrock_anthropic",
         model_id="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
         extra={"thinking_enabled": True, "thinking_budget_tokens": 8000},
+        enabled_in_ui=False,
     ),
 }
 

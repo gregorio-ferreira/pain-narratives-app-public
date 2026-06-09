@@ -320,7 +320,7 @@ class PainNarrativesApp:
             key="api_key_input",
         )
 
-        model_options = list(UI_MODEL_REGISTRY.keys())
+        model_options = [k for k, m in UI_MODEL_REGISTRY.items() if m.enabled_in_ui]
         default_index = model_options.index(DEFAULT_UI_MODEL_KEY) if DEFAULT_UI_MODEL_KEY in model_options else 0
         model_key = st.sidebar.selectbox(
             t("sidebar.model_selection"),
