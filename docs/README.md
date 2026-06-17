@@ -9,6 +9,7 @@ organized by topic rather than by one-off project history.
 | Config files, environment override, OpenAI/Bedrock settings | [configuration.md](configuration.md) |
 | EC2/systemd deployment and production smoke tests | [deployment.md](deployment.md) |
 | Batch runs, prompt versions, providers, checkpoints | [experiments.md](experiments.md) |
+| Prompt structure, questionnaire schemas, example outputs | [prompts.md](prompts.md) |
 | Notebooks, revision data layer, generated outputs | [analysis.md](analysis.md) |
 | Operational hardening and maintenance guidance | [operations.md](operations.md) |
 | Admin UI and user/group management | [user_management.md](user_management.md) |
