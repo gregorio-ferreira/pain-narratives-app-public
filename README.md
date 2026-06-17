@@ -126,6 +126,7 @@ Start with [docs/README.md](docs/README.md). Key topics:
 - [Configuration](docs/configuration.md)
 - [Deployment](docs/deployment.md)
 - [Experiments and batch runs](docs/experiments.md)
+- [Prompts and questionnaires](docs/prompts.md)
 - [Analysis workflows](docs/analysis.md)
 - [Operations](docs/operations.md)
 - [User management](docs/user_management.md)
