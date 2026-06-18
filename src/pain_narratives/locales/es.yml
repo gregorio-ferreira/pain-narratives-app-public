@@ -533,7 +533,6 @@ evaluation:
    explanations_header: "Explicaciones de Dimensiones"
    raw_response_header: "Respuesta Cruda de API"
    model_label: "Modelo"
-   temperature_label: "Temperatura"
    timestamp_label: "Marca de Tiempo"
    max_tokens_label: "Máximo de Tokens"
    narrative_text_label: "Texto de Narrativa"

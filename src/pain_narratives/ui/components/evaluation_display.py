@@ -269,7 +269,6 @@ def display_evaluation_details(
             st.json(
                 {
                     t("evaluation.model_label"): evaluation.get("model", t("common.unknown")),
-                    t("evaluation.temperature_label"): evaluation.get("temperature", 0),
                     t("evaluation.timestamp_label"): evaluation.get("timestamp", ""),
                     t("evaluation.max_tokens_label"): max_tokens,
                 }

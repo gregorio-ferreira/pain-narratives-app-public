@@ -533,7 +533,6 @@ evaluation:
   explanations_header: "Dimension Explanations"
   raw_response_header: "Raw API Response"
   model_label: "Model"
-  temperature_label: "Temperature"
   timestamp_label: "Timestamp"
   max_tokens_label: "Max Tokens"
   narrative_text_label: "Narrative Text"
