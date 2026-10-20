@@ -1459,6 +1459,18 @@ wheels = [
 ]
 
 [[package]]
+name = "krippendorff"
+version = "0.9.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1c/bc/ca3aefd9240f0c306559fc5f74cf43f0a78c46b647aea4358ea63143d56e/krippendorff-0.9.0.tar.gz", hash = "sha256:574dd5af0dd0da54e3f6774f2cad279fbd38a92178324766a406536f1a0c8f7c", size = 18699, upload-time = "2026-10-07T04:23:17.343Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c1/38/f032217b046b9fd1b9d7acf0a574b8318b183ffd9818d47cf137d55de034/krippendorff-0.9.0-py3-none-any.whl", hash = "sha256:22ab549f5f05050080ea5c1a95be1401b64aaa01576fe61b2e8da666bc4e0034", size = 19021, upload-time = "2026-10-07T04:23:16.34Z" },
+]
+
+[[package]]
 name = "magika"
 version = "0.6.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1946,6 +1958,7 @@ dependencies = [
     { name = "botocore" },
     { name = "gitpython" },
     { name = "jupyter" },
+    { name = "krippendorff" },
     { name = "mammoth" },
     { name = "markitdown" },
     { name = "matplotlib" },
@@ -2010,6 +2023,7 @@ requires-dist = [
     { name = "gitpython", specifier = ">=3.1.0" },
     { name = "isort", marker = "extra == 'dev'", specifier = ">=5.12.0" },
     { name = "jupyter", specifier = ">=1.0.0" },
+    { name = "krippendorff", specifier = ">=0.8" },
     { name = "mammoth", specifier = ">=1.7.0" },
     { name = "markitdown", specifier = ">=0.1.0" },
     { name = "matplotlib", specifier = ">=3.7.0" },
