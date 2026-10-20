@@ -11,8 +11,8 @@ addressed.
 
 ### How to report
 
-- Open a **private GitHub Security Advisory** on this repository:
-  <https://github.com/gregorio-ferreira/pain-narratives-app-public/security/advisories/new>
+- Open a **private GitHub Security Advisory** on this repository
+  (**Security** tab → **Report a vulnerability**).
 - Or email the repository owner (see the `git log` author for the most recent
   releases for the active maintainer's address).
 

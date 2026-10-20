@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 # Setup Pain Narratives Streamlit app on AWS EC2 with HTTPS
 
-# git config --global user.email "ferreiradesajg@gmail.com"
-# git config --global user.name "gregorio"
-
 
 # curl -LsSf https://astral.sh/uv/install.sh | sh
 # echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
