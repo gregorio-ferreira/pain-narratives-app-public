@@ -1,0 +1,28 @@
+# Build context allowlist: secrets, Git history, data and notebooks never enter it.
+**
+!Dockerfile
+!pyproject.toml
+!uv.lock
+!src/
+!src/**
+!scripts/
+!scripts/run_app.py
+# Never include local caches, private config, keys or datasets under source dirs.
+**/__pycache__/
+**/*.py[cod]
+**/.venv/
+**/.aws/
+**/.ssh/
+**/.env*
+**/config.yaml
+**/secrets.yaml
+**/secrets.toml
+**/*.pem
+**/*.key
+**/*.dump
+**/*.backup
+**/*.sql.gz
+**/*.csv
+**/*.xlsx
+**/*.parquet
+**/data/

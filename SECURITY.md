@@ -50,3 +50,16 @@ one.
 This is research-grade software released alongside an academic publication.
 Security fixes are applied to the `main` branch as needed; we do not maintain
 parallel stable / LTS branches.
+
+## Automated checks
+
+Gitleaks scans reachable history and current public files with redacted output.
+Trivy scans the locked dependencies, Dockerfile and runtime image. CI also runs
+isolated tests with private config discovery/network access blocked. Notebook
+outputs and private paths are rejected by a publication check. See
+[operations](docs/operations.md) and [anonymous review](docs/anonymous_review.md).
+
+HTTP remains an explicit temporary deployment constraint. Restrict the public
+HTTP listener to team IPs; transport confidentiality is not provided by those
+restrictions. Host/cloud changes, token rotation and a real restore exercise are
+operator tasks and are not performed by repository tests or security workflows.

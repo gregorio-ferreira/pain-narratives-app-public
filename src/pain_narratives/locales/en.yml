@@ -469,7 +469,7 @@ ui_text:
   user_creation_failed: "❌ Failed to create user: {error}"
   username_required_error: "Username is required"
   password_required_error: "Password is required"
-  password_min_length_error: "Password must be at least 3 characters"
+  password_min_length_error: "Password must be at least 6 characters"
   edit_user_header: "✏️ Edit User: {username}"
   delete_user_button: "🗑️ Delete User"
   toggle_admin_button: "👑 Toggle Admin"

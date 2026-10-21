@@ -50,8 +50,8 @@ def test_translation_service():
         print(f"  Spanish explanation length: {len(multilingual_result['es']['explanation'])}")
 
     except Exception as e:
-        print(f"❌ Translation service test failed: {e}")
-        logging.error(f"Translation service test failed: {e}", exc_info=True)
+        print(f"❌ Translation service test failed: {type(e).__name__}")
+        logging.error(f"Translation service test failed: {type(e).__name__}")
 
 
 if __name__ == "__main__":

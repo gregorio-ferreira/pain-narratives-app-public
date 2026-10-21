@@ -1,31 +1,45 @@
-# Example configuration for AINarratives Application
-# Copy this file to `.yaml` and fill in your own secrets and settings.
+# Compatibility example; config.yaml.example is the canonical schema.
+# Configuration file for AINarratives Application
+# Copy this file to config.yaml and fill in your values
+# config.yaml is gitignored and should contain your actual credentials
 
 models:
   default_model: gpt-5-mini
   default_temperature: 1.0
   default_top_p: 1.0
   default_max_tokens: 8000
+  translation_model: gpt-5-mini
+  translation_temperature: 1.0
+  translation_max_tokens: 8000
 
 openai:
-  api_key_pain_narratives: "YOUR_OPENAI_API_KEY"
+  # Get your API key from: https://platform.openai.com/api-keys
+  api_key: "YOUR_OPENAI_API_KEY"
   org_id: "YOUR_OPENAI_ORG_ID"
 
+# AWS Bedrock — required for the revision experiments (DeepSeek-R1, Claude Sonnet 4.5).
+# Preferred auth is AWS credentials from the standard boto3 chain:
+#   - EC2 instance profile, or
+#   - a named AWS profile (for example an MFA-refreshed session)
+# Leave api_key empty unless you intentionally want Bedrock bearer-token auth.
 bedrock:
-  aws_credentials: "YOUR_AWS_PROFILE"
-  aws_access_key: "YOUR_AWS_ACCESS_KEY"
-  aws_secret_key: "YOUR_AWS_SECRET_KEY"
-  aws_region: "eu-central-1"
+  api_key: ""
+  aws_profile: ""  # Example: "mfa"; leave empty to use AWS_PROFILE/default/instance role.
+  default_region: us-east-1
+  aws_region: us-east-1
 
+# Database configuration - matches docker-compose.yml defaults
 pg-prod:
-  password: "YOUR_DB_PASSWORD"
-  host: "localhost"
+  password: "pain_narratives_dev"
+  host: "localhost"  # Use 'localhost' when running app locally, 'postgres' if running app in Docker
   database: "pain_narratives"
   user: "pain_narratives"
   port: 5432
+  sslmode: disable  # Local database only; use verify-full with the RDS CA in production
+  sslrootcert: ""  # Example container path: /config/rds-ca-bundle.pem
 
 app:
   data_root_path: "./data"
   environment: development
   streamlit_server_port: 8501
-  streamlit_server_address: localhost
+  streamlit_server_address: 0.0.0.0

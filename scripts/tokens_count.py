@@ -53,7 +53,7 @@ def count_tokens_per_row(file_path: Path, sheet_name: str, column_name: str, mod
     try:
         df = pd.read_excel(file_path, sheet_name=sheet_name)
     except Exception as e:
-        raise ValueError(f"Error reading Excel file: {e}")
+        raise ValueError(f"Error reading Excel file: {type(e).__name__}")
 
     # Check if column exists
     if column_name not in df.columns:
@@ -282,7 +282,7 @@ Examples:
                 print(f"💰 Estimated cost: ${cost:.4f} (input tokens only)")
 
     except (FileNotFoundError, PermissionError, UnicodeDecodeError, ValueError) as e:
-        print(f"❌ Error processing file: {e}")
+        print(f"❌ Error processing file: {type(e).__name__}")
         sys.exit(1)
 
 

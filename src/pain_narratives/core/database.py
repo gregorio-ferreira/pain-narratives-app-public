@@ -1,18 +1,29 @@
 """Database operations and connection management."""
 
-import hashlib
+import hmac
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import create_engine, func
 from sqlalchemy.engine import Engine
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from pain_narratives.config.prompts import get_base_prompt as yaml_get_base_prompt
 from pain_narratives.config.prompts import get_default_dimensions as yaml_get_default_dimensions
 from pain_narratives.config.prompts import get_questionnaire_prompts as yaml_get_questionnaire_prompts
 from pain_narratives.config.prompts import get_system_role as yaml_get_system_role
 from pain_narratives.config.settings import get_settings
+from pain_narratives.core.security import (
+    DISABLED_PASSWORD,
+    LOGIN_THROTTLE,
+    PASSWORD_HASHER,
+    dummy_password_check,
+    hash_password,
+    login_disabled,
+    needs_rehash,
+    session_version,
+    verify_password,
+)
 from pain_narratives.db.base import SCHEMA_NAME
 from pain_narratives.db.models_sqlmodel import (
     AssessmentFeedback,
@@ -57,39 +68,90 @@ class DatabaseManager:
         """Create a new database engine using settings."""
         settings = get_settings()
         try:
-            engine = create_engine(settings.database_url, echo=False)
+            engine = create_engine(
+                settings.pg_config.connection_url,
+                echo=False,
+                pool_pre_ping=True,
+                pool_recycle=1800,
+                connect_args={"connect_timeout": 10},
+            )
             # Test connection
             with engine.connect():
                 pass
             return engine
         except Exception as e:
-            raise ConnectionError(f"Could not establish database connection: {e}") from e
+            raise ConnectionError("Could not establish database connection") from e
 
     # User authentication methods
     def authenticate_user(self, username: str, password: str) -> Optional[Dict[str, Any]]:
         """Authenticate a user by verifying username and hashed password."""
+        username = username.strip()
+        if not LOGIN_THROTTLE.allow(username):
+            return None
         with self.get_session() as session:
             user = session.exec(select(User).where(User.username == username)).first()
-            if user:
-                hashed_input = hashlib.sha256(password.encode()).hexdigest()
-                if hashed_input == user.hashed_password:
-                    return {
-                        "id": user.id,
-                        "username": user.username,
-                        "is_admin": user.is_admin,
-                        "preferred_language": user.preferred_language,
-                    }
-        return None
+            if user is None:
+                dummy_password_check(password)
+                return None
+            if not verify_password(user.hashed_password, password):
+                return None
+            if needs_rehash(user.hashed_password):
+                # Correct policy-compliant legacy passwords upgrade on login.
+                user.hashed_password = PASSWORD_HASHER.hash(password)
+                session.add(user)
+                session.commit()
+                session.refresh(user)
+            LOGIN_THROTTLE.reset(username)
+            return self._user_session(user)
 
-    def create_user(self, username: str, password: str, is_admin: bool = False) -> User:
+    @staticmethod
+    def _user_session(user: User) -> Dict[str, Any]:
+        return {
+            "id": user.id,
+            "username": user.username,
+            "is_admin": user.is_admin,
+            "preferred_language": user.preferred_language,
+            "auth_version": session_version(user.hashed_password),
+        }
+
+    def validate_user_session(self, user_id: int, auth_version: str) -> Optional[Dict[str, Any]]:
+        """Refresh privileges and invalidate sessions after password reset/deletion."""
+        with self.get_session() as session:
+            user = session.get(User, user_id)
+            if user is None or login_disabled(user.hashed_password):
+                return None
+            if not hmac.compare_digest(session_version(user.hashed_password), auth_version):
+                return None
+            return self._user_session(user)
+
+    def create_service_user(self, username: str, is_admin: bool = True) -> User:
+        """Create an automation identity that can never authenticate interactively."""
+        user = User(username=username, hashed_password=DISABLED_PASSWORD, is_admin=is_admin)
+        with self.get_session() as session:
+            session.add(user)
+            session.commit()
+            session.refresh(user)
+        return user
+
+    def create_user(
+        self, username: str, password: str, is_admin: bool = False, *, actor_id: Optional[int] = None
+    ) -> User:
         """Create a new user."""
-        hashed_password = hashlib.sha256(password.encode()).hexdigest()
+        self._authorize_admin_actor(actor_id)
+        if not username.strip() or username != username.strip() or len(username) > 255:
+            raise ValueError("Invalid username")
+        hashed_password = hash_password(password)
         user = User(username=username, hashed_password=hashed_password, is_admin=is_admin)
         with self.get_session() as session:
             session.add(user)
             session.commit()
             session.refresh(user)
         return user
+
+    def _authorize_admin_actor(self, actor_id: Optional[int]) -> None:
+        # None denotes trusted local CLI code holding database credentials.
+        if actor_id is not None and not self.is_user_admin(actor_id):
+            raise PermissionError("Administrator privileges required")
 
     def is_user_admin(self, user_id: int) -> bool:
         """Check if a user has admin privileges."""
@@ -108,8 +170,9 @@ class DatabaseManager:
                 return True
             return False
 
-    def update_user_admin_status(self, user_id: int, is_admin: bool) -> bool:
+    def update_user_admin_status(self, user_id: int, is_admin: bool, *, actor_id: Optional[int] = None) -> bool:
         """Update a user's admin status."""
+        self._authorize_admin_actor(actor_id)
         with self.get_session() as session:
             user = session.exec(select(User).where(User.id == user_id)).first()
             if user:
@@ -119,20 +182,24 @@ class DatabaseManager:
                 return True
             return False
 
-    def reset_user_password(self, user_id: int, new_password: str) -> bool:
+    def reset_user_password(self, user_id: int, new_password: str, *, actor_id: Optional[int] = None) -> bool:
         """Reset a user's password."""
-        hashed_password = hashlib.sha256(new_password.encode()).hexdigest()
+        self._authorize_admin_actor(actor_id)
+        hashed_password = hash_password(new_password)
         with self.get_session() as session:
             user = session.exec(select(User).where(User.id == user_id)).first()
             if user:
+                if login_disabled(user.hashed_password):
+                    raise ValueError("Automation identities cannot have login passwords")
                 user.hashed_password = hashed_password
                 session.add(user)
                 session.commit()
                 return True
             return False
 
-    def delete_user(self, user_id: int) -> bool:
+    def delete_user(self, user_id: int, *, actor_id: Optional[int] = None) -> bool:
         """Delete a user (admin only operation)."""
+        self._authorize_admin_actor(actor_id)
         with self.get_session() as session:
             user = session.exec(select(User).where(User.id == user_id)).first()
             if user:
@@ -147,7 +214,9 @@ class DatabaseManager:
             links = session.exec(select(ExperimentGroupUser).where(ExperimentGroupUser.user_id == user_id)).all()
             return [link.experiments_group_id for link in links]
 
-    def update_user_experiment_groups(self, user_id: int, group_ids: List[int]) -> bool:
+    def update_user_experiment_groups(
+        self, user_id: int, group_ids: List[int], *, actor_id: Optional[int] = None
+    ) -> bool:
         """Update the experiment groups assigned to a user.
 
         Args:
@@ -160,6 +229,7 @@ class DatabaseManager:
         Raises:
             ValueError: If any group_id doesn't exist in the database
         """
+        self._authorize_admin_actor(actor_id)
         with self.get_session() as session:
             # Validate that all group IDs exist
             for group_id in group_ids:
@@ -203,7 +273,7 @@ class DatabaseManager:
             group_ids = [link.experiments_group_id for link in links]
             if not group_ids:
                 return []
-            group_query = select(ExperimentGroup).where(ExperimentGroup.experiments_group_id.in_(group_ids))
+            group_query = select(ExperimentGroup).where(col(ExperimentGroup.experiments_group_id).in_(group_ids))
             return list(session.exec(group_query))
 
     def create_experiment_group(
@@ -348,7 +418,7 @@ class DatabaseManager:
 
         return group_id
 
-    def update_experiment_status(self, experiment_id: int, **kwargs) -> None:
+    def update_experiment_status(self, experiment_id: int, **kwargs: Any) -> None:
         """Update experiment status fields."""
         with self.get_session() as session:
             experiment = session.exec(
@@ -398,7 +468,7 @@ class DatabaseManager:
             exp = session.exec(
                 select(ExperimentList)
                 .where(ExperimentList.experiments_group_id == group_id)
-                .order_by(ExperimentList.experiment_id.desc())
+                .order_by(col(ExperimentList.experiment_id).desc())
             ).first()
             if not exp or exp.narrative_id is None:
                 return None
@@ -412,6 +482,52 @@ class DatabaseManager:
             session.commit()
             session.refresh(questionnaire)
             return int(questionnaire.id) if questionnaire.id is not None else -1
+
+    def save_questionnaire_run(
+        self,
+        *,
+        experiment_data: Dict[str, Any],
+        questionnaire_data: Dict[str, Any],
+        request_json: Dict[str, Any],
+        response_json: Dict[str, Any],
+    ) -> int:
+        """Commit a questionnaire and its experiment, evaluation and provenance together."""
+        for field_name in ("user_id", "experiments_group_id", "narrative_id"):
+            if experiment_data[field_name] != questionnaire_data[field_name]:
+                raise ValueError("Questionnaire context must match its experiment")
+        if not request_json or not response_json:
+            raise ValueError("Questionnaire provenance is required")
+        if not self.can_user_edit_experiment_group(experiment_data["user_id"], experiment_data["experiments_group_id"]):
+            raise PermissionError("Evaluation group access required")
+        with self.get_session() as session:
+            experiment = ExperimentList(**{**experiment_data, "succeeded": True, "parsed_answers": True})
+            session.add(experiment)
+            session.flush()
+            questionnaire = Questionnaire(**{**questionnaire_data, "experiment_id": experiment.experiment_id})
+            session.add(questionnaire)
+            session.flush()
+            session.add(
+                RequestResponse(
+                    experiment_id=experiment.experiment_id, request_json=request_json, response_json=response_json
+                )
+            )
+            session.add(
+                EvaluationResult(
+                    experiment_id=experiment.experiment_id,
+                    questionnaire_id=questionnaire.id,
+                    experiments_group_id=questionnaire.experiments_group_id,
+                    narrative_id=questionnaire.narrative_id,
+                    user_id=questionnaire.user_id,
+                    result_type=questionnaire.questionnaire_name,
+                    result_json={
+                        "raw_data": questionnaire.result_json,
+                        "total_score": (questionnaire.result_json or {}).get("total_score"),
+                    },
+                )
+            )
+            session.commit()
+            assert questionnaire.id is not None
+            return int(questionnaire.id)
 
     def save_evaluation_result(self, result_data: Dict[str, Any]) -> int:
         """Persist a processed evaluation result and return its ID."""
@@ -494,7 +610,9 @@ class DatabaseManager:
             return int(feedback.id) if feedback.id is not None else -1
 
     # Request/Response logging
-    def save_request_response(self, experiment_id: int, request_json: Dict, response_json: Dict) -> RequestResponse:
+    def save_request_response(
+        self, experiment_id: int, request_json: Dict[str, Any], response_json: Dict[str, Any]
+    ) -> RequestResponse:
         """Save request and response data."""
         req_resp = RequestResponse(experiment_id=experiment_id, request_json=request_json, response_json=response_json)
         with self.get_session() as session:
@@ -559,7 +677,7 @@ class DatabaseManager:
             current_prompt = session.exec(
                 select(UserPrompt).where(
                     UserPrompt.user_id == user_id,
-                    UserPrompt.is_current.is_(True),
+                    col(UserPrompt.is_current).is_(True),
                 )
             ).first()
 
@@ -724,12 +842,10 @@ class DatabaseManager:
             ).all()
 
             # Get all questionnaires
-            questionnaires = session.exec(
-                select(Questionnaire).where(Questionnaire.experiments_group_id == group_id)
-            ).all()
+            session.exec(select(Questionnaire).where(Questionnaire.experiments_group_id == group_id)).all()
 
             # Build narrative-centric results
-            narratives_data = []
+            narratives_data: List[Dict[str, Any]] = []
             narrative_ids = set(exp.narrative_id for exp in experiments if exp.narrative_id)
 
             for narrative_id in narrative_ids:

@@ -6,19 +6,21 @@ This script allows you to create users via command line arguments,
 useful for automation or batch user creation.
 
 Usage:
-    python register_user_batch.py <username> <password> [--admin]
+    python register_user_batch.py <username> [--admin]
 
 Examples:
-    python register_user_batch.py john_doe mypassword123
-    python register_user_batch.py admin_user securepass --admin
+    python register_user_batch.py john_doe
+    python register_user_batch.py admin_user --admin
 """
 
 import argparse
+import getpass
 import sys
 
 from sqlmodel import select
 
 from pain_narratives.core.database import DatabaseManager
+from pain_narratives.core.security import MIN_PASSWORD_LENGTH
 from pain_narratives.db.models_sqlmodel import User
 
 
@@ -29,19 +31,21 @@ def parse_arguments() -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s doctor_smith password123
-  %(prog)s admin_user securepass --admin
-  %(prog)s researcher01 mypass --admin
+  %(prog)s doctor_smith
+  %(prog)s admin_user --admin
+  %(prog)s researcher01 --admin
         """,
     )
 
     parser.add_argument("username", help="Username for the new user")
 
-    parser.add_argument("password", help="Password for the new user")
+    parser.add_argument("--password-stdin", action="store_true", help="Read password from stdin for automation")
 
     parser.add_argument("--admin", action="store_true", help="Grant admin privileges to the user")
 
-    return parser.parse_args()
+    args = parser.parse_args()
+    args.password = sys.stdin.readline().rstrip("\n") if args.password_stdin else getpass.getpass("Password: ")
+    return args
 
 
 def validate_inputs(username: str, password: str) -> None:
@@ -50,8 +54,8 @@ def validate_inputs(username: str, password: str) -> None:
         print("❌ Username cannot be empty")
         sys.exit(1)
 
-    if len(password) < 3:
-        print("❌ Password must be at least 3 characters long")
+    if len(password) < MIN_PASSWORD_LENGTH:
+        print(f"❌ Password must be at least {MIN_PASSWORD_LENGTH} characters long")
         sys.exit(1)
 
     if len(username) > 255:
@@ -72,7 +76,7 @@ def create_user_account(db_manager: DatabaseManager, username: str, password: st
         user = db_manager.create_user(username=username, password=password, is_admin=is_admin)
         return user
     except Exception as e:
-        print(f"❌ Failed to create user: {e}")
+        print(f"❌ Failed to create user: {type(e).__name__}")
         sys.exit(1)
 
 
@@ -108,7 +112,7 @@ def main():
         print(f"\nUser '{args.username}' can now login to the Streamlit application.")
 
     except Exception as e:
-        print(f"❌ Registration failed: {e}")
+        print(f"❌ Registration failed: {type(e).__name__}")
         print("\nMake sure:")
         print("1. PostgreSQL is running")
         print("2. Database configuration is correct")

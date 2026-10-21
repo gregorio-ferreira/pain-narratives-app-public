@@ -2,6 +2,7 @@
 """
 Script to build Sphinx documentation for the Pain Narratives project.
 """
+
 import os
 
 if __name__ == "__main__":

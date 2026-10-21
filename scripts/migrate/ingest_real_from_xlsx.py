@@ -79,23 +79,47 @@ def parse_years(value):
 
 # Source column -> canonical item-column mappings
 PCS_ITEM_MAP = {
-    "Q2_1": "pcs_01", "Q2_2": "pcs_02", "Q2_3": "pcs_03",
-    "Q2_4": "pcs_04", "Q2_5": "pcs_05",
-    "Q3_1": "pcs_06", "Q3_2": "pcs_07", "Q3_3": "pcs_08", "Q3_4": "pcs_09",
-    "Q4_1": "pcs_10", "Q4_2": "pcs_11", "Q4_3": "pcs_12", "Q4_4": "pcs_13",
+    "Q2_1": "pcs_01",
+    "Q2_2": "pcs_02",
+    "Q2_3": "pcs_03",
+    "Q2_4": "pcs_04",
+    "Q2_5": "pcs_05",
+    "Q3_1": "pcs_06",
+    "Q3_2": "pcs_07",
+    "Q3_3": "pcs_08",
+    "Q3_4": "pcs_09",
+    "Q4_1": "pcs_10",
+    "Q4_2": "pcs_11",
+    "Q4_3": "pcs_12",
+    "Q4_4": "pcs_13",
 }
 BPI_ITEM_MAP = {
     # Qualtrics BPI_1..BPI_7 are the interference 7 items (Q1.1..Q1.7).
     # BPI_8..BPI_11 are the four severity/intensity items (worst, least, avg, now).
-    "BPI_1": "bpiq11", "BPI_2": "bpiq12", "BPI_3": "bpiq13", "BPI_4": "bpiq14",
-    "BPI_5": "bpiq15", "BPI_6": "bpiq16", "BPI_7": "bpiq17",
-    "BPI_8": "bpiq28", "BPI_9": "bpiq39", "BPI_10": "bpiq410", "BPI_11": "bpiq511",
+    "BPI_1": "bpiq11",
+    "BPI_2": "bpiq12",
+    "BPI_3": "bpiq13",
+    "BPI_4": "bpiq14",
+    "BPI_5": "bpiq15",
+    "BPI_6": "bpiq16",
+    "BPI_7": "bpiq17",
+    "BPI_8": "bpiq28",
+    "BPI_9": "bpiq39",
+    "BPI_10": "bpiq410",
+    "BPI_11": "bpiq511",
 }
 TSK_ITEM_MAP = {
-    "Q2_1.1": "tsk_01", "Q2_2.1": "tsk_02", "Q2_3.1": "tsk_03",
-    "Q2_4.1": "tsk_04", "Q2_5.1": "tsk_05",
-    "Q3_1.1": "tsk_06", "Q3_2.1": "tsk_07", "Q3_3.1": "tsk_08", "Q3_4.1": "tsk_09",
-    "Q3_5": "tsk_10", "Q3_6": "tsk_11",
+    "Q2_1.1": "tsk_01",
+    "Q2_2.1": "tsk_02",
+    "Q2_3.1": "tsk_03",
+    "Q2_4.1": "tsk_04",
+    "Q2_5.1": "tsk_05",
+    "Q3_1.1": "tsk_06",
+    "Q3_2.1": "tsk_07",
+    "Q3_3.1": "tsk_08",
+    "Q3_4.1": "tsk_09",
+    "Q3_5": "tsk_10",
+    "Q3_6": "tsk_11",
 }
 
 # PCS subscale item indices (1-based)
@@ -116,17 +140,17 @@ BPI_INTENSITY = ["bpiq28", "bpiq39", "bpiq410", "bpiq511"]
 def load_clean() -> pd.DataFrame:
     raw = pd.read_excel(RAW_XLSX)
     raw = raw.iloc[1:].reset_index(drop=True)
-    raw = raw.rename(columns={
-        "Unnamed: 0": "valid",
-        "Unnamed: 1": "response_id",
-        "Q2": "narrative_text",
-    })
+    raw = raw.rename(
+        columns={
+            "Unnamed: 0": "valid",
+            "Unnamed: 1": "response_id",
+            "Q2": "narrative_text",
+        }
+    )
     raw["valid"] = pd.to_numeric(raw["valid"], errors="coerce").fillna(0).astype(int)
     df = raw.loc[raw["valid"] == 1].copy()
     df["narrative_text"] = df["narrative_text"].astype(str)
-    df["narrative_hash"] = df["narrative_text"].apply(
-        lambda s: hashlib.sha256(s.strip().encode("utf-8")).hexdigest()
-    )
+    df["narrative_hash"] = df["narrative_text"].apply(lambda s: hashlib.sha256(s.strip().encode("utf-8")).hexdigest())
     df["word_count"] = df["narrative_text"].str.split().str.len()
     return df.reset_index(drop=True)
 
@@ -139,25 +163,27 @@ def build_narratives(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_demographics(df: pd.DataFrame, narratives: pd.DataFrame) -> pd.DataFrame:
-    out = pd.DataFrame({
-        "participant_id": narratives["narrative_id"].to_numpy(),
-        "narrative_hash": df["narrative_hash"].to_numpy(),
-        "narrative_text": df["narrative_text"].to_numpy(),
-        "word_count": df["word_count"].to_numpy(),
-        "age": df["Edad"].apply(parse_int),
-        "gender": df["Genero"],
-        "marital_status": df["Estado_civil"],
-        "education_level": df["Estudios"],
-        "country_residence": df["Residencia_pais"],
-        "country_birth": df["Nacimiento_pais"],
-        "employment_status": df["Empleo"],
-        # Keep years as raw strings to match the original schema convention,
-        # but also expose a parsed integer column for downstream convenience.
-        "years_with_pain": df["Años_dolor"].astype(str),
-        "years_since_diagnosis": df["Años_diagnostico"].astype(str),
-        "pain_cause_primary": df["Causa_dolor"],
-        "pain_location_zones": df["Zonas_dolor"],
-    })
+    out = pd.DataFrame(
+        {
+            "participant_id": narratives["narrative_id"].to_numpy(),
+            "narrative_hash": df["narrative_hash"].to_numpy(),
+            "narrative_text": df["narrative_text"].to_numpy(),
+            "word_count": df["word_count"].to_numpy(),
+            "age": df["Edad"].apply(parse_int),
+            "gender": df["Genero"],
+            "marital_status": df["Estado_civil"],
+            "education_level": df["Estudios"],
+            "country_residence": df["Residencia_pais"],
+            "country_birth": df["Nacimiento_pais"],
+            "employment_status": df["Empleo"],
+            # Keep years as raw strings to match the original schema convention,
+            # but also expose a parsed integer column for downstream convenience.
+            "years_with_pain": df["Años_dolor"].astype(str),
+            "years_since_diagnosis": df["Años_diagnostico"].astype(str),
+            "pain_cause_primary": df["Causa_dolor"],
+            "pain_location_zones": df["Zonas_dolor"],
+        }
+    )
     return out
 
 
@@ -200,8 +226,13 @@ def truncate_and_load(db: DatabaseManager, frames: dict[str, pd.DataFrame]) -> N
     with db.engine.begin() as conn:
         # Drop in reverse dependency order: real_patient_* depend on narratives in the
         # logical sense (same participant_id), although there's no FK constraint.
-        for table in ("real_patient_pcs", "real_patient_bpi", "real_patient_tsk",
-                      "real_patient_demographics", "narratives"):
+        for table in (
+            "real_patient_pcs",
+            "real_patient_bpi",
+            "real_patient_tsk",
+            "real_patient_demographics",
+            "narratives",
+        ):
             conn.execute(text(f"TRUNCATE TABLE {SCHEMA}.{table} CASCADE"))
     for table, df in frames.items():
         df.to_sql(table, db.engine, schema=SCHEMA, if_exists="append", index=False, method="multi")

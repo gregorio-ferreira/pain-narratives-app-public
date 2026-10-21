@@ -95,8 +95,17 @@ def upgrade() -> None:
     # real_patient_bpi: 11 items (column names mirror BPI section numbering)
     # -------------------------------------------------------------------
     bpi_item_names = [
-        "bpiq11", "bpiq12", "bpiq13", "bpiq14", "bpiq15", "bpiq16", "bpiq17",
-        "bpiq28", "bpiq39", "bpiq410", "bpiq511",
+        "bpiq11",
+        "bpiq12",
+        "bpiq13",
+        "bpiq14",
+        "bpiq15",
+        "bpiq16",
+        "bpiq17",
+        "bpiq28",
+        "bpiq39",
+        "bpiq410",
+        "bpiq511",
     ]
     bpi_item_cols = [sa.Column(n, sa.Integer(), nullable=True) for n in bpi_item_names]
     op.create_table(

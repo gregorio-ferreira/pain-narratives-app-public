@@ -46,3 +46,14 @@ def test_bootstrap_ci_is_reproducible_and_brackets_estimate():
     second = bootstrap_ci(krippendorff_alpha_interval, a, b, iters=500)
     assert first == second
     assert first[0] < krippendorff_alpha_interval(a, b) < first[1]
+
+
+@pytest.mark.parametrize("seed", [4, 7, 11])
+def test_interval_formula_matches_reference_library(seed):
+    import krippendorff
+
+    rng = np.random.default_rng(seed)
+    a = rng.normal(20, 5, 30)
+    b = a + rng.normal(0, 2, 30)
+    expected = krippendorff.alpha(reliability_data=np.vstack([a, b]), level_of_measurement="interval")
+    assert krippendorff_alpha_interval(a, b) == pytest.approx(expected, abs=1e-12)

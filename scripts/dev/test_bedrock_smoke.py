@@ -95,7 +95,7 @@ def main() -> int:
     try:
         auth = client.check_credentials()
     except BedrockAuthError as e:
-        print(f"PRE-FLIGHT FAILED: {e}")
+        print(f"PRE-FLIGHT FAILED: {type(e).__name__}")
         return 2
     print(f"Auth:   {auth.auth_method}")
     if auth.profile_name:
@@ -110,13 +110,13 @@ def main() -> int:
     try:
         resp = client.create_completion(messages=messages, model=preset["model"], **preset["kwargs"])
     except BedrockAuthError as e:
-        print(f"AUTH ERROR: {e}")
+        print(f"AUTH ERROR: {type(e).__name__}")
         return 2
     except BedrockTransientError as e:
-        print(f"TRANSIENT ERROR (after retries): {e}")
+        print(f"TRANSIENT ERROR (after retries): {type(e).__name__}")
         return 3
     except BedrockModelError as e:
-        print(f"MODEL ERROR: {e}")
+        print(f"MODEL ERROR: {type(e).__name__}")
         return 4
 
     answer = resp["choices"][0]["message"]["content"]

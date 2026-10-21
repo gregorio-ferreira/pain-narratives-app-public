@@ -62,8 +62,8 @@ def test_translation_service():
         print("\n🎉 Translation service test completed successfully!")
 
     except Exception as e:
-        print(f"❌ Translation test failed: {e}")
-        logging.error(f"Translation test failed: {e}", exc_info=True)
+        print(f"❌ Translation test failed: {type(e).__name__}")
+        logging.error(f"Translation test failed: {type(e).__name__}")
 
 
 def test_multilingual_storage_structure():

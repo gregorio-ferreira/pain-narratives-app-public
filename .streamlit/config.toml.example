@@ -3,14 +3,14 @@
 port = 8501
 address = "localhost"
 baseUrlPath = ""
-enableCORS = false
+enableCORS = true
 enableXsrfProtection = true
 
-# Enable static file serving (FIX for CSS preload error)
-enableStaticServing = true
+# Static file serving is unnecessary for the app
+enableStaticServing = false
 
 # WebSocket configuration
-maxUploadSize = 200
+maxUploadSize = 5
 maxMessageSize = 200
 
 # Performance
@@ -21,11 +21,11 @@ allowRunOnSave = false
 # Prevent automatic opening
 gatherUsageStats = false
 serverAddress = "YOUR_DEPLOYMENT_HOSTNAME.example.com"
-serverPort = 443
+serverPort = 80
 
 [client]
 # Client configuration
-showErrorDetails = true
+showErrorDetails = "none"
 toolbarMode = "minimal"
 
 [theme]

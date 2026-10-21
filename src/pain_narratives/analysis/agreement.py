@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from typing import Callable
 
-import krippendorff
 import numpy as np
 
 DEFAULT_BOOTSTRAP_ITERS = 2000
@@ -24,8 +23,20 @@ def krippendorff_alpha_interval(a: np.ndarray, b: np.ndarray) -> float:
     """
     a = np.asarray(a, dtype=float)
     b = np.asarray(b, dtype=float)
+    if a.ndim != 1 or b.ndim != 1 or a.shape != b.shape:
+        raise ValueError("Agreement requires paired one-dimensional vectors")
     keep = ~(np.isnan(a) | np.isnan(b))
-    return float(krippendorff.alpha(reliability_data=np.vstack([a[keep], b[keep]]), level_of_measurement="interval"))
+    a, b = a[keep], b[keep]
+    if len(a) < 2 or not (np.isfinite(a).all() and np.isfinite(b).all()):
+        raise ValueError("Agreement requires at least two finite pairs")
+    # Exact interval-alpha formula for two coders with complete paired units.
+    # Avoid allocating coincidence/distance matrices on every bootstrap draw.
+    pooled = np.concatenate((a, b))
+    observed = float(np.mean((a - b) ** 2))
+    expected = float(2 * np.sum((pooled - pooled.mean()) ** 2) / (len(pooled) - 1))
+    if expected == 0:
+        raise ValueError("Interval alpha is undefined for constant pooled scores")
+    return 1.0 - observed / expected
 
 
 def bootstrap_ci(

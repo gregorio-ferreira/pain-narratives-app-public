@@ -46,7 +46,7 @@ else:
 
 # Override sqlalchemy.url from application settings
 settings = get_settings()
-config.set_main_option("sqlalchemy.url", settings.database_url)
+config.set_main_option("sqlalchemy.url", settings.database_url.replace("%", "%%"))
 
 # Set metadata for 'autogenerate' support
 # Use SQLModel metadata for Alembic migrations

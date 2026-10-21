@@ -147,3 +147,31 @@ docs/_build/
 docs/local/*
 docs/multimodel/*
 docs/multimodel.zip
+
+# Private legacy config, credentials and database exports
+.yaml
+.env.*
+!.env.example
+.aws/
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+*.p12
+*.pfx
+*.dump
+*.backup
+*.sql.gz
+*.sql.bz2
+*.sql.xz
+*.pgpass
+.pgpass
+publication/
+# Keep SQL source scripts; put logical SQL backups in this ignored directory.
+backups/
+security-reports/
+.ssh/
+.pg_service.conf
+*.sql
+!sql/*.sql
+!docker/init-db.sql

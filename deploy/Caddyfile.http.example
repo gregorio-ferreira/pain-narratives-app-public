@@ -1,0 +1,15 @@
+# Temporary HTTP-only deployment; replace this site's host and network ranges.
+http://YOUR_EC2_HOSTNAME.example.com {
+    @team remote_ip <TEAM_CIDR_1> <TEAM_CIDR_2>
+    handle @team {
+        reverse_proxy 127.0.0.1:8501
+    }
+    handle {
+        respond "Forbidden" 403
+    }
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+        Cache-Control "no-store"
+    }
+}

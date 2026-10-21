@@ -192,7 +192,7 @@ def main() -> int:
                 narrative_text=narrative_text,
             )
         except Exception as e:
-            logging.exception("DeepSeek-R1 pilot raised: %s", e)
+            logging.error("DeepSeek-R1 pilot raised: %s", type(e).__name__)
             exit_code = 1
 
     if not args.skip_sonnet:
@@ -208,7 +208,7 @@ def main() -> int:
                 narrative_text=narrative_text,
             )
         except Exception as e:
-            logging.exception("Sonnet 4.5 pilot raised: %s", e)
+            logging.error("Sonnet 4.5 pilot raised: %s", type(e).__name__)
             exit_code = 1
 
     return exit_code

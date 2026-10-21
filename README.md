@@ -101,8 +101,9 @@ Run tests:
 uv run pytest
 ```
 
-Live database/cloud tests are skipped by default. Run them only with a private
-config:
+Normal tests use an isolated config and block network/default database access.
+Live database/cloud tests are skipped by default and may write data; use a
+disposable test database with explicit private config:
 
 ```bash
 RUN_LIVE_DB_TESTS=1 PAIN_NARRATIVES_CONFIG=/path/to/private.yaml uv run pytest -m live_db
@@ -124,6 +125,9 @@ Start with [docs/README.md](docs/README.md). Key topics:
 
 - [Architecture](docs/architecture.md)
 - [Configuration](docs/configuration.md)
+- [Production Docker/Caddy deployment](docs/deployment.md)
+- [Security checks and backup/restore](docs/operations.md)
+- [Anonymous review release](docs/anonymous_review.md)
 - [Deployment](docs/deployment.md)
 - [Experiments and batch runs](docs/experiments.md)
 - [Prompts and questionnaires](docs/prompts.md)
@@ -153,3 +157,11 @@ uv run pytest
 ## License
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE).
+
+Security checks use Gitleaks (full reachable history and current public files),
+Trivy (lockfile/infrastructure and the built image), and offline regression tests.
+See [operations](docs/operations.md) for setup and commands. Run
+`python3 scripts/security/check_publication.py` before publishing notebooks.
+The production compose file deliberately supports the current HTTP-only setup;
+team-IP restrictions and the remaining transport risk are described in the
+[deployment guide](docs/deployment.md).

@@ -34,8 +34,7 @@ def main() -> None:
     settings = get_settings()
     engine = create_engine(settings.database_url)
 
-    query = text(
-        """
+    query = text("""
         WITH acm_runs AS (
             SELECT narrative_id, COUNT(*) AS acm_repetitions
             FROM pain_narratives_app.experiments_list
@@ -72,8 +71,7 @@ def main() -> None:
         LEFT JOIN questionnaire  q   ON q.narrative_id   = n.narrative_id
         WHERE n.char_count > 0
         ORDER BY n.narrative_id
-        """
-    )
+        """)
 
     df = pd.read_sql(query, engine, params={"acm_groups": list(ACM_BATCH_GROUP_IDS)})
 

@@ -30,8 +30,7 @@ from pain_narratives.config.settings import get_settings
 
 DEFAULT_NARRATIVE_IDS = "246,216,247,274,207"
 
-GROUPS_QUERY = text(
-    """
+GROUPS_QUERY = text("""
     WITH exp AS (
         SELECT el.experiment_id, el.experiments_group_id, el.narrative_id,
                el.succeeded, el.prompt_version
@@ -79,11 +78,9 @@ GROUPS_QUERY = text(
     LEFT JOIN res r    ON r.experiments_group_id = g.experiments_group_id
     GROUP BY g.experiments_group_id, g.created, g.description, m.models
     ORDER BY g.experiments_group_id
-    """
-)
+    """)
 
-NARRATIVES_QUERY = text(
-    """
+NARRATIVES_QUERY = text("""
     SELECT el.narrative_id,
            n.word_count,
            el.experiments_group_id                                   AS grp,
@@ -100,11 +97,9 @@ NARRATIVES_QUERY = text(
     WHERE el.narrative_id = ANY(:nids) AND el.succeeded
     GROUP BY el.narrative_id, n.word_count, el.experiments_group_id, el.prompt_version
     ORDER BY n.word_count, el.narrative_id, el.experiments_group_id
-    """
-)
+    """)
 
-PROMPT_HISTORY_QUERY = text(
-    """
+PROMPT_HISTORY_QUERY = text("""
     SELECT questionnaire_type,
            LEFT(md5(system_role || '||' || instructions), 8)        AS prompt_hash,
            LENGTH(system_role) + LENGTH(instructions)                AS prompt_chars,
@@ -115,8 +110,7 @@ PROMPT_HISTORY_QUERY = text(
     FROM pain_narratives_app.questionnaire_prompts
     GROUP BY questionnaire_type, prompt_hash, prompt_chars, asks_persona
     ORDER BY questionnaire_type, first_seen
-    """
-)
+    """)
 
 
 def main() -> None:

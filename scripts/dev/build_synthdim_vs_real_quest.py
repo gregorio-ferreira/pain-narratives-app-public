@@ -22,12 +22,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 from scipy.stats import spearmanr
 from statsmodels.stats.multitest import multipletests
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 REPO = Path(__file__).resolve().parents[2]
 from pain_narratives.analysis import revision_data_layer as dl
@@ -88,11 +88,10 @@ def spearman_boot_ci(x, y, n_boot=BOOT_ITERS, seed=RNG_SEED):
     rxb = rxb - rxb.mean(axis=1, keepdims=True)
     ryb = ryb - ryb.mean(axis=1, keepdims=True)
     num = (rxb * ryb).sum(axis=1)
-    den = np.sqrt((rxb ** 2).sum(axis=1) * (ryb ** 2).sum(axis=1))
+    den = np.sqrt((rxb**2).sum(axis=1) * (ryb**2).sum(axis=1))
     boots = np.where(den > 0, num / den, np.nan)
     lo, hi = np.nanpercentile(boots, [2.5, 97.5])
-    return {"rho": float(rho), "p_raw": float(p),
-            "ci_lo": float(lo), "ci_hi": float(hi), "n": int(n)}
+    return {"rho": float(rho), "p_raw": float(p), "ci_lo": float(lo), "ci_hi": float(hi), "n": int(n)}
 
 
 def sig_mark(p):
@@ -109,14 +108,14 @@ def sig_mark(p):
 
 def paired_bootstrap(df_a, df_b, x_var, y_var, n_boot=CROSS_BOOT_ITERS, seed=RNG_SEED):
     rng = np.random.default_rng(seed)
-    merged = (df_a[["narrative_hash", x_var, y_var]]
-              .merge(df_b[["narrative_hash", x_var, y_var]],
-                     on="narrative_hash", suffixes=("_a", "_b"))
-              .dropna())
+    merged = (
+        df_a[["narrative_hash", x_var, y_var]]
+        .merge(df_b[["narrative_hash", x_var, y_var]], on="narrative_hash", suffixes=("_a", "_b"))
+        .dropna()
+    )
     n = len(merged)
     if n < 4:
-        return {"delta_rho": np.nan, "ci_lo": np.nan, "ci_hi": np.nan,
-                "p_bootstrap": np.nan, "n": n}
+        return {"delta_rho": np.nan, "ci_lo": np.nan, "ci_hi": np.nan, "p_bootstrap": np.nan, "n": n}
     xa = merged[f"{x_var}_a"].to_numpy()
     ya = merged[f"{y_var}_a"].to_numpy()
     xb = merged[f"{x_var}_b"].to_numpy()
@@ -130,8 +129,7 @@ def paired_bootstrap(df_a, df_b, x_var, y_var, n_boot=CROSS_BOOT_ITERS, seed=RNG
     mean = float(np.nanmean(deltas))
     lo, hi = np.nanpercentile(deltas, [2.5, 97.5])
     p = 2.0 * min((deltas > 0).mean(), (deltas < 0).mean())
-    return {"delta_rho": mean, "ci_lo": float(lo), "ci_hi": float(hi),
-            "p_bootstrap": float(p), "n": int(n)}
+    return {"delta_rho": mean, "ci_lo": float(lo), "ci_hi": float(hi), "p_bootstrap": float(p), "n": int(n)}
 
 
 # ---------------------------------------------------------------------------
@@ -154,8 +152,7 @@ for tag in MODELS:
     _, p_fdr, _, _ = multipletests(p_raw, method="fdr_bh")
     t10e.loc[mask, "p_fdr"] = p_fdr
 t10e["signif"] = t10e["p_fdr"].map(sig_mark)
-t10e = t10e[["model", "dimension", "real_questionnaire", "n",
-             "rho", "p_raw", "p_fdr", "ci_lo", "ci_hi", "signif"]]
+t10e = t10e[["model", "dimension", "real_questionnaire", "n", "rho", "p_raw", "p_fdr", "ci_lo", "ci_hi", "signif"]]
 t10e.to_csv(OUT_DIR / "08_table10e_synthdim_vs_real_quest.csv", index=False)
 print("Wrote T10e: 30 rows")
 print(t10e.round(3).to_string(index=False))
@@ -174,11 +171,15 @@ for other in MODELS:
     for d in DIMS:
         for q in REAL_QUESTS:
             res = paired_bootstrap(other_merged, anchor_merged, d, q)
-            cross_rows.append({
-                "model_a": other, "model_b": ANCHOR,
-                "dimension": d, "real_questionnaire": q,
-                **res,
-            })
+            cross_rows.append(
+                {
+                    "model_a": other,
+                    "model_b": ANCHOR,
+                    "dimension": d,
+                    "real_questionnaire": q,
+                    **res,
+                }
+            )
 t10f = pd.DataFrame(cross_rows)
 t10f.to_csv(OUT_DIR / "08_table10f_synthdim_realvalidity_cross_model.csv", index=False)
 print("Wrote T10f: 20 rows (model_a vs GPT-5)")
@@ -189,10 +190,11 @@ print()
 # Mean per-model rho_real summary
 # ---------------------------------------------------------------------------
 
-summary = (t10e.groupby("model")["rho"]
-           .agg(mean_rho="mean", median_rho="median",
-                min_rho="min", max_rho="max", n_cells="count")
-           .round(3))
+summary = (
+    t10e.groupby("model")["rho"]
+    .agg(mean_rho="mean", median_rho="median", min_rho="min", max_rho="max", n_cells="count")
+    .round(3)
+)
 print("Per-model mean rho_real summary:")
 print(summary.to_string())
 print()
@@ -201,15 +203,23 @@ print()
 # Figure 4: heatmap grid (one panel per model)
 # ---------------------------------------------------------------------------
 
-fig, axes = plt.subplots(1, len(MODELS), figsize=(6.5 * len(MODELS), 4),
-                         sharey=True, squeeze=False)
+fig, axes = plt.subplots(1, len(MODELS), figsize=(6.5 * len(MODELS), 4), sharey=True, squeeze=False)
 for ax, tag in zip(axes[0], MODELS):
-    pivot = (t10e.query("model == @tag")
-             .pivot(index="dimension", columns="real_questionnaire", values="rho"))
+    pivot = t10e.query("model == @tag").pivot(index="dimension", columns="real_questionnaire", values="rho")
     pivot = pivot[REAL_QUESTS]
-    sns.heatmap(pivot, ax=ax, annot=True, fmt=".2f", cmap="RdBu_r",
-                center=0, vmin=-1, vmax=1, cbar=(ax is axes[0][-1]),
-                square=False, linewidths=0.3)
+    sns.heatmap(
+        pivot,
+        ax=ax,
+        annot=True,
+        fmt=".2f",
+        cmap="RdBu_r",
+        center=0,
+        vmin=-1,
+        vmax=1,
+        cbar=(ax is axes[0][-1]),
+        square=False,
+        linewidths=0.3,
+    )
     ax.set_title(tag)
     ax.set_ylabel("")
     ax.set_xlabel("")
@@ -231,9 +241,7 @@ labels = []
 vals = []
 err_lo = []
 err_hi = []
-colors_map = {"gpt-5": "#1f77b4",
-              "deepseek-r1": "#ff7f0e",
-              "claude-sonnet-4-5-thinking": "#2ca02c"}
+colors_map = {"gpt-5": "#1f77b4", "deepseek-r1": "#ff7f0e", "claude-sonnet-4-5-thinking": "#2ca02c"}
 row = 0
 for d in DIMS:
     for q in REAL_QUESTS:
@@ -256,9 +264,18 @@ for i, label in enumerate(labels):
             colors_seq.append(c)
             break
 
-ax.errorbar(vals, y_pos, xerr=errs, fmt="o", capsize=2, markersize=4,
-            ecolor="gray", elinewidth=0.8,
-            markerfacecolor="white", markeredgewidth=1.2)
+ax.errorbar(
+    vals,
+    y_pos,
+    xerr=errs,
+    fmt="o",
+    capsize=2,
+    markersize=4,
+    ecolor="gray",
+    elinewidth=0.8,
+    markerfacecolor="white",
+    markeredgewidth=1.2,
+)
 # Re-draw points with per-model colour
 for x, y, c in zip(vals, y_pos, colors_seq):
     ax.plot(x, y, "o", color=c, markersize=5)
@@ -270,8 +287,10 @@ ax.set_title("Synthetic dimensions predicting real patient questionnaires (95% C
 ax.invert_yaxis()
 # Legend
 from matplotlib.lines import Line2D
-handles = [Line2D([0], [0], marker="o", color="w", markerfacecolor=c, label=m, markersize=6)
-           for m, c in colors_map.items()]
+
+handles = [
+    Line2D([0], [0], marker="o", color="w", markerfacecolor=c, label=m, markersize=6) for m, c in colors_map.items()
+]
 ax.legend(handles=handles, loc="lower right", fontsize=8)
 fig.tight_layout()
 fig.savefig(FIG_DIR / "08_fig5_synthdim_vs_real_forest.pdf", bbox_inches="tight")

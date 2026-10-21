@@ -2,19 +2,20 @@
 
 import logging
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
 
 import yaml
+from sqlalchemy.engine import URL
 
 
 @dataclass
 class OpenAIConfig:
     """OpenAI configuration."""
 
-    api_key: str
-    api_key_pain_narratives: str
+    api_key: str = field(repr=False)
+    api_key_pain_narratives: str = field(repr=False)
     org_id: str
 
 
@@ -24,10 +25,10 @@ class BedrockConfig:
 
     aws_credentials: str
     aws_profile: str
-    aws_access_key: str
-    aws_secret_key: str
+    aws_access_key: str = field(repr=False)
+    aws_secret_key: str = field(repr=False)
     aws_region: str
-    api_key: str = ""
+    api_key: str = field(default="", repr=False)
     default_region: str = "us-east-1"
 
 
@@ -35,16 +36,38 @@ class BedrockConfig:
 class PostgreSQLConfig:
     """PostgreSQL configuration."""
 
-    password: str
+    password: str = field(repr=False)
     host: str
     database: str
     user: str
     port: int = 5432
 
+    sslmode: str = "verify-full"
+    sslrootcert: str = ""
+
+    @property
+    def connection_url(self) -> URL:
+        """Build a URL without interpreting reserved characters in credentials."""
+        if self.sslmode not in {"disable", "verify-full"}:
+            raise ValueError("Database sslmode must be disable (local only) or verify-full")
+        if self.sslmode == "disable" and self.host not in {"localhost", "127.0.0.1", "::1", "postgres"}:
+            raise ValueError("Remote database connections require sslmode=verify-full")
+        query = {"sslmode": self.sslmode}
+        if self.sslrootcert:
+            query["sslrootcert"] = self.sslrootcert
+        return URL.create(
+            "postgresql+psycopg2",
+            username=self.user,
+            password=self.password,
+            host=self.host,
+            port=self.port,
+            database=self.database,
+            query=query,
+        )
+
     @property
     def url(self) -> str:
-        """Return the PostgreSQL connection URL."""
-        return f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}"
+        return self.connection_url.render_as_string(hide_password=False)
 
 
 @dataclass
@@ -117,14 +140,12 @@ class ConfigManager:
         try:
             with open(self.config_path) as f:
                 self._config = yaml.safe_load(f) or {}
-        except FileNotFoundError:
-            if self.logger:
-                self.logger.warning(f"Config file not found: {self.config_path}")
-            self._config = {}
-        except Exception as e:
-            if self.logger:
-                self.logger.error(f"Error loading config: {e}")
-            self._config = {}
+                if not isinstance(self._config, dict):
+                    raise ValueError("Configuration must be a YAML mapping")
+        except (OSError, yaml.YAMLError, ValueError) as exc:
+            raise ValueError(
+                "Unable to load runtime configuration; check the private file and its permissions"
+            ) from exc
 
     @property
     def openai_config(self) -> OpenAIConfig:
@@ -132,7 +153,7 @@ class ConfigManager:
         config: dict[str, Any] = self._config or {}
         openai_data: dict[str, Any] = config.get("openai", {})
         return OpenAIConfig(
-            api_key=openai_data.get("api_key", ""),
+            api_key=openai_data.get("api_key") or openai_data.get("api_key_pain_narratives", ""),
             api_key_pain_narratives=openai_data.get("api_key_pain_narratives", ""),
             org_id=openai_data.get("org_id", ""),
         )
@@ -164,6 +185,15 @@ class ConfigManager:
             database=pg_data.get("database", "pain_narratives"),
             user=pg_data.get("user", ""),
             port=int(pg_data.get("port", 5432)),
+            sslmode=pg_data.get(
+                "sslmode",
+                (
+                    "disable"
+                    if pg_data.get("host", "localhost") in {"localhost", "127.0.0.1", "::1", "postgres"}
+                    else "verify-full"
+                ),
+            ),
+            sslrootcert=os.environ.get("PAIN_NARRATIVES_DB_CA", pg_data.get("sslrootcert", "")),
         )
 
     @property

@@ -9,10 +9,11 @@ the Streamlit UI (via wrappers) and the batch processing CLI.
 import json
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Protocol, Tuple
+from typing import Any, Dict, List, Optional, Protocol, Tuple, cast
 
 from pain_narratives.config.prompts import get_questionnaire_prompt
-from pain_narratives.core.bedrock_client import BedrockAuthError
+from pain_narratives.core.privacy import safe_error
+from pain_narratives.core.provider_errors import ProviderAuthError, ProviderRequestError
 
 logger = logging.getLogger(__name__)
 
@@ -28,10 +29,11 @@ class LLMClient(Protocol):
         self,
         messages: List[Dict[str, str]],
         model: str,
+        *,
         temperature: Optional[float] = ...,
+        top_p: Optional[float] = ...,
         max_tokens: int = ...,
         response_format: Optional[str] = ...,
-        **kwargs: Any,
     ) -> Dict[str, Any]: ...
 
 
@@ -49,22 +51,22 @@ class QuestionnaireResult:
     @property
     def scores(self) -> Dict[str, Any]:
         """Get scores (PCS format)."""
-        return self.data.get("scores", {})
+        return cast(Dict[str, Any], self.data.get("scores", {}))
 
     @property
     def responses(self) -> List[Dict[str, Any]]:
         """Get responses (BPI-IS/TSK format)."""
-        return self.data.get("responses", [])
+        return cast(List[Dict[str, Any]], self.data.get("responses", []))
 
     @property
     def model_reasoning(self) -> str:
         """Get model reasoning."""
-        return self.data.get("model_reasoning", "")
+        return str(self.data.get("model_reasoning", ""))
 
     @property
     def persona(self) -> Dict[str, str]:
         """Get persona information."""
-        return self.data.get("persona", {})
+        return cast(Dict[str, str], self.data.get("persona", {}))
 
 
 def extract_json_from_text(text: str) -> str:
@@ -107,7 +109,7 @@ def parse_questionnaire_response(content: str, questionnaire_type: str) -> Tuple
         return False, {}, "Empty response from API"
 
     cleaned_content = extract_json_from_text(content)
-    logger.debug(f"Cleaned {questionnaire_type} JSON content: {cleaned_content[:200]}...")
+    pass  # Narrative/provider content is deliberately excluded from logs.
 
     try:
         data = json.loads(cleaned_content)
@@ -115,23 +117,55 @@ def parse_questionnaire_response(content: str, questionnaire_type: str) -> Tuple
         if not isinstance(data, dict):
             return False, {}, f"Invalid {questionnaire_type} response: expected JSON object"
 
-        # Validate based on questionnaire type
-        if questionnaire_type == "PCS":
-            if "scores" not in data:
-                return False, {}, f"Invalid {questionnaire_type} response: missing 'scores' field"
-            if not isinstance(data["scores"], dict):
-                return False, {}, f"Invalid {questionnaire_type} response: 'scores' should be an object"
-        else:  # BPI-IS and TSK-11SV use responses array
-            if "responses" not in data:
-                return False, {}, f"Invalid {questionnaire_type} response: missing 'responses' field"
-            if not isinstance(data["responses"], list):
-                return False, {}, f"Invalid {questionnaire_type} response: 'responses' should be an array"
+        validate_questionnaire_data(data, questionnaire_type)
 
         return True, data, None
 
-    except json.JSONDecodeError as e:
-        logger.error(f"{questionnaire_type} JSON decode error: {e}")
-        return False, {}, f"Could not parse JSON response: {str(e)}"
+    except (json.JSONDecodeError, ValueError) as e:
+        logger.error(f"{questionnaire_type} JSON decode error: {safe_error(e)}")
+        return False, {}, f"Could not parse JSON response: {safe_error(e)}"
+
+
+BPI_CODES = frozenset(
+    {
+        "BPI_Q1_1",
+        "BPI_Q1_2",
+        "BPI_Q1_3",
+        "BPI_Q1_5",
+        "BPI_Q1_6",
+        "BPI_Q1_7",
+        "BPI_Q2_8",
+        "BPI_Q3_9",
+        "BPI_Q4_10",
+        "BPI_Q5_11",
+    }
+)
+TSK_CODES = frozenset(f"TSK_{i:02d}" for i in range(1, 12))
+
+
+def validate_questionnaire_data(data: Dict[str, Any], questionnaire_type: str) -> None:
+    """Reject missing/duplicate items, coerced values and impossible scores."""
+    if questionnaire_type == "PCS":
+        scores = data.get("scores")
+        if not isinstance(scores, dict) or set(scores) != {str(i) for i in range(1, 14)}:
+            raise ValueError("PCS requires exactly items 1–13")
+        values = list(scores.values())
+        lower, upper = 0, 4
+    elif questionnaire_type in {"BPI-IS", "TSK-11SV"}:
+        responses = data.get("responses")
+        expected = BPI_CODES if questionnaire_type == "BPI-IS" else TSK_CODES
+        if not isinstance(responses, list) or len(responses) != len(expected):
+            raise ValueError("Questionnaire has missing or duplicate items")
+        if not all(isinstance(item, dict) and isinstance(item.get("code"), str) for item in responses):
+            raise ValueError("Invalid questionnaire item")
+        if {item["code"] for item in responses} != expected:
+            raise ValueError("Questionnaire has unknown, missing or duplicate items")
+        values = [item.get("value") for item in responses]
+        lower, upper = (0, 10) if questionnaire_type == "BPI-IS" else (1, 4)
+    else:
+        raise ValueError("Unknown questionnaire type")
+    if any(type(value) is not int or not lower <= value <= upper for value in values):
+        raise ValueError("Questionnaire values must be integers within the instrument scale")
 
 
 def run_questionnaire(
@@ -153,7 +187,7 @@ def run_questionnaire(
     """
     # Get prompts from YAML config if not provided
     if system_role is None or instructions is None:
-        yaml_prompts = get_questionnaire_prompt(questionnaire_type)
+        yaml_prompts = get_questionnaire_prompt(questionnaire_type) or {}
         if system_role is None:
             system_role = yaml_prompts.get("system_role", "")
         if instructions is None:
@@ -203,18 +237,18 @@ def run_questionnaire(
             error=error,
         )
 
-    except BedrockAuthError:
+    except (ProviderAuthError, ProviderRequestError):
         # Halt the batch — refreshing credentials is the only recourse.
         raise
     except Exception as e:
-        logger.error(f"{questionnaire_type} questionnaire failed: {str(e)}", exc_info=True)
+        logger.error(f"{questionnaire_type} questionnaire failed: {safe_error(e)}", exc_info=False)
         return QuestionnaireResult(
             questionnaire_type=questionnaire_type,
             success=False,
             data={},
             raw_response={},
             messages=messages,
-            error=str(e),
+            error=safe_error(e),
         )
 
 

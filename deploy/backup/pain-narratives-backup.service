@@ -1,0 +1,16 @@
+[Unit]
+Description=Pain Narratives logical PostgreSQL backup
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=<BACKUP_USER>
+EnvironmentFile=/etc/pain-narratives-backup.env
+ExecStart=<APP_ROOT>/deploy/backup/logical-backup.sh
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=<BACKUP_DIRECTORY>

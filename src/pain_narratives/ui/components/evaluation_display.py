@@ -1,19 +1,20 @@
 """Components for displaying evaluation results."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Mapping, Optional
 
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
+from pain_narratives.core.privacy import safe_error
 from pain_narratives.ui.utils import get_translator
 
 
 def display_score_metrics(
     result: Dict[str, Any],
     columns: int = 2,
-    score_ranges: Optional[Dict[str, tuple]] = None,
+    score_ranges: Optional[Mapping[str, tuple[float, float]]] = None,
 ) -> None:
     """Display evaluation scores as metrics cards with multilingual support.
 
@@ -49,7 +50,7 @@ def display_score_metrics(
             display_name = key.replace("_", " ").title()
             score = evaluation_result[key]
             # Get min/max for this dimension
-            min_score, max_score = (1, 10)
+            min_score, max_score = (1.0, 10.0)
             if score_ranges and key in score_ranges:
                 min_score, max_score = score_ranges[key]
             # Color coding based on score (optional: you may want to adjust logic for custom ranges)
@@ -239,7 +240,7 @@ def display_batch_results_summary(results: List[Dict[str, Any]]) -> None:
 
 
 def display_evaluation_details(
-    evaluation: Dict[str, Any], expanded: bool = False, score_ranges: Optional[Dict[str, tuple]] = None
+    evaluation: Dict[str, Any], expanded: bool = False, score_ranges: Optional[Mapping[str, tuple[float, float]]] = None
 ) -> None:
     """Display detailed view of a single evaluation.
 
@@ -356,9 +357,9 @@ def create_prompt_preview(prompt_template: str, sample_narrative: Optional[str] 
             st.warning("⚠️ Prompt might be quite long. Consider shortening for cost efficiency.")
 
     except KeyError as e:
-        st.error(f"❌ Missing placeholder in prompt: {e}")
+        st.error(f"❌ Missing placeholder in prompt: {safe_error(e)}")
     except Exception as e:
-        st.error(f"❌ Error formatting prompt: {e}")
+        st.error(f"❌ Error formatting prompt: {safe_error(e)}")
 
 
 def display_cost_estimate(

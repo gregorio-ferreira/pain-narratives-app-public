@@ -611,7 +611,7 @@ def main():
             filter_value=args.filter_value,
         )
     except Exception as e:
-        logger.error(f"Failed to load Excel file: {e}")
+        logger.error(f"Failed to load Excel file: {type(e).__name__}")
         sys.exit(1)
 
     logger.info(f"Loaded {len(narratives_df)} narratives")

@@ -229,7 +229,7 @@ def load_csv_safe(filepath: Path) -> Optional[pd.DataFrame]:
         df = pd.read_csv(filepath)
         return df
     except Exception as e:
-        print(f"  ⚠️  Could not load {filepath.name}: {e}")
+        print(f"  ⚠️  Could not load {filepath.name}: {type(e).__name__}")
         return None
 
 
@@ -370,7 +370,7 @@ def consolidate_csvs(output_dir: Path, output_file: Path, project_root: Path, ve
             return True
 
     except Exception as e:
-        print(f"\n❌ Error creating Excel file: {e}")
+        print(f"\n❌ Error creating Excel file: {type(e).__name__}")
         return False
 
 

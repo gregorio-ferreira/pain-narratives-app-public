@@ -1,64 +1,32 @@
-# AINarratives Application Dockerfile
-# Multi-stage build for efficient image size
-
-# Build stage
-FROM python:3.11-slim as builder
-
-# Install build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install UV package manager
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.local/bin:$PATH"
-
-# Set working directory
+FROM ghcr.io/astral-sh/uv:0.13.3@sha256:bee0a2a458fd956c5df7b8b4c5fed2257b0af34866e3da7b51db0be3acb375d1 AS uv
+FROM python:3.11.15-slim-trixie@sha256:90744cff8f32887f075c47d747a173ff333e9e98801667af93c357fa9f5e28ff AS builder
+COPY --from=uv /uv /usr/local/bin/uv
 WORKDIR /app
+ENV UV_PYTHON_DOWNLOADS=never UV_LINK_MODE=copy
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev --no-install-project --python /usr/local/bin/python
 
-# Copy dependency files
-COPY pyproject.toml uv.lock* ./
-
-# Install dependencies
-RUN uv sync --frozen --no-dev
-
-# Runtime stage
-FROM python:3.11-slim
-
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq5 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create non-root user for security
-RUN useradd --create-home --shell /bin/bash appuser
-
+FROM python:3.11.15-slim-trixie@sha256:90744cff8f32887f075c47d747a173ff333e9e98801667af93c357fa9f5e28ff AS runtime
+RUN apt-get update && apt-get upgrade -y --no-install-recommends \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && python -m pip uninstall -y setuptools wheel pip \
+    && useradd --uid 1000 --create-home --shell /usr/sbin/nologin appuser
 WORKDIR /app
-
-# Copy virtual environment from builder
 COPY --from=builder /app/.venv /app/.venv
-
-# Copy application code
 COPY src/ ./src/
-COPY scripts/ ./scripts/
-
-# Set environment variables
-ENV PATH="/app/.venv/bin:$PATH"
-ENV PYTHONPATH="/app/src:$PYTHONPATH"
-ENV PYTHONUNBUFFERED=1
-
-# Change ownership to non-root user
-RUN chown -R appuser:appuser /app
-
-USER appuser
-
-# Expose Streamlit port
+COPY scripts/run_app.py ./scripts/run_app.py
+RUN python -m compileall -q src scripts
+# Runtime code remains owned by root; appuser writes only to explicitly mounted paths/tmp.
+ARG APP_REVISION=unknown
+ENV OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \
+    PATH="/app/.venv/bin:$PATH" PYTHONPATH=/app/src PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 PAIN_NARRATIVES_REVISION=$APP_REVISION \
+    STREAMLIT_BROWSER_GATHER_USAGE_STATS=false STREAMLIT_CLIENT_SHOW_ERROR_DETAILS=none \
+    STREAMLIT_SERVER_ENABLE_CORS=true STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION=true \
+    STREAMLIT_SERVER_MAX_UPLOAD_SIZE=5 STREAMLIT_SERVER_HEADLESS=true
+USER 1000:1000
 EXPOSE 8501
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8501/_stcore/health || exit 1
-
-# Default command to run Streamlit
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD ["python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8501/_stcore/health', timeout=4).close()"]
 CMD ["streamlit", "run", "scripts/run_app.py", "--server.port=8501", "--server.address=0.0.0.0"]

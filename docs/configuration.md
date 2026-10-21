@@ -109,3 +109,23 @@ Then create an admin user:
 ```bash
 uv run python scripts/register_user.py
 ```
+
+## Production database and credentials
+
+Use `openai.api_key`; `api_key_pain_narratives` is accepted as a legacy fallback.
+Local compose mounts `/config/config.yaml` and sets `PAIN_NARRATIVES_CONFIG`.
+External PostgreSQL hosts require `sslmode: verify-full`; supply the trusted RDS
+CA via `sslrootcert` or `PAIN_NARRATIVES_DB_CA`. `sslmode: disable` is accepted only
+for localhost/loopback and the local compose `postgres` hostname. Credential URLs
+are built with SQLAlchemy so reserved password characters are escaped correctly.
+Malformed or unreadable config raises an error rather than silently using defaults.
+
+The production image receives `PAIN_NARRATIVES_REVISION` from the reviewed build
+SHA. Persisted requests retain effective model parameters and full prompt text in
+the private DB; routine logs omit that content. Remote model aliases may change,
+so choose versioned model IDs where supported. Stored provider responses preserve
+returned model IDs/fingerprints, which are needed to interpret repeated runs.
+
+The checkout pins the default interpreter to Python 3.11.15 in `.python-version`,
+matching Docker. CI also verifies Python 3.12 explicitly. Use those supported
+versions; do not select a newer interpreter without checking binary dependencies.
