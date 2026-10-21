@@ -248,7 +248,7 @@ for d in DIMS:
         for tag in MODELS:
             sub = t10e.query("model == @tag and dimension == @d and real_questionnaire == @q").iloc[0]
             y_pos.append(row)
-            labels.append(f"{tag} | {d.replace('_score','')} x {q}")
+            labels.append(f"{tag} | {d.replace('_score', '')} x {q}")
             vals.append(sub["rho"])
             err_lo.append(sub["rho"] - sub["ci_lo"])
             err_hi.append(sub["ci_hi"] - sub["rho"])

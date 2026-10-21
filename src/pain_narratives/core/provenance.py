@@ -1,6 +1,7 @@
 """Build and dependency identity for persisted research runs, without secrets."""
 
 import os
+import platform
 import subprocess
 from importlib.metadata import PackageNotFoundError, version
 
@@ -17,8 +18,18 @@ def build_revision() -> str:
 
 
 def runtime_versions() -> dict[str, str]:
-    result = {}
-    for package in ("pain-narratives", "openai", "boto3", "streamlit", "numpy", "pandas", "sqlmodel"):
+    result = {"python": platform.python_version()}
+    for package in (
+        "pain-narratives",
+        "openai",
+        "boto3",
+        "streamlit",
+        "numpy",
+        "pandas",
+        "scipy",
+        "scikit-learn",
+        "sqlmodel",
+    ):
         try:
             result[package] = version(package)
         except PackageNotFoundError:

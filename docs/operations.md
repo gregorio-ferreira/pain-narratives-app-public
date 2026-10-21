@@ -18,7 +18,7 @@ output is redacted. Trivy scans the export's lockfile and infrastructure. Ignore
 private config, local virtual environments, data and publication drafts are not
 copied into that export. Vulnerability checks use a current public advisory DB;
 no source/config is uploaded. CI also builds/scans the runtime image and tests
-Python 3.11/3.12. Security workflows run on PRs, pushes and weekly schedules.
+Python 3.11/3.12/3.13. Security workflows run on PRs, pushes and weekly schedules.
 
 No scanner result establishes that narratives are anonymous. Notebook outputs and
 private paths are checked separately by `scripts/security/check_publication.py`.

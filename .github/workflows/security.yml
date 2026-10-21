@@ -38,7 +38,7 @@ jobs:
     timeout-minutes: 20
     strategy:
       matrix:
-        python: ['3.11', '3.12']
+        python: ['3.11', '3.12', '3.13']
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -56,4 +56,4 @@ jobs:
         run: |
           "$RUNNER_TEMP/test-venv/bin/python" -m pytest
           "$RUNNER_TEMP/test-venv/bin/python" -m flake8 src tests scripts
-          "$RUNNER_TEMP/test-venv/bin/python" -m mypy src/pain_narratives
+          "$RUNNER_TEMP/test-venv/bin/python" -m mypy --python-version "${{ matrix.python }}" src/pain_narratives

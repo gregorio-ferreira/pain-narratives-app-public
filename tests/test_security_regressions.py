@@ -2,6 +2,7 @@
 
 import io
 import json
+import platform
 from types import SimpleNamespace
 from unittest.mock import Mock, PropertyMock, patch
 
@@ -162,7 +163,9 @@ def test_ui_persists_selected_narrative_and_request(db, monkeypatch):
         }
     )
     with db.get_session() as session:
-        assert session.get(ExperimentList, experiment_id).narrative_id == selected
+        experiment = session.get(ExperimentList, experiment_id)
+        assert experiment.narrative_id == selected
+        assert experiment.extra_description["dependencies"]["python"] == platform.python_version()
         assert session.exec(select(EvaluationResult)).one().narrative_id == selected
         assert session.exec(select(RequestResponse)).one().request_json["model"] == "alias-example"
     assert original != selected

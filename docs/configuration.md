@@ -126,6 +126,14 @@ the private DB; routine logs omit that content. Remote model aliases may change,
 so choose versioned model IDs where supported. Stored provider responses preserve
 returned model IDs/fingerprints, which are needed to interpret repeated runs.
 
-The checkout pins the default interpreter to Python 3.11.15 in `.python-version`,
-matching Docker. CI also verifies Python 3.12 explicitly. Use those supported
-versions; do not select a newer interpreter without checking binary dependencies.
+The checkout pins the default interpreter to Python 3.13.16 in `.python-version`,
+matching the digest-pinned Docker base. CI tests Python 3.11, 3.12 and 3.13;
+the package minimum and formatter/type-checker defaults stay at 3.11 to preserve
+compatibility. Use `uv` 0.13.3 or newer to install the pinned interpreter.
+
+The existing lockfile supports 3.13, including the optional notebook dependencies.
+Its Python-specific markers can select different NumPy/SciPy versions on 3.11
+and 3.13. New persisted runs record the Python version and scientific dependency
+versions; keep those with results and review environment differences before
+comparing research runs. Live PostgreSQL/provider behavior still needs an
+operator-run integration check before deployment.

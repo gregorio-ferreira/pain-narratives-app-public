@@ -22,8 +22,8 @@ configuration, generated analysis artifacts, checkpoints, logs, or credentials.
 
 Prerequisites:
 
-- Python 3.11+
-- `uv`
+- Python 3.13.16 (the default for local development and Docker; Python 3.11/3.12 remain supported)
+- `uv` (Docker and CI use version 0.13.3)
 - PostgreSQL, either local or via Docker
 - An OpenAI API key for OpenAI-backed evaluations
 

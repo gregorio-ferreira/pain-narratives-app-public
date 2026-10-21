@@ -9,6 +9,10 @@ unit is an alternative for operators who deliberately run without Docker.
 
 Back up the database before upgrading. Review these behavior changes:
 
+- The checkout and Docker image now default to Python 3.13.16. Rebuild the image;
+  `uv sync --frozen` selects the pinned interpreter for a local checkout. The
+  interpreter upgrade alone requires no database schema migration. Python 3.11
+  and 3.12 remain covered by CI.
 - New/reset login passwords require 6–1024 characters. Successful login upgrades
   policy-compliant SHA-256 passwords to Argon2id. Existing shorter passwords must
   be reset by an administrator/CLI before login. Password storage fits the existing column.
