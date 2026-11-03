@@ -6,11 +6,12 @@ of pain narratives, including dimension evaluation and questionnaires.
 All results are stored in the existing database schema.
 """
 
+import hashlib
 import json
 import logging
-import subprocess
+import os
 import time
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
@@ -25,15 +26,16 @@ from pain_narratives.config.prompts import (
     get_system_role,
 )
 from pain_narratives.core.bedrock_client import (
-    BedrockAuthError,
     BedrockClient,
-    BedrockModelError,
     BedrockOpenAIAdapter,
-    BedrockTransientError,
 )
 from pain_narratives.core.database import DatabaseManager
 from pain_narratives.core.openai_client import OpenAIClient
+from pain_narratives.core.privacy import safe_error
+from pain_narratives.core.provenance import build_revision, runtime_versions
+from pain_narratives.core.provider_errors import ProviderAuthError, ProviderRequestError, ProviderTransientError
 from pain_narratives.core.questionnaire_runner import (
+    LLMClient,
     QuestionnaireResult,
     calculate_bpi_is_subscales,
     calculate_bpi_is_total_score,
@@ -47,17 +49,8 @@ logger = logging.getLogger(__name__)
 
 
 def get_git_sha() -> str:
-    """Get current git commit SHA."""
-    try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-        return result.stdout.strip() or "unknown"
-    except Exception:
-        return "unknown"
+    """Use the injected image revision, or the full checkout commit."""
+    return build_revision()
 
 
 @dataclass
@@ -173,6 +166,8 @@ class BatchProcessor:
         pass `self.openai_client` to `run_questionnaire(llm_client=...)`
         regardless of provider.
         """
+        self._bedrock_client: Optional[BedrockClient]
+        self.openai_client: LLMClient
         self.db_manager = db_manager or DatabaseManager()
         self.config = config or BatchConfig()
 
@@ -184,7 +179,7 @@ class BatchProcessor:
                 profile_name=self.config.bedrock_profile,
             )
             force_temp = self.config.temperature if not self.config.thinking_enabled else None
-            self.openai_client = BedrockOpenAIAdapter(  # type: ignore[assignment]
+            self.openai_client = BedrockOpenAIAdapter(
                 self._bedrock_client,
                 thinking_enabled=self.config.thinking_enabled,
                 thinking_budget_tokens=self.config.thinking_budget_tokens,
@@ -196,6 +191,7 @@ class BatchProcessor:
 
         self.progress = BatchProgress()
         self._checkpoint_data: Dict[str, Any] = {}
+        self._checkpoint_identity: Dict[str, Any] = {}
         self._progress_callback: Optional[Callable[[BatchProgress], None]] = None
 
     def preflight(self, min_remaining_hours: float = 2.0) -> None:
@@ -219,14 +215,7 @@ class BatchProcessor:
                     remaining,
                 )
             else:
-                principal = f" principal={info.principal_arn}" if info.principal_arn else ""
-                profile = f" profile={info.profile_name}" if info.profile_name else ""
-                logger.info(
-                    "Bedrock pre-flight OK: %s credentials%s%s (no local expiry)",
-                    info.auth_method,
-                    profile,
-                    principal,
-                )
+                logger.info("Bedrock pre-flight OK: method=%s (no local expiry)", info.auth_method)
 
     def set_progress_callback(self, callback: Callable[[BatchProgress], None]) -> None:
         """Set a callback function for progress updates."""
@@ -447,7 +436,9 @@ Patient narrative:
         # Save request/response
         self.db_manager.save_request_response(
             experiment_id=experiment_id,
-            request_json={"messages": messages, "model": self.config.model},
+            request_json=response.get("_request")
+            or response.get("request_payload")
+            or {"messages": messages, "model": self.config.model},
             response_json=response,
         )
 
@@ -466,10 +457,13 @@ Patient narrative:
                     content = content[:-3]
                 content = content.strip()
 
-                return json.loads(content), reasoning_tokens
+                parsed = json.loads(content)
+                if not isinstance(parsed, dict) or not parsed:
+                    return {"error": "Expected a nonempty dimension result object"}, reasoning_tokens
+                return parsed, reasoning_tokens
             except json.JSONDecodeError as e:
-                logger.warning(f"Failed to parse dimension response: {e}")
-                return {"error": str(e), "raw_content": content[:500]}, reasoning_tokens
+                logger.warning(f"Failed to parse dimension response: {safe_error(e)}")
+                return {"error": safe_error(e), "raw_content": content[:500]}, reasoning_tokens
 
         return {"error": "Empty response"}, reasoning_tokens
 
@@ -478,26 +472,26 @@ Patient narrative:
 
         BedrockAuthError raises immediately so the runner can halt the batch.
         BedrockModelError raises immediately (programming bug, not transient).
-        Generic exceptions are treated as transient up to `max_retries`.
+        Only classified transient provider errors are retried up to `max_retries`.
         """
         delay = self.config.retry_delay
         last_exc: Optional[Exception] = None
         for attempt in range(1, self.config.max_retries + 1):
             try:
                 return fn()
-            except BedrockAuthError:
+            except ProviderAuthError:
                 raise  # halt batch immediately — caller will save checkpoint
-            except BedrockModelError as e:
-                logger.error("[%s] model rejected request (not retried): %s", label, e)
+            except ProviderRequestError as e:
+                logger.error("[%s] model rejected request (not retried): %s", label, type(e).__name__)
                 raise
-            except (BedrockTransientError, Exception) as e:  # noqa: BLE001
+            except ProviderTransientError as e:
                 last_exc = e
                 logger.warning(
                     "[%s] attempt %d/%d failed: %s",
                     label,
                     attempt,
                     self.config.max_retries,
-                    e,
+                    type(e).__name__,
                 )
                 if attempt < self.config.max_retries:
                     time.sleep(delay)
@@ -513,7 +507,7 @@ Patient narrative:
         """Run a questionnaire with retry logic, using the configured prompt
         version. `BedrockAuthError` propagates out of `run_questionnaire` so the
         batch halts immediately; transient/parse failures retry."""
-        prompts = get_questionnaire_prompt(questionnaire_type, version=self.config.prompt_version)
+        prompts = get_questionnaire_prompt(questionnaire_type, version=self.config.prompt_version) or {}
 
         result: Optional[QuestionnaireResult] = None
         for attempt in range(1, self.config.max_retries + 1):
@@ -561,7 +555,7 @@ Patient narrative:
             return None
 
         # Build prompt string for storage
-        prompt_str = "\n".join([f"{msg['role']}: {msg['content'][:200]}..." for msg in result.messages])
+        prompt_str = json.dumps(result.messages, ensure_ascii=False)
 
         questionnaire_id = self.db_manager.save_questionnaire_result(
             {
@@ -573,6 +567,14 @@ Patient narrative:
                 "prompt": prompt_str,
                 "result_json": result.data,
             }
+        )
+
+        self.db_manager.save_request_response(
+            experiment_id,
+            result.raw_response.get("_request")
+            or result.raw_response.get("request_payload")
+            or {"messages": result.messages},
+            result.raw_response,
         )
 
         # Calculate scores for evaluation result
@@ -651,19 +653,13 @@ Patient narrative:
                     }
                 )
 
-                # Update experiment status
-                self.db_manager.update_experiment_status(
-                    experiment_id,
-                    succeeded=result.dimension_success,
-                    parsed_answers=result.dimension_success,
-                )
-
-            except BedrockAuthError:
+            except ProviderAuthError:
                 # Halt the batch — refreshing credentials is the only recourse.
                 raise
             except Exception as e:
-                result.dimension_error = str(e)
-                logger.error(f"Dimension evaluation failed: {e}")
+                result.dimension_success = False
+                result.dimension_error = safe_error(e)
+                logger.error(f"Dimension evaluation failed: {safe_error(e)}")
 
             time.sleep(self.config.delay_between_calls)
 
@@ -698,7 +694,22 @@ Patient narrative:
         if total_reasoning_tokens > 0:
             self.db_manager.update_experiment_status(experiment_id, reasoning_tokens=total_reasoning_tokens)
 
+        succeeded = self._result_succeeded(result)
+        self.db_manager.update_experiment_status(experiment_id, succeeded=succeeded, parsed_answers=succeeded)
         return result
+
+    def _result_succeeded(self, result: NarrativeEvaluationResult) -> bool:
+        checks = []
+        if self.config.include_dimensions:
+            checks.append(result.dimension_success)
+        for enabled, outcome in [
+            (self.config.include_pcs, result.pcs_result),
+            (self.config.include_bpi_is, result.bpi_is_result),
+            (self.config.include_tsk_11sv, result.tsk_11sv_result),
+        ]:
+            if enabled:
+                checks.append(bool(outcome and outcome.success))
+        return bool(checks) and all(checks)
 
     def _save_checkpoint(self, processed_ids: List[int], group_id: int) -> None:
         """Save checkpoint to file."""
@@ -707,7 +718,10 @@ Patient narrative:
 
         checkpoint_path = Path(self.config.checkpoint_file)
         checkpoint_data = {
-            "processed_ids": processed_ids,
+            "format_version": 2,
+            "input_identity": self._checkpoint_identity,
+            "config": asdict(self.config),
+            "processed_ids": list(dict.fromkeys(processed_ids)),
             "group_id": group_id,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "progress": {
@@ -718,7 +732,12 @@ Patient narrative:
             },
         }
 
-        checkpoint_path.write_text(json.dumps(checkpoint_data, indent=2))
+        checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = checkpoint_path.with_suffix(checkpoint_path.suffix + ".tmp")
+        descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(descriptor, "w") as handle:
+            json.dump(checkpoint_data, handle, indent=2)
+        temporary.replace(checkpoint_path)
         logger.debug(f"Saved checkpoint: {len(processed_ids)} processed")
 
     def _load_checkpoint(self) -> Dict[str, Any]:
@@ -731,10 +750,16 @@ Patient narrative:
             return {}
 
         try:
-            return json.loads(checkpoint_path.read_text())
+            checkpoint = json.loads(checkpoint_path.read_text())
+            if checkpoint.get("format_version") != 2:
+                raise ValueError("Legacy checkpoint must be reviewed before resume")
+            if checkpoint.get("input_identity") != self._checkpoint_identity:
+                raise ValueError("Checkpoint input, owner or repetition does not match this run")
+            if checkpoint.get("config") != asdict(self.config):
+                raise ValueError("Checkpoint configuration does not match this run")
+            return dict(checkpoint)
         except Exception as e:
-            logger.warning(f"Failed to load checkpoint: {e}")
-            return {}
+            raise ValueError("Cannot safely resume this checkpoint; inspect it or use a new checkpoint path") from e
 
     def run_batch(
         self,
@@ -765,12 +790,18 @@ Patient narrative:
         # before any DB rows are created.
         self.preflight()
 
+        input_rows = [(str(index), str(row[narrative_column])) for index, row in narratives_df.iterrows()]
+        self._checkpoint_identity = {
+            "owner": user_id,
+            "mode": "new-narratives",
+            "input_hash": hashlib.sha256(json.dumps(input_rows, ensure_ascii=False).encode()).hexdigest(),
+        }
         # Load checkpoint if resuming
         checkpoint = self._load_checkpoint() if resume else {}
 
         if checkpoint and resume:
             processed_ids = checkpoint.get("processed_ids", [])
-            group_id = checkpoint.get("group_id")
+            group_id = int(checkpoint["group_id"])
             logger.info(f"Resuming from checkpoint: {len(processed_ids)} already processed")
         else:
             # Create new experiment group
@@ -780,7 +811,7 @@ Patient narrative:
         self.progress = BatchProgress(
             total=len(narratives_df),
             processed=len(processed_ids),
-            successful=0,
+            successful=len(processed_ids),
             failed=0,
             start_time=datetime.now(timezone.utc),
         )
@@ -812,6 +843,7 @@ Patient narrative:
                             "model": self.config.model,
                             "exp_type": "batch",
                             "repo_sha": git_sha,
+                            "extra_description": {"config": asdict(self.config), "dependencies": runtime_versions()},
                             "succeeded": False,
                             "parsed_answers": False,
                             "calculated_metrics": False,
@@ -829,12 +861,12 @@ Patient narrative:
                     )
 
                     results.append(result)
-                    processed_ids.append(idx)
 
                     # Update progress and consecutive-failure counter
                     self.progress.processed += 1
-                    succeeded = result.dimension_success or (result.pcs_result and result.pcs_result.success)
+                    succeeded = self._result_succeeded(result)
                     if succeeded:
+                        processed_ids.append(idx)
                         self.progress.successful += 1
                         consecutive_failures = 0
                     else:
@@ -853,29 +885,22 @@ Patient narrative:
                     )
 
                     # Tripwire: bail if too many consecutive narratives have failed.
-                    if consecutive_failures >= self.config.consecutive_failure_threshold:
-                        logger.error(
-                            "Aborting batch: %d consecutive failures (threshold=%d). "
-                            "Inspect the log for the root cause; re-run with --resume after fixing.",
-                            consecutive_failures,
-                            self.config.consecutive_failure_threshold,
-                        )
-                        raise RuntimeError(f"Aborting after {consecutive_failures} consecutive narrative failures")
 
-                except BedrockAuthError as e:
+                except ProviderAuthError as e:
                     logger.error(
                         "Bedrock auth failure mid-batch: %s. Save state and stop; "
                         "refresh the bearer token in config.yaml and re-run with --resume.",
-                        e,
+                        type(e).__name__,
                     )
                     raise  # propagate after the finally-block saves the checkpoint
                 except Exception as e:
-                    logger.error(f"Failed to process narrative at index {idx}: {e}")
+                    logger.error(f"Failed to process narrative at index {idx}: {safe_error(e)}")
                     self.progress.processed += 1
                     self.progress.failed += 1
                     consecutive_failures += 1
-                    processed_ids.append(idx)
                     self._notify_progress()
+                if consecutive_failures >= self.config.consecutive_failure_threshold:
+                    raise RuntimeError("Batch stopped after repeated failures; successful items were checkpointed")
         finally:
             # Always save final checkpoint, even on abort
             self._save_checkpoint(processed_ids, group_id)
@@ -884,7 +909,7 @@ Patient narrative:
         self.db_manager.update_experiment_group(
             group_id=group_id,
             user_id=user_id,
-            concluded=True,
+            concluded=len(processed_ids) == self.progress.total,
         )
 
         logger.info(
@@ -910,7 +935,7 @@ Patient narrative:
         Returns:
             List of dicts with 'narrative_id' and 'narrative_text' keys
         """
-        from sqlmodel import select
+        from sqlmodel import col, select
 
         from pain_narratives.db.models_sqlmodel import ExperimentList, Narrative
 
@@ -920,9 +945,9 @@ Patient narrative:
             # Get all experiments from the group with their narratives
             experiments = session.exec(
                 select(ExperimentList, Narrative)
-                .join(Narrative, ExperimentList.narrative_id == Narrative.narrative_id)
+                .join(Narrative, col(ExperimentList.narrative_id) == col(Narrative.narrative_id))
                 .where(ExperimentList.experiments_group_id == experiment_group_id)
-                .order_by(ExperimentList.experiment_id)
+                .order_by(col(ExperimentList.experiment_id))
             ).all()
 
             for exp, narr in experiments:
@@ -952,7 +977,7 @@ Patient narrative:
         Returns:
             List of dicts with 'narrative_id' and 'narrative_text' keys
         """
-        from sqlmodel import select
+        from sqlmodel import col, select
 
         from pain_narratives.db.models_sqlmodel import ExperimentList, Narrative
 
@@ -963,9 +988,9 @@ Patient narrative:
             for group_id in experiment_group_ids:
                 experiments = session.exec(
                     select(ExperimentList, Narrative)
-                    .join(Narrative, ExperimentList.narrative_id == Narrative.narrative_id)
+                    .join(Narrative, col(ExperimentList.narrative_id) == col(Narrative.narrative_id))
                     .where(ExperimentList.experiments_group_id == group_id)
-                    .order_by(ExperimentList.experiment_id)
+                    .order_by(col(ExperimentList.experiment_id))
                 ).all()
 
                 for exp, narr in experiments:
@@ -1013,12 +1038,19 @@ Patient narrative:
         # Pre-flight: credentials, model access. Halts before any DB writes.
         self.preflight()
 
+        input_rows = [(row["narrative_id"], row["narrative_text"]) for row in narratives]
+        self._checkpoint_identity = {
+            "owner": user_id,
+            "mode": "existing-narratives",
+            "run": run_number,
+            "input_hash": hashlib.sha256(json.dumps(input_rows, ensure_ascii=False).encode()).hexdigest(),
+        }
         # Load checkpoint if resuming
         checkpoint = self._load_checkpoint() if resume else {}
 
         if checkpoint and resume:
             processed_ids = checkpoint.get("processed_ids", [])
-            group_id = checkpoint.get("group_id")
+            group_id = int(checkpoint["group_id"])
             logger.info(f"Resuming from checkpoint: {len(processed_ids)} already processed")
         else:
             # Create new experiment group
@@ -1028,7 +1060,7 @@ Patient narrative:
         self.progress = BatchProgress(
             total=len(narratives),
             processed=len(processed_ids),
-            successful=0,
+            successful=len(processed_ids),
             failed=0,
             start_time=datetime.now(timezone.utc),
         )
@@ -1069,6 +1101,7 @@ Patient narrative:
                             "model": self.config.model,
                             "exp_type": "batch_repetition",
                             "repo_sha": git_sha,
+                            "extra_description": {"config": asdict(self.config), "dependencies": runtime_versions()},
                             "repeated": run_number,
                             "succeeded": False,
                             "parsed_answers": False,
@@ -1087,12 +1120,12 @@ Patient narrative:
                     )
 
                     results.append(result)
-                    processed_ids.append(narrative_id)
 
                     # Update progress + tripwire counter
                     self.progress.processed += 1
-                    succeeded = result.dimension_success or (result.pcs_result and result.pcs_result.success)
+                    succeeded = self._result_succeeded(result)
                     if succeeded:
+                        processed_ids.append(narrative_id)
                         self.progress.successful += 1
                         consecutive_failures = 0
                     else:
@@ -1110,29 +1143,21 @@ Patient narrative:
                         f"narrative_id={narrative_id}, experiment_id={experiment_id}, run={run_number}"
                     )
 
-                    if consecutive_failures >= self.config.consecutive_failure_threshold:
-                        logger.error(
-                            "Aborting batch: %d consecutive failures (threshold=%d). "
-                            "Re-run with --resume after diagnosing the root cause.",
-                            consecutive_failures,
-                            self.config.consecutive_failure_threshold,
-                        )
-                        raise RuntimeError(f"Aborting after {consecutive_failures} consecutive narrative failures")
-
-                except BedrockAuthError as e:
+                except ProviderAuthError as e:
                     logger.error(
                         "Bedrock auth failure mid-batch: %s. Refresh the bearer "
                         "token in config.yaml and re-run with --resume.",
-                        e,
+                        type(e).__name__,
                     )
                     raise
                 except Exception as e:
-                    logger.error(f"Failed to process narrative_id={narrative_id}: {e}")
+                    logger.error(f"Failed to process narrative_id={narrative_id}: {safe_error(e)}")
                     self.progress.processed += 1
                     self.progress.failed += 1
                     consecutive_failures += 1
-                    processed_ids.append(narrative_id)
                     self._notify_progress()
+                if consecutive_failures >= self.config.consecutive_failure_threshold:
+                    raise RuntimeError("Batch stopped after repeated failures; successful items were checkpointed")
         finally:
             self._save_checkpoint(processed_ids, group_id)
 
@@ -1140,7 +1165,7 @@ Patient narrative:
         self.db_manager.update_experiment_group(
             group_id=group_id,
             user_id=user_id,
-            concluded=True,
+            concluded=len(processed_ids) == self.progress.total,
         )
 
         logger.info(

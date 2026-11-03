@@ -25,7 +25,7 @@ SCHEMA_NAME = "pain_narratives_acm_202512"
 class RealPatientDemographics(SQLModel, table=True):
     """Demographics and narrative data for real chronic pain patients."""
 
-    __tablename__ = "real_patient_demographics"  # type: ignore
+    __tablename__ = "real_patient_demographics"
     __table_args__ = {"schema": SCHEMA_NAME}
 
     participant_id: int = Field(primary_key=True)
@@ -52,7 +52,7 @@ class RealPatientPCS(SQLModel, table=True):
     with subscales for rumination, magnification, and helplessness.
     """
 
-    __tablename__ = "real_patient_pcs"  # type: ignore
+    __tablename__ = "real_patient_pcs"
     __table_args__ = {"schema": SCHEMA_NAME}
 
     participant_id: int = Field(primary_key=True)
@@ -83,7 +83,7 @@ class RealPatientBPI(SQLModel, table=True):
     BPI measures pain intensity and interference with daily activities.
     """
 
-    __tablename__ = "real_patient_bpi"  # type: ignore
+    __tablename__ = "real_patient_bpi"
     __table_args__ = {"schema": SCHEMA_NAME}
 
     participant_id: int = Field(primary_key=True)
@@ -113,7 +113,7 @@ class RealPatientTSK(SQLModel, table=True):
     TSK measures fear of movement and (re)injury in chronic pain patients.
     """
 
-    __tablename__ = "real_patient_tsk"  # type: ignore
+    __tablename__ = "real_patient_tsk"
     __table_args__ = {"schema": SCHEMA_NAME}
 
     participant_id: int = Field(primary_key=True)
@@ -140,7 +140,7 @@ class RealPatientMasterData(SQLModel, table=True):
     convenient analysis and export.
     """
 
-    __tablename__ = "real_patient_master_data"  # type: ignore
+    __tablename__ = "real_patient_master_data"
     __table_args__ = {"schema": SCHEMA_NAME}
 
     participant_id: int = Field(primary_key=True)
@@ -216,7 +216,7 @@ class RealPatientMasterData(SQLModel, table=True):
 class ExpertUser(SQLModel, table=True):
     """Expert users (clinicians/researchers) who provide feedback on assessments."""
 
-    __tablename__ = "expert_users"  # type: ignore
+    __tablename__ = "expert_users"
     __table_args__ = {"schema": SCHEMA_NAME}
 
     user_id: int = Field(primary_key=True)
@@ -239,7 +239,7 @@ class ExpertDimensionEvaluation(SQLModel, table=True):
     Contains alignment ratings for each dimension's score, explanation, and usage intent.
     """
 
-    __tablename__ = "expert_dimension_evaluation"  # type: ignore
+    __tablename__ = "expert_dimension_evaluation"
     __table_args__ = {"schema": SCHEMA_NAME}
 
     # Identifiers
@@ -368,7 +368,7 @@ class ExpertDimensionEvaluation(SQLModel, table=True):
 class ExpertQuestionnaireFeedback(SQLModel, table=True):
     """Expert feedback on LLM questionnaire results (PCS, BPI, TSK)."""
 
-    __tablename__ = "expert_questionnaire_feedback"  # type: ignore
+    __tablename__ = "expert_questionnaire_feedback"
     __table_args__ = {"schema": SCHEMA_NAME}
 
     # Identifiers
@@ -393,7 +393,7 @@ class ExpertQuestionnaireFeedback(SQLModel, table=True):
 class LLMDimensionEvaluation(SQLModel, table=True):
     """LLM-generated dimension evaluation scores (severity and disability)."""
 
-    __tablename__ = "llm_dimension_evaluation"  # type: ignore
+    __tablename__ = "llm_dimension_evaluation"
     __table_args__ = {"schema": SCHEMA_NAME}
 
     participant_id: int = Field(primary_key=True)
@@ -414,7 +414,7 @@ class LLMPCSResults(SQLModel, table=True):
     LLM impersonates the patient to complete the questionnaire.
     """
 
-    __tablename__ = "llm_pcs_results"  # type: ignore
+    __tablename__ = "llm_pcs_results"
     __table_args__ = {"schema": SCHEMA_NAME}
 
     participant_id: int = Field(primary_key=True)
@@ -453,7 +453,7 @@ class LLMBPIResults(SQLModel, table=True):
     LLM impersonates the patient to complete the questionnaire.
     """
 
-    __tablename__ = "llm_bpi_results"  # type: ignore
+    __tablename__ = "llm_bpi_results"
     __table_args__ = {"schema": SCHEMA_NAME}
 
     participant_id: int = Field(primary_key=True)
@@ -492,7 +492,7 @@ class LLMTSKResults(SQLModel, table=True):
     LLM impersonates the patient to complete the questionnaire.
     """
 
-    __tablename__ = "llm_tsk_results"  # type: ignore
+    __tablename__ = "llm_tsk_results"
     __table_args__ = {"schema": SCHEMA_NAME}
 
     participant_id: int = Field(primary_key=True)
@@ -545,7 +545,7 @@ class SUSUsabilityResults(SQLModel, table=True):
     - >90: A+ (Best Imaginable)
     """
 
-    __tablename__ = "sus_usability_results"  # type: ignore
+    __tablename__ = "sus_usability_results"
     __table_args__ = {"schema": SCHEMA_NAME}
 
     sus_id: Optional[int] = Field(default=None, primary_key=True)

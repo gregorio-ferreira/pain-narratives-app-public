@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import json
 import logging
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List
 
 import streamlit as st
 
 from pain_narratives.core.openai_client import OpenAIClient
+from pain_narratives.core.questionnaire_runner import run_questionnaire
 
 logger = logging.getLogger(__name__)
 
@@ -341,100 +341,16 @@ def run_pcs_questionnaire(
     pcs_system_role: str = PCS_SYSTEM_ROLE,
     pcs_instructions: str = PCS_INSTRUCTIONS,
 ) -> Dict[str, Any]:
-    """Run the PCS questionnaire using the given narrative."""
-    # Avoid str.format() because PCS_INSTRUCTIONS contains many curly braces for
-    # the JSON example. Using .format would attempt to treat those as
-    # placeholders and raise ``KeyError``. Instead, simply replace the
-    # ``{narrative}`` placeholder manually.
-    prompt = pcs_instructions.replace("{narrative}", narrative)
-    messages = [
-        {"role": "system", "content": pcs_system_role},
-        {"role": "user", "content": prompt},
-    ]
-    logger.info("Sending PCS questionnaire to OpenAI")
-    response = openai_client.create_completion(
-        messages=messages,
-        model=model,
-        temperature=temperature,
-        max_tokens=8000,  # Increased for GPT-5 reasoning tokens + full JSON output
-        response_format="json_object",  # Force JSON output
+    """Run and validate PCS through the shared questionnaire runner."""
+    result = run_questionnaire(
+        narrative, "PCS", openai_client, model, temperature, system_role=pcs_system_role, instructions=pcs_instructions
     )
-    logger.info("Received response from OpenAI")
-    # Store request/response in session state for later DB persistence
-    st.session_state.last_openai_response = response
-    st.session_state.last_prompt_messages = messages
-
-    # Extract content with proper error handling for gpt-5 empty responses
-    content = response.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
-
-    # Check if content is empty (common issue with gpt-5)
-    if not content:
-        logger.error("Received empty content from OpenAI API")
-        logger.error(f"Full response: {response}")
-        st.error("❌ The model returned an empty response. This can happen with gpt-5 when the response is truncated.")
-        st.info("💡 Try again or switch to gpt-5-mini in the sidebar.")
+    st.session_state.last_openai_response = result.raw_response
+    st.session_state.last_prompt_messages = result.messages
+    if not result.success:
+        st.error(result.error or "The questionnaire response was invalid. Please retry.")
         return {}
-
-    logger.info(f"Raw response content: {content[:200]}...")  # Log first 200 chars for debugging
-
-    # More robust JSON extraction
-    def extract_json_from_text(text: str) -> str:
-        """Extract JSON from text that may contain markdown code blocks."""
-        text = text.strip()
-
-        # Remove markdown code blocks
-        if text.startswith("```json"):
-            text = text[7:]
-        elif text.startswith("```"):
-            text = text[3:]
-
-        if text.endswith("```"):
-            text = text[:-3]
-
-        text = text.strip()
-
-        # Try to find JSON object boundaries
-        start_idx = text.find("{")
-        end_idx = text.rfind("}")
-
-        if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-            text = text[start_idx : end_idx + 1]
-
-        return text.strip()
-
-    cleaned_content = extract_json_from_text(content)
-    logger.info(f"Cleaned JSON content: {cleaned_content[:200]}...")
-
-    try:
-        data = json.loads(cleaned_content)
-        logger.info("Successfully parsed JSON response")
-
-        # Validate the response structure
-        if not isinstance(data, dict):
-            logger.warning("Response is not a dictionary")
-            st.warning("Invalid response format: expected JSON object")
-            return {}
-
-        if "scores" not in data:
-            logger.warning("No 'scores' key found in response")
-            st.warning("Invalid response format: missing 'scores' field")
-            return {}
-
-        scores = data["scores"]
-        if not isinstance(scores, dict):
-            logger.warning("'scores' is not a dictionary")
-            st.warning("Invalid response format: 'scores' should be an object")
-            return {}
-
-        logger.info(f"Found {len(scores)} scores in response")
-        return data
-
-    except json.JSONDecodeError as e:
-        logger.error(f"JSON decode error: {e}")
-        logger.error(f"Failed to parse content: {cleaned_content}")
-        st.warning(f"Could not parse JSON response from model: {str(e)}")
-        st.error("Please try again. If the problem persists, the model may not be following the JSON format.")
-        return {}
+    return result.data
 
 
 def count_scores(scores: Dict[str, Any]) -> Dict[int, int]:
@@ -458,97 +374,22 @@ def run_bpi_is_questionnaire(
     bpi_system_role: str = BPI_IS_SYSTEM_ROLE,
     bpi_instructions: str = BPI_IS_INSTRUCTIONS,
 ) -> Dict[str, Any]:
-    """Run the BPI-IS questionnaire using the given narrative."""
-    prompt = bpi_instructions.replace("{narrative}", narrative)
-    messages = [
-        {"role": "system", "content": bpi_system_role},
-        {"role": "user", "content": prompt},
-    ]
-    logger.info("Sending BPI-IS questionnaire to OpenAI")
-    response = openai_client.create_completion(
-        messages=messages,
-        model=model,
-        temperature=temperature,
-        max_tokens=8000,  # Increased for GPT-5 reasoning tokens + full JSON output
-        response_format="json_object",  # Force JSON output
+    """Run and validate BPI-IS through the shared questionnaire runner."""
+    result = run_questionnaire(
+        narrative,
+        "BPI-IS",
+        openai_client,
+        model,
+        temperature,
+        system_role=bpi_system_role,
+        instructions=bpi_instructions,
     )
-    logger.info("Received BPI-IS response from OpenAI")
-
-    # Store request/response in session state for later DB persistence
-    st.session_state.last_openai_response = response
-    st.session_state.last_prompt_messages = messages
-
-    # Extract content with proper error handling for gpt-5 empty responses
-    content = response.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
-
-    # Check if content is empty (common issue with gpt-5)
-    if not content:
-        logger.error("Received empty content from OpenAI API for BPI-IS")
-        logger.error(f"Full response: {response}")
-        st.error("❌ The model returned an empty response. This can happen with gpt-5 when the response is truncated.")
-        st.info("💡 Try again or switch to gpt-5-mini in the sidebar.")
+    st.session_state.last_openai_response = result.raw_response
+    st.session_state.last_prompt_messages = result.messages
+    if not result.success:
+        st.error(result.error or "The questionnaire response was invalid. Please retry.")
         return {}
-
-    logger.info(f"Raw BPI-IS response content: {content[:200]}...")
-
-    # Use the same JSON extraction logic as PCS
-    def extract_json_from_text(text: str) -> str:
-        """Extract JSON from text that may contain markdown code blocks."""
-        text = text.strip()
-
-        # Remove markdown code blocks
-        if text.startswith("```json"):
-            text = text[7:]
-        elif text.startswith("```"):
-            text = text[3:]
-
-        if text.endswith("```"):
-            text = text[:-3]
-
-        text = text.strip()
-
-        # Try to find JSON object boundaries
-        start_idx = text.find("{")
-        end_idx = text.rfind("}")
-
-        if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-            text = text[start_idx : end_idx + 1]
-
-        return text.strip()
-
-    cleaned_content = extract_json_from_text(content)
-    logger.info(f"Cleaned BPI-IS JSON content: {cleaned_content[:200]}...")
-
-    try:
-        data = json.loads(cleaned_content)
-        logger.info("Successfully parsed BPI-IS JSON response")
-
-        # Validate the response structure
-        if not isinstance(data, dict):
-            logger.warning("BPI-IS response is not a dictionary")
-            st.warning("Invalid BPI-IS response format: expected JSON object")
-            return {}
-
-        if "responses" not in data:
-            logger.warning("No 'responses' key found in BPI-IS response")
-            st.warning("Invalid BPI-IS response format: missing 'responses' field")
-            return {}
-
-        responses = data["responses"]
-        if not isinstance(responses, list):
-            logger.warning("BPI-IS 'responses' is not a list")
-            st.warning("Invalid BPI-IS response format: 'responses' should be an array")
-            return {}
-
-        logger.info(f"Found {len(responses)} responses in BPI-IS response")
-        return data
-
-    except json.JSONDecodeError as e:
-        logger.error(f"BPI-IS JSON decode error: {e}")
-        logger.error(f"Failed to parse BPI-IS content: {cleaned_content}")
-        st.warning(f"Could not parse BPI-IS JSON response from model: {str(e)}")
-        st.error("Please try again. If the problem persists, the model may not be following the JSON format.")
-        return {}
+    return result.data
 
 
 def run_tsk_11sv_questionnaire(
@@ -559,97 +400,22 @@ def run_tsk_11sv_questionnaire(
     tsk_system_role: str = TSK_11SV_SYSTEM_ROLE,
     tsk_instructions: str = TSK_11SV_INSTRUCTIONS,
 ) -> Dict[str, Any]:
-    """Run the TSK-11SV questionnaire using the given narrative."""
-    prompt = tsk_instructions.replace("{narrative}", narrative)
-    messages = [
-        {"role": "system", "content": tsk_system_role},
-        {"role": "user", "content": prompt},
-    ]
-    logger.info("Sending TSK-11SV questionnaire to OpenAI")
-    response = openai_client.create_completion(
-        messages=messages,
-        model=model,
-        temperature=temperature,
-        max_tokens=8000,  # Increased for GPT-5 reasoning tokens + full JSON output
-        response_format="json_object",  # Force JSON output
+    """Run and validate TSK-11SV through the shared questionnaire runner."""
+    result = run_questionnaire(
+        narrative,
+        "TSK-11SV",
+        openai_client,
+        model,
+        temperature,
+        system_role=tsk_system_role,
+        instructions=tsk_instructions,
     )
-    logger.info("Received TSK-11SV response from OpenAI")
-
-    # Store request/response in session state for later DB persistence
-    st.session_state.last_openai_response = response
-    st.session_state.last_prompt_messages = messages
-
-    # Extract content with proper error handling for gpt-5 empty responses
-    content = response.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
-
-    # Check if content is empty (common issue with gpt-5)
-    if not content:
-        logger.error("Received empty content from OpenAI API for TSK-11SV")
-        logger.error(f"Full response: {response}")
-        st.error("❌ The model returned an empty response. This can happen with gpt-5 when the response is truncated.")
-        st.info("💡 Try again or switch to gpt-5-mini in the sidebar.")
+    st.session_state.last_openai_response = result.raw_response
+    st.session_state.last_prompt_messages = result.messages
+    if not result.success:
+        st.error(result.error or "The questionnaire response was invalid. Please retry.")
         return {}
-
-    logger.info(f"Raw TSK-11SV response content: {content[:200]}...")
-
-    # Use the same JSON extraction logic as PCS
-    def extract_json_from_text(text: str) -> str:
-        """Extract JSON from text that may contain markdown code blocks."""
-        text = text.strip()
-
-        # Remove markdown code blocks
-        if text.startswith("```json"):
-            text = text[7:]
-        elif text.startswith("```"):
-            text = text[3:]
-
-        if text.endswith("```"):
-            text = text[:-3]
-
-        text = text.strip()
-
-        # Try to find JSON object boundaries
-        start_idx = text.find("{")
-        end_idx = text.rfind("}")
-
-        if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-            text = text[start_idx : end_idx + 1]
-
-        return text.strip()
-
-    cleaned_content = extract_json_from_text(content)
-    logger.info(f"Cleaned TSK-11SV JSON content: {cleaned_content[:200]}...")
-
-    try:
-        data = json.loads(cleaned_content)
-        logger.info("Successfully parsed TSK-11SV JSON response")
-
-        # Validate the response structure
-        if not isinstance(data, dict):
-            logger.warning("TSK-11SV response is not a dictionary")
-            st.warning("Invalid TSK-11SV response format: expected JSON object")
-            return {}
-
-        if "responses" not in data:
-            logger.warning("No 'responses' key found in TSK-11SV response")
-            st.warning("Invalid TSK-11SV response format: missing 'responses' field")
-            return {}
-
-        responses = data["responses"]
-        if not isinstance(responses, list):
-            logger.warning("TSK-11SV 'responses' is not a list")
-            st.warning("Invalid TSK-11SV response format: 'responses' should be an array")
-            return {}
-
-        logger.info(f"Found {len(responses)} responses in TSK-11SV response")
-        return data
-
-    except json.JSONDecodeError as e:
-        logger.error(f"TSK-11SV JSON decode error: {e}")
-        logger.error(f"Failed to parse TSK-11SV content: {cleaned_content}")
-        st.warning(f"Could not parse TSK-11SV JSON response from model: {str(e)}")
-        st.error("Please try again. If the problem persists, the model may not be following the JSON format.")
-        return {}
+    return result.data
 
 
 def count_bpi_is_scores(responses: List[Dict[str, Any]]) -> Dict[int, int]:
@@ -696,7 +462,9 @@ def calculate_tsk_11sv_total_score(result: Dict[str, Any]) -> int:
     return sum(r["value"] for r in responses)
 
 
-def display_score_distribution_chart(counts: Dict[int, int], questionnaire_type: str, translator):
+def display_score_distribution_chart(
+    counts: Dict[int, int], questionnaire_type: str, translator: Callable[[str], str]
+) -> None:
     """
     Display a standardized score distribution chart for any questionnaire type.
 

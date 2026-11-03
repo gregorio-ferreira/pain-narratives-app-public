@@ -50,7 +50,7 @@ def test_update_user_experiment_groups():
         print(f"\n🧪 Test 1: Updating groups to {test_group_ids}")
 
         result = db_manager.update_user_experiment_groups(test_user.id, test_group_ids)
-        assert result == True, "Update should succeed"
+        assert result is True, "Update should succeed"
 
         # Verify the update
         updated_groups = db_manager.get_user_experiment_groups(test_user.id)
@@ -58,16 +58,16 @@ def test_update_user_experiment_groups():
         print(f"✅ Test 1 passed: Groups updated to {updated_groups}")
 
         # Test 2: Update with empty list (remove all groups)
-        print(f"\n🧪 Test 2: Removing all groups")
+        print("\n🧪 Test 2: Removing all groups")
         result = db_manager.update_user_experiment_groups(test_user.id, [])
-        assert result == True, "Update should succeed"
+        assert result is True, "Update should succeed"
 
         updated_groups = db_manager.get_user_experiment_groups(test_user.id)
         assert len(updated_groups) == 0, f"Expected empty list, got {updated_groups}"
-        print(f"✅ Test 2 passed: All groups removed")
+        print("✅ Test 2 passed: All groups removed")
 
         # Test 3: Update with invalid group ID (should raise ValueError)
-        print(f"\n🧪 Test 3: Testing with invalid group ID 99999")
+        print("\n🧪 Test 3: Testing with invalid group ID 99999")
         try:
             db_manager.update_user_experiment_groups(test_user.id, [99999])
             assert False, "Should have raised ValueError for invalid group ID"

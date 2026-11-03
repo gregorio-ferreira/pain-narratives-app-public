@@ -32,8 +32,8 @@ def test_translation_config():
         print("\n🎉 Configuration test completed successfully!")
 
     except Exception as e:
-        print(f"❌ Configuration test failed: {e}")
-        logging.error(f"Configuration test failed: {e}", exc_info=True)
+        print(f"❌ Configuration test failed: {type(e).__name__}")
+        logging.error(f"Configuration test failed: {type(e).__name__}")
 
 
 def test_translation_with_new_model():
@@ -74,8 +74,8 @@ def test_translation_with_new_model():
         print("\n🎉 Translation with configured model completed successfully!")
 
     except Exception as e:
-        print(f"❌ Translation test failed: {e}")
-        logging.error(f"Translation test failed: {e}", exc_info=True)
+        print(f"❌ Translation test failed: {type(e).__name__}")
+        logging.error(f"Translation test failed: {type(e).__name__}")
 
 
 if __name__ == "__main__":

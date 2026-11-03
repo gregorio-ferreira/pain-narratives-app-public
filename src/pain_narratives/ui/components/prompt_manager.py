@@ -15,6 +15,7 @@ from pain_narratives.config.prompts import (
     get_prompt_library,
     get_system_role,
 )
+from pain_narratives.core.privacy import safe_error
 from pain_narratives.ui.utils.localization import get_translator
 
 # Default prompt components loaded from YAML configuration
@@ -213,7 +214,7 @@ def dimensions_editor_no_form(
                                 else:
                                     st.warning(t("ui_text.dimensions_removed_no_db"))
                             except Exception as e:
-                                st.error(f"{t('ui_text.dimensions_save_error')}: {str(e)}")
+                                st.error(f"{t('ui_text.dimensions_save_error')}: {safe_error(e)}")
                         else:
                             st.success(t("ui_text.dimensions_removed_success"))
 
@@ -264,7 +265,7 @@ def dimensions_editor_no_form(
 
 
 def generate_prompt_from_dimensions(
-    dims: list[dict],
+    dims: list[dict[str, Any]],
     system_role: Optional[str] = DEFAULT_SYSTEM_ROLE,
     base_prompt: Optional[str] = DEFAULT_BASE_PROMPT,
 ) -> str:
@@ -494,8 +495,7 @@ class PromptManager:
 
         with tab2:
             st.subheader(t("ui_text.available_variables_header"))
-            st.markdown(
-                """
+            st.markdown("""
             **Available placeholders:**
             - `{narrative}` - The patient narrative text
 
@@ -503,8 +503,7 @@ class PromptManager:
             - `{patient_age}` - Patient age
             - `{condition}` - Primary diagnosis
             - `{duration}` - Pain duration
-            """
-            )
+            """)
 
             # Variable validation
             if "{narrative}" not in edited_prompt:
@@ -577,7 +576,7 @@ class PromptManager:
             st.error(t("ui_text.invalid_json_file_error"))
             return False
         except Exception as e:
-            st.error(f"Import failed: {str(e)}")
+            st.error(f"Import failed: {safe_error(e)}")
             return False
 
     def display_prompt_analytics(self) -> None:
@@ -631,7 +630,7 @@ def get_current_prompt() -> str:
     # Check if we have a current prompt in session state
     current_prompt = st.session_state.get("current_prompt")
     if current_prompt:
-        return current_prompt
+        return str(current_prompt)
 
     # Check if we have an Evaluation group selected with dimensions
     selected_dimensions = st.session_state.get("selected_group_dimensions")

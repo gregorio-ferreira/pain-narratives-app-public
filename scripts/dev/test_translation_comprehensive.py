@@ -59,7 +59,7 @@ def test_questionnaire_translation():
         return spanish_result
 
     except Exception as e:
-        print(f"❌ Questionnaire translation failed: {e}")
+        print(f"❌ Questionnaire translation failed: {type(e).__name__}")
         return None
 
 
@@ -118,7 +118,7 @@ def test_assessment_translation():
         return spanish_result
 
     except Exception as e:
-        print(f"❌ Assessment translation failed: {e}")
+        print(f"❌ Assessment translation failed: {type(e).__name__}")
         return None
 
 
@@ -166,7 +166,7 @@ def test_multilingual_structure():
         return multilingual_result
 
     except Exception as e:
-        print(f"❌ Multilingual structure test failed: {e}")
+        print(f"❌ Multilingual structure test failed: {type(e).__name__}")
         return None
 
 

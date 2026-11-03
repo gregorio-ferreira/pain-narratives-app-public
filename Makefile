@@ -104,7 +104,7 @@ app:
 ## Run experiments
 experiments:
 	@echo "${BLUE}Running AINarratives experiments...${RESET}"
-	uv run run-experiments --models gpt-5-mini --temperatures 0.0 --repetitions 1
+	uv run run-experiments --user-id $(USER_ID) --models gpt-5-mini --temperatures 0.0 --repetitions 1
 
 ## Run custom experiment script
 run-script:
@@ -286,3 +286,11 @@ health-check: info
 	@echo -n "✓ Dependencies installed: "; uv run python -c "import pain_narratives" 2>/dev/null && echo "${GREEN}Yes${RESET}" || echo "${RED}No${RESET}"
 
 .PHONY: help install dev-install analysis-install setup format lint typecheck check test test-cov test-watch app experiments run-script db-init db-migrate db-migration jupyter-setup notebook lab run-notebooks run-notebooks-safe list-notebooks consolidate-tables publication docs docs-serve pre-commit pre-commit-install update add-dep add-dev-dep new-branch status clean clean-all ci pre-commit-check info health-check
+
+## Run full-history secret and publication/dependency scans
+security:
+	bash scripts/security/scan.sh
+
+## Verify notebook and private-file publication hygiene
+publication-check:
+	python3 scripts/security/check_publication.py

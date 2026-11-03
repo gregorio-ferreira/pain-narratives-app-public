@@ -1,0 +1,52 @@
+# Run from the repository root; supply the full commit SHA when building.
+# export PAIN_PUBLIC_HOST=YOUR_EC2_HOSTNAME.example.com
+# APP_REVISION=$(git rev-parse HEAD) docker compose -f deploy/docker-compose.prod.yml up -d --build
+# Caddy runs on the host and proxies HTTP to this loopback-only port.
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        APP_REVISION: ${APP_REVISION:?Set APP_REVISION to the reviewed commit SHA}
+    container_name: pain_narratives_app
+    restart: unless-stopped
+    init: true
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    mem_limit: 1200m
+    cpus: 2
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+      - /home/appuser/.cache:size=64m,uid=1000,gid=1000,mode=0700
+    ports:
+      - "127.0.0.1:8501:8501"
+    environment:
+      PAIN_NARRATIVES_CONFIG: /config/config.yaml
+      STREAMLIT_BROWSER_SERVER_ADDRESS: ${PAIN_PUBLIC_HOST:?Set PAIN_PUBLIC_HOST to the public hostname without a scheme}
+      STREAMLIT_BROWSER_SERVER_PORT: "80"
+      PAIN_NARRATIVES_DB_CA: /config/rds-ca-bundle.pem
+      STREAMLIT_SERVER_ENABLE_CORS: "true"
+      STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION: "true"
+    volumes:
+      - type: bind
+        source: ${PAIN_CONFIG_FILE:-/home/ubuntu/config/config.yaml}
+        target: /config/config.yaml
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${PAIN_DB_CA_FILE:-/home/ubuntu/config/rds-ca-bundle.pem}
+        target: /config/rds-ca-bundle.pem
+        read_only: true
+        bind:
+          create_host_path: false
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

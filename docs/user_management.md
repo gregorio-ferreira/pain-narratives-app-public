@@ -14,7 +14,7 @@ All copy is localized in `en.yml` and `es.yml` under
 
 | Action | Method | Notes |
 |---|---|---|
-| Create user | `DatabaseManager.create_user(username, password, is_admin)` | Min password length 3. Username unique. Hashed with SHA-256. |
+| Create user | `DatabaseManager.create_user(username, password, is_admin)` | 6–1024 characters for new/reset passwords. Salted Argon2id; legacy hashes upgrade on successful login. |
 | Toggle admin | `update_user_admin_status(user_id, is_admin)` | Button label shows current → new status. |
 | Reset password | `reset_user_password(user_id, new_password)` | Popover input; same validation as creation. |
 | Delete user | `delete_user(user_id)` | Confirmation popover. The currently logged-in user cannot delete themselves. |
@@ -62,7 +62,7 @@ uv run python scripts/manage_users.py make-admin <username>
 
 # Register users
 uv run python scripts/register_user.py                          # interactive
-uv run python scripts/register_user_batch.py <user> <password>  # one-shot
+uv run python scripts/register_user_batch.py <user>             # password prompt
 uv run python scripts/manage_users.py import-csv <path>         # bulk
 ```
 
@@ -81,3 +81,14 @@ Covers valid assignment, empty input (revoke all), and invalid group IDs.
 - Operations are wrapped in transactions; failures roll back cleanly.
 - The "cannot delete self" guard is enforced in the UI; the underlying
   `delete_user` method does not refuse, so do not call it without that check.
+
+All creation/reset paths use the same database-level password policy. Local CLI
+commands prompt without echo; automation can use `--password-stdin` instead of
+putting passwords in arguments. CSV imports write usernames to the source and
+credentials to a separate mode-600 `*.credentials.csv` file, created exclusively.
+Deliver those credentials privately and delete the file after delivery.
+
+Batch identities have disabled login hashes and cannot have their password reset
+through login-user management. Their database ownership/admin capability supports
+operator-run batch processing only. Active UI sessions refresh roles every rerun,
+expire after eight hours, and are invalidated by password reset/account deletion.

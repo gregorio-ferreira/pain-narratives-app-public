@@ -45,8 +45,8 @@ def test_basic_gpt5_functionality():
             print(f"Response keys: {list(response.keys())}")
 
     except Exception as e:
-        print(f"❌ GPT-5 test failed: {e}")
-        logging.error(f"GPT-5 test failed: {e}", exc_info=True)
+        print(f"❌ GPT-5 test failed: {type(e).__name__}")
+        logging.error(f"GPT-5 test failed: {type(e).__name__}")
 
 
 def test_gpt5_mini_functionality():
@@ -81,7 +81,7 @@ def test_gpt5_mini_functionality():
             print("❌ No choices in response")
 
     except Exception as e:
-        print(f"❌ GPT-5-mini test failed: {e}")
+        print(f"❌ GPT-5-mini test failed: {type(e).__name__}")
 
 
 def test_with_your_example():
@@ -111,7 +111,7 @@ def test_with_your_example():
         print(f"Content: '{completion.choices[0].message.content}'")
 
     except Exception as e:
-        print(f"❌ Raw OpenAI test failed: {e}")
+        print(f"❌ Raw OpenAI test failed: {type(e).__name__}")
 
 
 if __name__ == "__main__":

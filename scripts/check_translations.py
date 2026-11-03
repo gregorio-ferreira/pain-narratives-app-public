@@ -54,7 +54,7 @@ def check_translation_keys():
             print()
 
         except KeyError as e:
-            print(f"❌ {key} - Missing key: {e}")
+            print(f"❌ {key} - Missing key: {type(e).__name__}")
             all_good = False
 
     if all_good:

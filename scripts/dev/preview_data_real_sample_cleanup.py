@@ -39,6 +39,7 @@ def parse_tsk_likert(value):
     key = str(value).strip().lower()
     return TSK_LIKERT_MAP.get(key)
 
+
 REPO = Path(__file__).resolve().parents[2]
 RAW_XLSX = REPO / "data" / "Data_real_sample.xlsx"
 
@@ -46,17 +47,33 @@ RAW_XLSX = REPO / "data" / "Data_real_sample.xlsx"
 # Qualtrics column -> canonical column mappings.
 # Discovered by inspecting the descriptor row in Data_real_sample.xlsx.
 PCS_ITEM_MAP = {
-    "Q2_1": "pcs_01", "Q2_2": "pcs_02", "Q2_3": "pcs_03",
-    "Q2_4": "pcs_04", "Q2_5": "pcs_05",
-    "Q3_1": "pcs_06", "Q3_2": "pcs_07", "Q3_3": "pcs_08", "Q3_4": "pcs_09",
-    "Q4_1": "pcs_10", "Q4_2": "pcs_11", "Q4_3": "pcs_12", "Q4_4": "pcs_13",
+    "Q2_1": "pcs_01",
+    "Q2_2": "pcs_02",
+    "Q2_3": "pcs_03",
+    "Q2_4": "pcs_04",
+    "Q2_5": "pcs_05",
+    "Q3_1": "pcs_06",
+    "Q3_2": "pcs_07",
+    "Q3_3": "pcs_08",
+    "Q3_4": "pcs_09",
+    "Q4_1": "pcs_10",
+    "Q4_2": "pcs_11",
+    "Q4_3": "pcs_12",
+    "Q4_4": "pcs_13",
 }
 BPI_ITEM_MAP = {f"BPI_{i}": f"bpi_{i:02d}" for i in range(1, 12)}
 TSK_ITEM_MAP = {
-    "Q2_1.1": "tsk_01", "Q2_2.1": "tsk_02", "Q2_3.1": "tsk_03",
-    "Q2_4.1": "tsk_04", "Q2_5.1": "tsk_05",
-    "Q3_1.1": "tsk_06", "Q3_2.1": "tsk_07", "Q3_3.1": "tsk_08", "Q3_4.1": "tsk_09",
-    "Q3_5": "tsk_10", "Q3_6": "tsk_11",
+    "Q2_1.1": "tsk_01",
+    "Q2_2.1": "tsk_02",
+    "Q2_3.1": "tsk_03",
+    "Q2_4.1": "tsk_04",
+    "Q2_5.1": "tsk_05",
+    "Q3_1.1": "tsk_06",
+    "Q3_2.1": "tsk_07",
+    "Q3_3.1": "tsk_08",
+    "Q3_4.1": "tsk_09",
+    "Q3_5": "tsk_10",
+    "Q3_6": "tsk_11",
 }
 
 DEMOGRAPHIC_MAP = {
@@ -94,11 +111,13 @@ def main() -> int:
 
     # Drop the Qualtrics descriptor row.
     raw = raw.iloc[1:].reset_index(drop=True)
-    raw = raw.rename(columns={
-        "Unnamed: 0": "valid",
-        "Unnamed: 1": "response_id",
-        "Q2": "narrative_text",
-    })
+    raw = raw.rename(
+        columns={
+            "Unnamed: 0": "valid",
+            "Unnamed: 1": "response_id",
+            "Q2": "narrative_text",
+        }
+    )
     raw["valid"] = pd.to_numeric(raw["valid"], errors="coerce").fillna(0).astype(int)
     print(f"  after dropping descriptor: {raw.shape}")
     print(f"  valid==1: {(raw['valid'] == 1).sum()}  valid==0: {(raw['valid'] == 0).sum()}")
@@ -107,19 +126,18 @@ def main() -> int:
 
     section("narrative_hash + word_count")
     df["narrative_text"] = df["narrative_text"].astype(str)
-    df["narrative_hash"] = df["narrative_text"].apply(
-        lambda s: hashlib.sha256(s.strip().encode("utf-8")).hexdigest()
-    )
+    df["narrative_hash"] = df["narrative_text"].apply(lambda s: hashlib.sha256(s.strip().encode("utf-8")).hexdigest())
     df["word_count"] = df["narrative_text"].str.split().str.len()
     print(f"  rows: {len(df)}")
     print(f"  unique hashes: {df['narrative_hash'].nunique()} (expect 152)")
-    print(f"  word_count: min={df['word_count'].min()} max={df['word_count'].max()} "
-          f"mean={df['word_count'].mean():.1f}")
+    print(
+        f"  word_count: min={df['word_count'].min()} max={df['word_count'].max()} "
+        f"mean={df['word_count'].mean():.1f}"
+    )
     print()
     print("  sample narratives:")
     for _, r in df.head(3).iterrows():
-        print(f"    hash={r['narrative_hash'][:16]}...  words={r['word_count']}  "
-              f"text={r['narrative_text'][:60]!r}")
+        print(f"    hash={r['narrative_hash'][:16]}...  words={r['word_count']}  " f"text={r['narrative_text'][:60]!r}")
 
     section("Item parsing")
     for label, src_map, parser in (
@@ -138,8 +156,10 @@ def main() -> int:
         items.columns = list(src_map.values())
         present = items.notna().mean(axis=1).mean()
         total = items.sum(axis=1, skipna=False)
-        print(f"  {label}: {len(src_map)} items, mean fill rate {present*100:.1f}%, "
-              f"total range [{total.min()}, {total.max()}] mean {total.mean():.2f}")
+        print(
+            f"  {label}: {len(src_map)} items, mean fill rate {present*100:.1f}%, "
+            f"total range [{total.min()}, {total.max()}] mean {total.mean():.2f}"
+        )
 
     section("Demographics presence")
     for src, dst in DEMOGRAPHIC_MAP.items():

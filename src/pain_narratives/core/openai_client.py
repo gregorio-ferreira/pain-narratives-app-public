@@ -3,9 +3,10 @@
 import logging
 from typing import Any, Optional
 
-from openai import OpenAI
+from openai import APIConnectionError, APIStatusError, AuthenticationError, OpenAI, PermissionDeniedError
 
 from pain_narratives.core.database import get_database_manager
+from pain_narratives.core.provider_errors import ProviderAuthError, ProviderRequestError, ProviderTransientError
 
 from ..config.settings import get_settings
 
@@ -31,25 +32,13 @@ class OpenAIClient:
             if not self._api_key:
                 raise ValueError("OpenAI API key not found in configuration")
 
-        logger.info(
-            "OpenAI Client initialized with API key: %s",
-            "***" + self._api_key[-4:] if self._api_key and len(self._api_key) > 4 else "NOT SET",
-        )
-        logger.info("Organization ID: %s", self._org_id or "NOT SET")
-
         self._client: Optional[OpenAI] = None
 
     @property
     def client(self) -> OpenAI:
         """Get or create OpenAI client."""
         if self._client is None:
-            logger.info("Creating new OpenAI client instance...")
-            try:
-                self._client = OpenAI(api_key=self._api_key, organization=self._org_id, timeout=60)
-                logger.info("OpenAI client created successfully")
-            except Exception as e:
-                logger.error("Failed to create OpenAI client: %s", str(e), exc_info=True)
-                raise
+            self._client = OpenAI(api_key=self._api_key, organization=self._org_id, timeout=60, max_retries=2)
         return self._client
 
     def create_completion(
@@ -64,142 +53,36 @@ class OpenAIClient:
         response_format: Optional[str] = None,  # Accept 'json_object' or None
     ) -> dict[str, Any]:
         """Create a chat completion."""
-        logger.info("=== OpenAI API Request Starting ===")
-
-        # Resolve parameters
         model = model or self.settings.model_config.default_model
         temperature = temperature if temperature is not None else self.settings.model_config.default_temperature
         top_p = top_p if top_p is not None else self.settings.model_config.default_top_p
         max_tokens = max_tokens or self.settings.model_config.default_max_tokens
-
-        logger.info("Request parameters:")
-        logger.info("  Model: %s", model)
-        logger.info("  Temperature: %s", temperature)
-        logger.info("  Top P: %s", top_p)
-        logger.info("  Max tokens: %s", max_tokens)
-        logger.info("  Response format: %s", response_format)
-        logger.info("  Messages count: %s", len(messages))
-
-        # Log message details (truncated for security)
-        for i, msg in enumerate(messages):
-            logger.info(
-                "  Message %d - Role: %s, Content length: %d",
-                i,
-                msg.get("role", "unknown"),
-                len(msg.get("content", "")),
-            )
-            # Log first 200 chars of each message for debugging
-            content_preview = msg.get("content", "")[:200]
-            logger.info(
-                "  Message %d preview: %s%s",
-                i,
-                content_preview,
-                "..." if len(msg.get("content", "")) > 200 else "",
-            )
-
-        try:
-            logger.info("Making OpenAI API call...")
-
-            # Prepare request parameters
-            request_params = {
-                "model": model,
-                "messages": messages,
-            }
-
-            # Handle GPT-5 model specific parameters
-            if model.startswith("gpt-5"):
-                # GPT-5 models use max_completion_tokens and need higher token limits
-                # Ensure minimum token limit for GPT-5 models (reasoning tokens + output)
-                gpt5_max_tokens = max(max_tokens, 8000)  # GPT-5 needs high limits for reasoning + output
-                request_params["max_completion_tokens"] = gpt5_max_tokens
-
-                # GPT-5 models have limited parameter support
-                # Only set temperature if it's not 0.0 (GPT-5 models work best with default temperature)
-                if temperature != 0.0:
-                    request_params["temperature"] = temperature
-                # Only set top_p if it's not the default
-                if top_p != 1.0:
-                    request_params["top_p"] = top_p
-
-                logger.info("  GPT-5 adjusted max_completion_tokens: %s", gpt5_max_tokens)
-            else:
-                # Older models use max_tokens and support all parameters
-                request_params["max_tokens"] = max_tokens
+        request_params: dict[str, Any] = {"model": model, "messages": messages}
+        if model.startswith("gpt-5"):
+            request_params["max_completion_tokens"] = max(max_tokens, 8000)
+            if temperature != 0.0:
                 request_params["temperature"] = temperature
+            if top_p != 1.0:
                 request_params["top_p"] = top_p
-
-            # Add response_format only if specified and not None
-            if response_format == "json_object":
-                request_params["response_format"] = {"type": "json_object"}
-                logger.info("  Added JSON response format")
-
-            logger.info("Final request parameters: %s", list(request_params.keys()))
-
+        else:
+            request_params.update(max_tokens=max_tokens, temperature=temperature, top_p=top_p)
+        if response_format == "json_object":
+            request_params["response_format"] = {"type": "json_object"}
+        logger.info("OpenAI request: model=%s messages=%d", model, len(messages))
+        try:
             response = self.client.chat.completions.create(**request_params)
-
-            logger.info("OpenAI API call successful!")
-            logger.info("Response type: %s", type(response))
-
-            if hasattr(response, "model_dump"):
-                result = response.model_dump()
-                logger.info("Response model_dump successful, type: %s", type(result))
-                if isinstance(result, dict):
-                    logger.info("Response keys: %s", list(result.keys()))
-                    if "choices" in result and result["choices"]:
-                        choice = result["choices"][0]
-                        logger.info("Choice keys: %s", list(choice.keys()))
-                        logger.info("Finish reason: %s", choice.get("finish_reason"))
-                        if "message" in choice:
-                            message = choice["message"]
-                            logger.info("Message keys: %s", list(message.keys()))
-
-                            # GPT-5 models may return content in different fields
-                            content = None
-                            if "content" in message and message["content"]:
-                                content = message["content"]
-                            elif "refusal" in message and message["refusal"]:
-                                logger.warning("Model returned refusal: %s", message["refusal"])
-                                content = message["refusal"]
-
-                            # For debugging: log all message fields
-                            for key, value in message.items():
-                                if value:
-                                    logger.info("Message field '%s' has value (length: %d)", key, len(str(value)))
-                                else:
-                                    logger.info("Message field '%s' is empty or None", key)
-
-                            if content:
-                                content_length = len(content)
-                                logger.info("Response content length: %d", content_length)
-                                content_preview = content[:200]
-                                logger.info(
-                                    "Response content preview: %s%s",
-                                    content_preview,
-                                    "..." if content_length > 200 else "",
-                                )
-                            else:
-                                logger.warning("No content found in message! Full message: %s", message)
-                    return result
-                else:
-                    logger.warning("Response model_dump returned non-dict: %s", type(result))
-                    return {"response": result}
-            else:
-                logger.warning("Response has no model_dump method")
-                return {"response": response}
-
-        except Exception as e:
-            logger.error("OpenAI API call failed: %s", str(e), exc_info=True)
-            logger.error("Exception type: %s", type(e).__name__)
-
-            # Log additional details for common errors
-            if hasattr(e, "response"):
-                logger.error("API Error response: %s", getattr(e, "response", None))
-            if hasattr(e, "status_code"):
-                logger.error("API Error status code: %s", getattr(e, "status_code", None))
-            if hasattr(e, "body"):
-                logger.error("API Error body: %s", getattr(e, "body", None))
-
-            raise
+        except (AuthenticationError, PermissionDeniedError) as exc:
+            raise ProviderAuthError("Provider credentials or permissions require attention") from exc
+        except APIConnectionError as exc:
+            raise ProviderTransientError("Provider connection failed") from exc
+        except APIStatusError as exc:
+            if exc.status_code == 429 or exc.status_code >= 500:
+                raise ProviderTransientError("Provider temporarily unavailable") from exc
+            raise ProviderRequestError("Provider rejected the request") from exc
+        result: dict[str, Any] = dict(response.model_dump())
+        result["_request"] = request_params
+        logger.info("OpenAI response received: model=%s", result.get("model", model))
+        return result
 
     def evaluate_narrative(
         self,
@@ -252,7 +135,7 @@ def send_to_db_request_response(
         "temperature": temperature,
         "top_p": top_p,
     }
-    response_json = remove_unicode_chars(response)
+    response_json = dict(response)
     # Persist via DatabaseManager
     db_manager = get_database_manager()
     db_manager.save_request_response(experiment_id, request_json, response_json)

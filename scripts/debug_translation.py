@@ -98,8 +98,8 @@ Return the translated explanations in the same JSON format, with the same keys b
             print("  ✅ Reasoning was successfully translated!")
 
     except Exception as e:
-        print(f"❌ Translation failed: {e}")
-        logging.error(f"Translation failed: {e}", exc_info=True)
+        print(f"❌ Translation failed: {type(e).__name__}")
+        logging.error(f"Translation failed: {type(e).__name__}")
 
 
 if __name__ == "__main__":

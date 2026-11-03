@@ -15,7 +15,6 @@ with the published findings.
 from __future__ import annotations
 
 import numpy as np
-import pandas as pd
 from scipy import stats
 
 from pain_narratives.analysis import revision_data_layer as dl
@@ -55,8 +54,7 @@ def main() -> None:
             continue
         slug = tag.replace("-", "_")
         out = dl.write_parquet(df, f"synth_{slug}.parquet")
-        print(f"  synth_{tag:<28} -> {out}  ({len(df)} rows, "
-              f"runs={sorted(df['run_number'].unique().tolist())})")
+        print(f"  synth_{tag:<28} -> {out}  ({len(df)} rows, " f"runs={sorted(df['run_number'].unique().tolist())})")
 
     # Reproducibility check: aggregate each model across its runs, then compare
     # per-narrative against real_152. Reports MAE/RMSE/Pearson r/Spearman ρ.
@@ -69,13 +67,12 @@ def main() -> None:
             df = dl.load_processed(f"synth_{tag.replace('-', '_')}.parquet")
         except FileNotFoundError:
             continue
-        agg = df.groupby("narrative_hash", as_index=False)[
-            ["pcs_total", "bpi_total_mean", "tsk_total"]
-        ].mean()
+        agg = df.groupby("narrative_hash", as_index=False)[["pcs_total", "bpi_total_mean", "tsk_total"]].mean()
         print(f"\n  {tag} (n_runs={df['run_number'].nunique()}, n_hashes={len(agg)})")
         for q in ("pcs_total", "bpi_total_mean", "tsk_total"):
             merged = real_152[["narrative_hash", q]].merge(
-                agg[["narrative_hash", q]], on="narrative_hash",
+                agg[["narrative_hash", q]],
+                on="narrative_hash",
                 suffixes=("_real", "_synth"),
             )
             r = merged[f"{q}_real"].astype(float).to_numpy()
@@ -86,8 +83,10 @@ def main() -> None:
             rmse = float(np.sqrt(np.mean((r - s) ** 2)))
             pr, _ = stats.pearsonr(r, s)
             sp, _ = stats.spearmanr(r, s)
-            print(f"    {q:<18} n={len(r):3d}  MAE={mae:6.3f}  RMSE={rmse:6.3f}  "
-                  f"Pearson={pr:6.3f}  Spearman={sp:6.3f}")
+            print(
+                f"    {q:<18} n={len(r):3d}  MAE={mae:6.3f}  RMSE={rmse:6.3f}  "
+                f"Pearson={pr:6.3f}  Spearman={sp:6.3f}"
+            )
 
 
 if __name__ == "__main__":

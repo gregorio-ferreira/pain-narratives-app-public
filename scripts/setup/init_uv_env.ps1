@@ -3,7 +3,7 @@
 Write-Host "🚀 Initializing Pain Narratives project with UV..." -ForegroundColor Green
 
 # Navigate to project root
-Set-Location "c:\Users\jgfer\OneDrive\Documents\my Work\uoc\Proyectos\pain_narratives"
+Set-Location (Join-Path $PSScriptRoot "..\..")
 
 # Initialize UV project (this will create .venv and install dependencies)
 Write-Host "📦 Creating virtual environment and installing dependencies..." -ForegroundColor Yellow

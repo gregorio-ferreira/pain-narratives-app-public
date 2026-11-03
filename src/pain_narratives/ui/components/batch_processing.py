@@ -9,6 +9,8 @@ from typing import Any, Dict, List, Optional, Tuple, cast
 import pandas as pd
 import streamlit as st
 
+from pain_narratives.core.privacy import safe_error
+
 
 def run_batch_evaluation(
     df: "pd.DataFrame",
@@ -69,7 +71,7 @@ def run_batch_evaluation(
                     "id": row.get("id", i),
                     "category": row.get("category", "Unknown"),
                     "narrative": row["narrative"],
-                    "evaluation": {"error": str(e)},
+                    "evaluation": {"error": safe_error(e)},
                     "timestamp": datetime.now().isoformat(),
                 }
             )
@@ -97,7 +99,7 @@ def process_batch(
         pd.DataFrame(results).to_csv(output_file, index=False)
         return results, None
     except Exception as e:
-        return [], str(e)
+        return [], safe_error(e)
 
 
 def load_batch_results(output_file: Path) -> List[Dict[str, Any]]:
@@ -105,5 +107,4 @@ def load_batch_results(output_file: Path) -> List[Dict[str, Any]]:
     Load batch results from a CSV file and return as a list of dicts.
     """
     df = pd.read_csv(output_file)
-    return cast(List[Dict[str, Any]], df.to_dict(orient="records"))
     return cast(List[Dict[str, Any]], df.to_dict(orient="records"))

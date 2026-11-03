@@ -18,7 +18,7 @@ import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 import pandas as pd
 from sqlalchemy import text
@@ -42,13 +42,15 @@ def _find(name: str) -> Path:
     p = _DATA_DIR_TRACKED / name
     if p.exists():
         return p
-    raise FileNotFoundError(
-        f"{name} not found in {_DATA_DIR_TRACKED}. Private workbook inputs are not tracked."
-    )
+    raise FileNotFoundError(f"{name} not found in {_DATA_DIR_TRACKED}. Private workbook inputs are not tracked.")
 
 
-EXCEL_PUB = lambda: _find("20251201_publication_tables.xlsx")  # noqa: E731
-EXCEL_EXPERT = lambda: _find("Expert_Evaluated_Narratives_Data.xlsx")  # noqa: E731
+def EXCEL_PUB() -> Path:
+    return _find("20251201_publication_tables.xlsx")
+
+
+def EXCEL_EXPERT() -> Path:
+    return _find("Expert_Evaluated_Narratives_Data.xlsx")
 
 
 # ---------------------------------------------------------------------------
@@ -73,7 +75,9 @@ MODEL_CONFIGS: dict[str, ModelConfig] = {
     "claude-sonnet-4-5-thinking": ModelConfig(
         # Predicted next group_ids for Runs 3 (49) and 4 (50). Adjust here if the
         # overnight orchestrator's batch script lands on different group ids.
-        tag="claude-sonnet-4-5-thinking", group_ids=(48, 49, 50), source="db"
+        tag="claude-sonnet-4-5-thinking",
+        group_ids=(48, 49, 50),
+        source="db",
     ),
 }
 
@@ -99,7 +103,8 @@ def load_real_from_schema(db: DatabaseManager | None = None) -> pd.DataFrame:
     """
     db = db or DatabaseManager()
     with db.engine.connect() as conn:
-        return pd.read_sql(text(f"""
+        return pd.read_sql(
+            text(f"""
             SELECT n.narrative_id AS participant_id, n.narrative_hash, n.word_count,
                    p.pcs_total, p.pcs_rumination, p.pcs_magnification, p.pcs_helplessness,
                    p.pcs_01, p.pcs_02, p.pcs_03, p.pcs_04, p.pcs_05, p.pcs_06, p.pcs_07,
@@ -115,20 +120,18 @@ def load_real_from_schema(db: DatabaseManager | None = None) -> pd.DataFrame:
             JOIN {SCHEMA}.real_patient_bpi b ON b.participant_id = n.narrative_id
             JOIN {SCHEMA}.real_patient_tsk t ON t.participant_id = n.narrative_id
             ORDER BY n.narrative_id
-        """), conn)
+        """),
+            conn,
+        )
 
 
 def load_demographics_from_schema(db: DatabaseManager | None = None) -> pd.DataFrame:
     db = db or DatabaseManager()
     with db.engine.connect() as conn:
-        return pd.read_sql(text(
-            f"SELECT * FROM {SCHEMA}.real_patient_demographics ORDER BY participant_id"
-        ), conn)
+        return pd.read_sql(text(f"SELECT * FROM {SCHEMA}.real_patient_demographics ORDER BY participant_id"), conn)
 
 
-def load_synth_from_schema(
-    model_tag: str | None = None, db: DatabaseManager | None = None
-) -> pd.DataFrame:
+def load_synth_from_schema(model_tag: str | None = None, db: DatabaseManager | None = None) -> pd.DataFrame:
     """LLM synthetic results joined across the four llm_* tables.
 
     Long format: one row per (participant_id, model, run_number). All four PK
@@ -139,7 +142,8 @@ def load_synth_from_schema(
     where = "WHERE d.model = :model" if model_tag else ""
     params = {"model": model_tag} if model_tag else {}
     with db.engine.connect() as conn:
-        return pd.read_sql(text(f"""
+        return pd.read_sql(
+            text(f"""
             SELECT d.participant_id, d.model, d.run_number,
                    d.experiment_id, d.experiments_group_id,
                    d.severidad_score, d.severidad_explicacion,
@@ -166,32 +170,31 @@ def load_synth_from_schema(
             LEFT JOIN {SCHEMA}.narratives n ON n.narrative_id = d.participant_id
             {where}
             ORDER BY d.model, d.run_number, d.participant_id
-        """), conn, params=params)
+        """),
+            conn,
+            params=params,
+        )
 
 
 def load_expert_dimension_from_schema(db: DatabaseManager | None = None) -> pd.DataFrame:
     db = db or DatabaseManager()
     with db.engine.connect() as conn:
-        return pd.read_sql(text(
-            f"SELECT * FROM {SCHEMA}.expert_dimension_evaluation"
-        ), conn)
+        return pd.read_sql(text(f"SELECT * FROM {SCHEMA}.expert_dimension_evaluation"), conn)
 
 
 def load_expert_questionnaire_from_schema(db: DatabaseManager | None = None) -> pd.DataFrame:
     db = db or DatabaseManager()
     with db.engine.connect() as conn:
-        return pd.read_sql(text(
-            f"SELECT * FROM {SCHEMA}.expert_questionnaire_feedback"
-        ), conn)
+        return pd.read_sql(text(f"SELECT * FROM {SCHEMA}.expert_questionnaire_feedback"), conn)
 
 
 def available_models(db: DatabaseManager | None = None) -> list[str]:
     """Models that currently have data in the schema."""
     db = db or DatabaseManager()
     with db.engine.connect() as conn:
-        rows = conn.execute(text(
-            f"SELECT DISTINCT model FROM {SCHEMA}.llm_dimension_evaluation ORDER BY model"
-        )).fetchall()
+        rows = conn.execute(
+            text(f"SELECT DISTINCT model FROM {SCHEMA}.llm_dimension_evaluation ORDER BY model")
+        ).fetchall()
     return [m for (m,) in rows]
 
 
@@ -232,8 +235,7 @@ def load_expert_to_db_bridge() -> pd.DataFrame:
     nar = nar[["participant_id", "narrative_text"]].copy()
     nar["narrative_text_strip"] = nar["narrative_text"].str.strip()
     matched = load_data_matched()
-    return nar.merge(matched[["narrative_text_strip", "batch_narrative_id"]],
-                     on="narrative_text_strip", how="inner")[
+    return nar.merge(matched[["narrative_text_strip", "batch_narrative_id"]], on="narrative_text_strip", how="inner")[
         ["participant_id", "batch_narrative_id"]
     ].rename(columns={"participant_id": "expert_participant_id"})
 
@@ -251,9 +253,7 @@ def load_real_152() -> pd.DataFrame:
     """
     rq = pd.read_excel(EXCEL_PUB(), sheet_name="Data_RealQuest")
     mapping = load_mapping()
-    df = rq.merge(mapping, on="narrative_hash", how="inner").rename(
-        columns={"ID": "expert_participant_id"}
-    )
+    df = rq.merge(mapping, on="narrative_hash", how="inner").rename(columns={"ID": "expert_participant_id"})
 
     pcs_items = [f"PCS_{i}" for i in range(1, 14)]
     df["pcs_total"] = df[pcs_items].sum(axis=1)
@@ -270,9 +270,17 @@ def load_real_152() -> pd.DataFrame:
     df["tsk_total"] = df[tsk_items].sum(axis=1)
 
     keep = (
-        ["expert_participant_id", "excel_id", "db_narrative_id", "narrative_hash",
-         "pcs_total", "bpi_total_mean", "bpi_interference_mean", "bpi_intensity_mean",
-         "tsk_total"]
+        [
+            "expert_participant_id",
+            "excel_id",
+            "db_narrative_id",
+            "narrative_hash",
+            "pcs_total",
+            "bpi_total_mean",
+            "bpi_interference_mean",
+            "bpi_intensity_mean",
+            "tsk_total",
+        ]
         + pcs_items
         + bpi_int_cols
         + bpi_intensity_cols
@@ -289,8 +297,7 @@ def load_real_41() -> pd.DataFrame:
     """
     df = pd.read_excel(EXCEL_EXPERT(), sheet_name="Real_Scores_AllItems")
     bridge = load_expert_to_db_bridge()
-    df = df.merge(bridge, left_on="participant_id",
-                  right_on="expert_participant_id", how="left")
+    df = df.merge(bridge, left_on="participant_id", right_on="expert_participant_id", how="left")
     return df
 
 
@@ -311,12 +318,12 @@ def load_gpt5_synth_aggregated() -> pd.DataFrame:
     bpi = pd.read_excel(EXCEL_PUB(), sheet_name="Data_BPI")
     tsk = pd.read_excel(EXCEL_PUB(), sheet_name="Data_TSK")
 
-    bpi = bpi.rename(columns={"bpi_interference_mean": "bpi_interference_avg",
-                              "bpi_intensity_mean": "bpi_intensity_avg"})
+    bpi = bpi.rename(
+        columns={"bpi_interference_mean": "bpi_interference_avg", "bpi_intensity_mean": "bpi_intensity_avg"}
+    )
 
     # Each Data_* sheet already carries narrative_hash; join on (narrative_id, narrative_hash).
-    df = (pcs.merge(bpi, on=["narrative_id", "narrative_hash"])
-              .merge(tsk, on=["narrative_id", "narrative_hash"]))
+    df = pcs.merge(bpi, on=["narrative_id", "narrative_hash"]).merge(tsk, on=["narrative_id", "narrative_hash"])
     df["model"] = "gpt-5"
     return df
 
@@ -331,15 +338,17 @@ def load_gpt5_synth_runs_41() -> pd.DataFrame:
     pcs = pd.read_excel(EXCEL_EXPERT(), sheet_name="Synth_PCS_AllRuns")
     bpi = pd.read_excel(EXCEL_EXPERT(), sheet_name="Synth_BPI_AllRuns")
     tsk = pd.read_excel(EXCEL_EXPERT(), sheet_name="Synth_TSK_AllRuns")
-    bpi = bpi.rename(columns={"bpi_interference_mean": "bpi_interference_avg",
-                              "bpi_intensity_mean": "bpi_intensity_avg"})
+    bpi = bpi.rename(
+        columns={"bpi_interference_mean": "bpi_interference_avg", "bpi_intensity_mean": "bpi_intensity_avg"}
+    )
     keep_pcs = ["participant_id", "run_number", "pcs_total"]
-    keep_bpi = ["participant_id", "run_number", "bpi_total_mean",
-                "bpi_interference_avg", "bpi_intensity_avg"]
+    keep_bpi = ["participant_id", "run_number", "bpi_total_mean", "bpi_interference_avg", "bpi_intensity_avg"]
     keep_tsk = ["participant_id", "run_number", "tsk_total"]
-    df = (pcs[keep_pcs]
-              .merge(bpi[keep_bpi], on=["participant_id", "run_number"])
-              .merge(tsk[keep_tsk], on=["participant_id", "run_number"]))
+    df = (
+        pcs[keep_pcs]
+        .merge(bpi[keep_bpi], on=["participant_id", "run_number"])
+        .merge(tsk[keep_tsk], on=["participant_id", "run_number"])
+    )
     df["model"] = "gpt-5"
     return df.rename(columns={"participant_id": "expert_participant_id"})
 
@@ -349,7 +358,7 @@ def load_gpt5_synth_runs_41() -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 
 
-def _coerce_dim_value(v):
+def _coerce_dim_value(v: Any) -> tuple[Any, Any]:
     """Pull a numeric score out of any of the three observed schemas.
 
     GPT-5:        {'Severidad del dolor': {'score': 8, 'explicacion': '...'}}
@@ -366,12 +375,13 @@ def _coerce_dim_value(v):
     return v, None  # bare numeric
 
 
-def _parse_dimensions(rj) -> dict:
+def _parse_dimensions(rj: Any) -> dict[str, Any]:
     obj = rj if isinstance(rj, dict) else json.loads(rj)
-    sev_raw = (obj.get("severidad_del_dolor")
-               or obj.get("Severidad del dolor")
-               or obj.get("severidad"))
-    dis_raw = obj.get("discapacidad") or obj.get("Discapacidad")
+    sev_raw = next(
+        (obj[key] for key in ("severidad_del_dolor", "Severidad del dolor", "severidad") if obj.get(key) is not None),
+        None,
+    )
+    dis_raw = next((obj[key] for key in ("discapacidad", "Discapacidad") if obj.get(key) is not None), None)
     sev_score, sev_exp = _coerce_dim_value(sev_raw)
     dis_score, dis_exp = _coerce_dim_value(dis_raw)
     return {
@@ -382,7 +392,7 @@ def _parse_dimensions(rj) -> dict:
     }
 
 
-def _parse_pcs(rj) -> dict:
+def _parse_pcs(rj: Any) -> dict[str, Any]:
     obj = rj if isinstance(rj, dict) else json.loads(rj)
     raw = obj.get("raw_data", {}) or {}
     scores = raw.get("scores", {}) or {}
@@ -400,12 +410,20 @@ def _parse_pcs(rj) -> dict:
 
 
 _BPI_ITEM_ORDER = [
-    "bpiq11", "bpiq12", "bpiq13", "bpiq15", "bpiq16", "bpiq17",
-    "bpiq28", "bpiq39", "bpiq410", "bpiq511",
+    "bpiq11",
+    "bpiq12",
+    "bpiq13",
+    "bpiq15",
+    "bpiq16",
+    "bpiq17",
+    "bpiq28",
+    "bpiq39",
+    "bpiq410",
+    "bpiq511",
 ]
 
 
-def _parse_bpi(rj) -> dict:
+def _parse_bpi(rj: Any) -> dict[str, Any]:
     obj = rj if isinstance(rj, dict) else json.loads(rj)
     raw = obj.get("raw_data", {}) or {}
     responses = raw.get("responses", []) or []
@@ -419,21 +437,32 @@ def _parse_bpi(rj) -> dict:
         "bpi_interference_total": sub.get("interference_total"),
         "bpi_intensity_total": sub.get("intensity_total"),
     }
-    for idx, key in enumerate(_BPI_ITEM_ORDER):
-        if idx < len(responses):
-            data[key] = responses[idx].get("value") if isinstance(responses[idx], dict) else None
+    by_code = {item.get("code"): item.get("value") for item in responses if isinstance(item, dict)}
+    codes = [
+        "BPI_Q1_1",
+        "BPI_Q1_2",
+        "BPI_Q1_3",
+        "BPI_Q1_5",
+        "BPI_Q1_6",
+        "BPI_Q1_7",
+        "BPI_Q2_8",
+        "BPI_Q3_9",
+        "BPI_Q4_10",
+        "BPI_Q5_11",
+    ]
+    for key, code in zip(_BPI_ITEM_ORDER, codes):
+        data[key] = by_code.get(code)
     return data
 
 
-def _parse_tsk(rj) -> dict:
+def _parse_tsk(rj: Any) -> dict[str, Any]:
     obj = rj if isinstance(rj, dict) else json.loads(rj)
     raw = obj.get("raw_data", {}) or {}
     responses = raw.get("responses", []) or []
     data = {"tsk_total": obj.get("total_score")}
+    by_code = {item.get("code"): item.get("value") for item in responses if isinstance(item, dict)}
     for i in range(1, 12):
-        if i - 1 < len(responses):
-            v = responses[i - 1].get("value") if isinstance(responses[i - 1], dict) else None
-            data[f"tsk_{i:02d}"] = v
+        data[f"tsk_{i:02d}"] = by_code.get(f"TSK_{i:02d}")
     return data
 
 
@@ -463,32 +492,27 @@ def load_synth_from_db(
     # GPT-5 uses a specific run mapping that collapses retries; everything else
     # numbers runs by the order group_ids was supplied.
     if model_tag == "gpt-5":
-        group_to_run = {gid: _GPT5_GROUP_TO_RUN.get(gid, i + 1)
-                        for i, gid in enumerate(group_ids)}
+        group_to_run = {gid: _GPT5_GROUP_TO_RUN.get(gid, i + 1) for i, gid in enumerate(group_ids)}
     else:
         group_to_run = {gid: i + 1 for i, gid in enumerate(group_ids)}
 
     with db.engine.connect() as conn:
         exp = pd.read_sql(
-            text(
-                """
+            text("""
                 SELECT experiment_id, experiments_group_id, narrative_id, succeeded
                 FROM pain_narratives_app.experiments_list
                 WHERE experiments_group_id = ANY(:gids)
                   AND succeeded = TRUE
-                """
-            ),
+                """),
             conn,
             params={"gids": group_ids},
         )
         evals = pd.read_sql(
-            text(
-                """
+            text("""
                 SELECT experiment_id, experiments_group_id, result_type, result_json
                 FROM pain_narratives_app.evaluation_results
                 WHERE experiments_group_id = ANY(:gids)
-                """
-            ),
+                """),
             conn,
             params={"gids": group_ids},
         )
@@ -497,7 +521,7 @@ def load_synth_from_db(
         logger.warning("No succeeded experiments for groups %s", group_ids)
         return pd.DataFrame()
 
-    rows: dict[int, dict] = {}
+    rows: dict[int, dict[str, Any]] = {}
     for _, r in exp.iterrows():
         rows[r.experiment_id] = {
             "experiment_id": r.experiment_id,

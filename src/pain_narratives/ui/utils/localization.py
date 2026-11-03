@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Callable, Dict
 
 import streamlit as st
 import yaml
@@ -20,7 +20,10 @@ def _load_language_data_uncached(language: str) -> Dict[str, Any]:
         lang_file = locales_path / "en.yml"
 
     with open(lang_file, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+        data = yaml.safe_load(f)
+        if not isinstance(data, dict):
+            raise ValueError("Localization must be a mapping")
+        return data
 
 
 # Cache with ttl to allow for language switching
@@ -42,7 +45,7 @@ def _load_language_data(language: str, use_cache: bool = True) -> Dict[str, Any]
         return _load_language_data_cached(language)
 
 
-def get_translator(language: str, use_cache: bool = True):
+def get_translator(language: str, use_cache: bool = True) -> Callable[[str], str]:
     """Return a translation function for the selected language."""
     # Clear cache when language changes (only if using cache)
     if use_cache:
@@ -68,13 +71,13 @@ def get_translator(language: str, use_cache: bool = True):
     return t
 
 
-def clear_language_cache():
+def clear_language_cache() -> None:
     """Clear language cache when switching languages."""
     st.cache_data.clear()
     _language_cache.clear()
 
 
-def format_string(template: str, **kwargs) -> str:
+def format_string(template: str, **kwargs: Any) -> str:
     """Format a localized string with parameters."""
     try:
         return template.format(**kwargs)

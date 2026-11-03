@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING, Any, Dict, List
 import streamlit as st
 from pydantic import BaseModel
 
+from pain_narratives.core.privacy import safe_error
+
 # Set up logger
 logger = logging.getLogger(__name__)
 
@@ -41,14 +43,14 @@ class NarrativeEvaluator:
         logger.info("=== Evaluation Starting ===")
         logger.info("Narrative length: %d", len(narrative_text))
         logger.info("Prompt length: %d", len(prompt))
-        logger.info("Config: %s", config)
+        pass  # Keep model/session content out of routine logs.
         logger.info("Max tokens: %d", max_tokens)
 
         try:
             logger.info("Formatting prompt with narrative...")
             formatted_prompt = prompt.format(narrative=narrative_text)
             logger.info("Formatted prompt length: %d", len(formatted_prompt))
-            logger.info("Formatted prompt preview: %s...", formatted_prompt[:200])
+            pass  # Narrative/provider content is deliberately excluded from logs.
 
             logger.info("Calling OpenAI client create_completion...")
             response = openai_client.create_completion(
@@ -58,15 +60,13 @@ class NarrativeEvaluator:
                 max_tokens=max_tokens,
             )
             logger.info("OpenAI client returned response type: %s", type(response))
-            logger.info(
-                "OpenAI response keys: %s",
-                list(response.keys()) if isinstance(response, dict) else "Not a dict",
-            )
+            pass  # Keep model/session content out of routine logs.
 
             # Store raw OpenAI response in session state for DB saving
             logger.debug(f"About to store OpenAI response in session state: {type(response)}")
+            st.session_state.last_prompt_messages = [{"role": "user", "content": formatted_prompt}]
             st.session_state.last_openai_response = response
-            logger.debug(f"OpenAI response stored. Session state keys: {list(st.session_state.keys())}")
+            pass  # Keep model/session content out of routine logs.
             logger.debug(f"last_openai_response in session state: {'last_openai_response' in st.session_state}")
 
             # Defensive: ensure this is always set, even if rerun or error
@@ -77,7 +77,7 @@ class NarrativeEvaluator:
             logger.info("Extracting content from OpenAI response...")
             content = response["choices"][0]["message"]["content"]
             logger.info("Content extracted, length: %d", len(content))
-            logger.info("Content preview: %s...", content[:200])
+            pass  # Narrative/provider content is deliberately excluded from logs.
 
             # Parse OpenAI response using centralized method
             result = NarrativeEvaluator._parse_openai_response(content)
@@ -91,22 +91,22 @@ class NarrativeEvaluator:
                 "prompt_used": formatted_prompt,
             }
             logger.info("Evaluation completed successfully!")
-            logger.info("Final result keys: %s", list(final_result.keys()))
+            pass  # Keep model/session content out of routine logs.
             return final_result
 
         except Exception as e:
-            logger.error("Evaluation failed with exception: %s", str(e), exc_info=True)
+            logger.error("Evaluation failed with exception: %s", safe_error(e), exc_info=False)
             logger.error("Exception type: %s", type(e).__name__)
 
             fallback_result = {
                 "narrative": narrative_text,
                 "result": {
-                    "error": f"Evaluation failed: {str(e)}",
+                    "error": f"Evaluation failed: {safe_error(e)}",
                     "pain_intensity": 0,
                     "functional_impact": 0,
                     "emotional_impact": 0,
                     "descriptive_quality": 0,
-                    "reasoning": f"Error during evaluation: {str(e)}",
+                    "reasoning": f"Error during evaluation: {safe_error(e)}",
                 },
                 "model": config["model"],
                 "temperature": config["temperature"],
@@ -141,23 +141,22 @@ class NarrativeEvaluator:
             end = content.rfind("}") + 1
             content = content[start:end]
 
-        logger.info("Attempting to parse JSON from cleaned content...")
-        logger.info("Cleaned content: %s", content[:500])
+        pass  # Narrative/provider content is deliberately excluded from logs.
+        pass  # Narrative/provider content is deliberately excluded from logs.
 
         try:
             result = json.loads(content)
             logger.info("JSON parsing successful!")
-            logger.info(
-                "Parsed result keys: %s",
-                list(result.keys()) if isinstance(result, dict) else "Not a dict",
-            )
+            pass  # Keep model/session content out of routine logs.
+            if not isinstance(result, dict):
+                raise ValueError("Expected a JSON object")
             return result
         except json.JSONDecodeError as e:
-            logger.warning("JSON parsing failed: %s", str(e))
+            logger.warning("JSON parsing failed: %s", safe_error(e))
             # If JSON parsing fails, try to create a valid structure from the content
             st.warning("JSON parsing failed. Attempting to extract values from raw content.")
             result = NarrativeEvaluator._extract_fallback_values(content)
-            result["error"] = f"JSON parsing failed: {str(e)}"
+            result["error"] = f"JSON parsing failed: {safe_error(e)}"
             result["raw_content"] = content[:500]  # Limit raw content length
             return result
 
@@ -242,12 +241,12 @@ class NarrativeEvaluator:
             except Exception as e:
                 evaluations.append(
                     {
-                        "error": f"Evaluation {i + 1} failed: {str(e)}",
+                        "error": f"Evaluation {i + 1} failed: {safe_error(e)}",
                         "pain_intensity": 0,
                         "functional_impact": 0,
                         "emotional_impact": 0,
                         "descriptive_quality": 0,
-                        "reasoning": f"Error during evaluation: {str(e)}",
+                        "reasoning": f"Error during evaluation: {safe_error(e)}",
                     }
                 )
 

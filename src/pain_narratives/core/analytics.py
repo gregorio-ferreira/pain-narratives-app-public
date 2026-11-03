@@ -5,9 +5,9 @@ import logging
 from typing import Any, Dict, Literal, Optional
 
 import pandas as pd
-from sklearn.metrics import cohen_kappa_score, mean_squared_error
+from sklearn.metrics import cohen_kappa_score, mean_squared_error, root_mean_squared_error
 
-from .openai_client import remove_unicode_chars
+from pain_narratives.core.privacy import safe_error
 
 
 def convert_string_to_json(input_string: str) -> Optional[Dict[str, Any]]:
@@ -25,7 +25,7 @@ def convert_string_to_json(input_string: str) -> Optional[Dict[str, Any]]:
             return result
         return None
     except json.JSONDecodeError as e:
-        logging.error(f"JSON decode error: {e}")
+        logging.error(f"JSON decode error: {safe_error(e)}")
         return None
 
 
@@ -48,34 +48,7 @@ def parse_answers(
     Returns:
         True if parsing successful, False otherwise
     """
-    response = remove_unicode_chars(response)
-    try:
-        message_content = response["choices"][0]["message"]["content"]
-        json_eval = convert_string_to_json(message_content)
-
-        if json_eval:
-            exp_df = pd.DataFrame(json_eval, index=[0])
-            exp_df.insert(0, "narrative_id", narrative_id)
-            exp_df.insert(0, "experiment_id", experiment_id)
-
-            exp_df.to_sql(
-                "model_responses",
-                db_conn,
-                schema=schema,
-                if_exists="append",
-                index=False,
-            )
-
-            return True
-        else:
-            logging.error("Error parsing JSON: %s", message_content)
-            return False
-    except (KeyError, IndexError) as e:
-        logging.error(f"Error accessing response content: {e}")
-        return False
-    except Exception as e:
-        logging.exception(f"Unexpected error: {e}")
-        return False
+    raise RuntimeError("Legacy model_responses persistence is retired; use BatchProcessor")
 
 
 def calculate_mse(values_original: pd.Series, values_new: pd.Series) -> float:
@@ -95,7 +68,7 @@ def calculate_kappa(
 
 def calculate_rmse(values_original: pd.Series, values_new: pd.Series) -> float:
     """Calculate the Root Mean Squared Error between two series of annotations."""
-    rmse = mean_squared_error(values_original, values_new, squared=False)
+    rmse = root_mean_squared_error(values_original, values_new)
     return float(rmse)
 
 

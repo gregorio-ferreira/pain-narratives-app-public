@@ -13,7 +13,7 @@ models:
 
 openai:
   # Get your API key from: https://platform.openai.com/api-keys
-  api_key_pain_narratives: "YOUR_OPENAI_API_KEY"
+  api_key: "YOUR_OPENAI_API_KEY"
   org_id: "YOUR_OPENAI_ORG_ID"
 
 # AWS Bedrock — required for the revision experiments (DeepSeek-R1, Claude Sonnet 4.5).
@@ -34,6 +34,8 @@ pg-prod:
   database: "pain_narratives"
   user: "pain_narratives"
   port: 5432
+  sslmode: disable  # Local database only; use verify-full with the RDS CA in production
+  sslrootcert: ""  # Example container path: /config/rds-ca-bundle.pem
 
 app:
   data_root_path: "./data"

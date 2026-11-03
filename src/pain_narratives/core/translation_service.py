@@ -27,6 +27,7 @@ import logging
 from typing import Any, Dict, Optional
 
 from pain_narratives.core.openai_client import OpenAIClient
+from pain_narratives.core.privacy import safe_error
 
 logger = logging.getLogger(__name__)
 
@@ -115,8 +116,8 @@ class TranslationService:
             translated_data = json.loads(translated_content)
 
             # Debug: Log what was actually returned by the translation model
-            logger.info(f"Translation model returned keys: {list(translated_data.keys())}")
-            logger.info(f"Expected keys: {list(content_to_translate.keys())}")
+            pass  # Keep model/session content out of routine logs.
+            pass  # Keep model/session content out of routine logs.
 
             # Create translated result by copying original and updating translated fields
             translated_result = evaluation_result.copy()
@@ -136,7 +137,7 @@ class TranslationService:
             return translated_result
 
         except Exception as e:
-            logger.error(f"Translation failed: {str(e)}")
+            logger.error(f"Translation failed: {safe_error(e)}")
             # Return original result if translation fails
             return evaluation_result
 
@@ -170,11 +171,13 @@ Return the translated explanations in the same JSON format, with the same keys b
 
         # Try preferred language first
         if preferred_language in result_json:
-            return result_json[preferred_language]
+            preferred = result_json[preferred_language]
+            return dict(preferred) if isinstance(preferred, dict) else {}
 
         # Fallback to English
         if "en" in result_json:
-            return result_json["en"]
+            english = result_json["en"]
+            return dict(english) if isinstance(english, dict) else {}
 
         # If neither exists, return empty dict
         logger.warning(f"No translation found for language {preferred_language} or English fallback")

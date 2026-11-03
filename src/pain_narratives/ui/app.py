@@ -6,7 +6,9 @@ narratives using AI models with customizable prompts and batch processing
 capabilities.
 """
 
+import json
 import logging
+import time
 import uuid
 from datetime import datetime
 from typing import Any, Dict, Optional
@@ -17,6 +19,8 @@ from sqlmodel import select
 
 from pain_narratives.core.database import DatabaseManager
 from pain_narratives.core.openai_client import OpenAIClient
+from pain_narratives.core.privacy import safe_error
+from pain_narratives.core.provenance import build_revision, runtime_versions
 
 # Direct import for questionnaire prompts to avoid circular dependency
 from pain_narratives.db.models_sqlmodel import QuestionnairePrompt
@@ -187,6 +191,24 @@ class PainNarrativesApp:
             else:
                 st.session_state.language = "en"
 
+    def refresh_user_session(self) -> None:
+        """Fail closed on revoked accounts and refresh roles on every rerun."""
+        user = st.session_state.get("user")
+        if user is None:
+            return
+        fresh = None
+        try:
+            if time.monotonic() - st.session_state.get("session_started", 0) < 8 * 3600:
+                fresh = st.session_state.db_manager.validate_user_session(user["id"], user.get("auth_version", ""))
+        except Exception as exc:
+            safe_error(exc)
+        if fresh is None:
+            st.session_state.clear()
+            st.rerun()
+        else:
+            st.session_state.user = fresh
+            st.session_state.is_admin = fresh["is_admin"]
+
     def setup_sidebar(self) -> Dict[str, Any]:
         """Setup the sidebar with configuration options."""
         # Store current language before getting translator
@@ -213,7 +235,7 @@ class PainNarrativesApp:
                         f"Updated language preference for user {st.session_state.user['username']} to {new_language}"
                     )
                 except Exception as e:
-                    logger.error(f"Failed to update user language preference: {e}")
+                    logger.error(f"Failed to update user language preference: {safe_error(e)}")
 
             # Clear both caches when language changes
             st.cache_data.clear()
@@ -248,8 +270,8 @@ class PainNarrativesApp:
                             with st.spinner(t("common.loading")):
                                 st.session_state.db_manager = DatabaseManager()
                     except Exception as e:
-                        st.sidebar.error(f"{t('errors.database_error')}: {e}")
-                        logger.error(f"Database connection error: {e}")
+                        st.sidebar.error(f"{t('errors.database_error')}: {safe_error(e)}")
+                        logger.error(f"Database connection error: {safe_error(e)}")
                         return {}
 
                 # Authenticate user
@@ -259,6 +281,7 @@ class PainNarrativesApp:
                             user = st.session_state.db_manager.authenticate_user(username, password)
 
                     if user:
+                        st.session_state.session_started = time.monotonic()
                         st.session_state.user = user
                         st.session_state.is_admin = user["is_admin"]
                         # Load user's preferred language
@@ -275,8 +298,8 @@ class PainNarrativesApp:
                         st.sidebar.error(t("auth.invalid_credentials"))
                         logger.warning("Failed login attempt for username: %s", username)
                 except Exception as e:
-                    st.sidebar.error(t("auth.authentication_error").format(error=str(e)))
-                    logger.error("Authentication error: %s", str(e))
+                    st.sidebar.error(t("auth.authentication_error").format(error=safe_error(e)))
+                    logger.error("Authentication error: %s", safe_error(e))
 
             with st.sidebar.expander(t("auth.need_help")):
                 st.markdown(t("auth.first_time_info"))
@@ -355,14 +378,10 @@ class PainNarrativesApp:
             # Cache Evaluation groups in session state for better performance
             cache_key = f"experiment_groups_{st.session_state.user['id']}_{st.session_state.is_admin}"
 
-            if cache_key not in st.session_state:
-                # Load Evaluation groups for the current user
-                groups = st.session_state.db_manager.get_experiment_groups_for_user(
-                    st.session_state.user["id"], st.session_state.is_admin
-                )
-                st.session_state[cache_key] = groups
-            else:
-                groups = st.session_state[cache_key]
+            # Group assignments can be revoked while this session remains open.
+            groups = st.session_state.db_manager.get_experiment_groups_for_user(
+                st.session_state.user["id"], st.session_state.is_admin
+            )
 
             if groups:
                 group_options = [
@@ -455,8 +474,8 @@ class PainNarrativesApp:
             st.sidebar.success(t("common.connections_initialized"))
 
         except Exception as e:
-            logger.error("Connection initialization failed: %s", str(e), exc_info=True)
-            st.sidebar.error(t("common.connection_failed").format(error=str(e)))
+            logger.error("Connection initialization failed: %s", safe_error(e), exc_info=False)
+            st.sidebar.error(t("common.connection_failed").format(error=safe_error(e)))
 
     def narrative_dimensions_tab(self) -> None:
         """Tab for editing the pain narrative and evaluation dimensions."""
@@ -495,7 +514,7 @@ class PainNarrativesApp:
                     st.session_state.current_narrative_text = st.session_state.narrative_input
                     st.session_state.current_narrative_id = last_narr.narrative_id
             except Exception as e:
-                logger.error("Failed to load last narrative for group: %s", e)
+                logger.error("Failed to load last narrative for group: %s", type(e).__name__)
             st.session_state.last_loaded_group_id = experiment_group_id
 
         new_narrative_option = t("narrative_dimensions.new_narrative")
@@ -509,7 +528,7 @@ class PainNarrativesApp:
                     narrative_options.append(label)
                     narratives_map[label] = n
             except Exception as e:
-                logger.error("Failed to load narratives: %s", e)
+                logger.error("Failed to load narratives: %s", type(e).__name__)
 
         selected_option = st.selectbox(
             t("narrative_dimensions.load_existing_narrative"),
@@ -537,7 +556,7 @@ class PainNarrativesApp:
                 st.session_state.narrative_input = markdown_text.strip()
                 st.session_state.current_narrative_text = st.session_state.narrative_input
             except Exception as e:
-                st.error(f"Failed to process file: {e}")
+                st.error(f"Failed to process file: {safe_error(e)}")
 
         # Preserve any edits the user makes to the narrative across reruns
         if st.session_state.get("narrative_input") != st.session_state.get("current_narrative_text"):
@@ -559,7 +578,7 @@ class PainNarrativesApp:
                     st.session_state.current_narrative_id = narrative_id
                     st.success(t("narrative_dimensions.narrative_saved").format(narrative_id=narrative_id))
                 except Exception as e:
-                    st.error(t("narrative_dimensions.failed_save_narrative").format(error=str(e)))
+                    st.error(t("narrative_dimensions.failed_save_narrative").format(error=safe_error(e)))
 
         if is_admin:
             st.info(t("narrative_dimensions.admin_mode_info"))
@@ -646,7 +665,7 @@ class PainNarrativesApp:
                     except PermissionError:
                         st.error(t("ui_text.no_permission_update"))
                     except Exception as e:
-                        st.error(t("ui_text.error_updating_group").format(error=str(e)))
+                        st.error(t("ui_text.error_updating_group").format(error=safe_error(e)))
                         st.warning(t("ui_text.changes_saved_locally"))
                 else:
                     st.success(t("ui_text.dimensions_updated_success"))
@@ -746,17 +765,14 @@ class PainNarrativesApp:
                     max_tokens=max_tokens,
                 )
 
-                logger.info(
-                    "Evaluation completed with result keys: %s",
-                    list(result.keys()) if result else None,
-                )
+                pass  # Keep model/session content out of routine logs.
 
                 # Debug: Immediately check session state after evaluation
-                print(f"DEBUG: Session state keys immediately after evaluation: {list(st.session_state.keys())}")
-                print(f"DEBUG: last_openai_response exists: {'last_openai_response' in st.session_state}")
+                pass  # Keep model/session content out of routine logs.
+                pass  # Keep model/session content out of routine logs.
                 if "last_openai_response" in st.session_state:
-                    print(f"DEBUG: last_openai_response type: {type(st.session_state.last_openai_response)}")
-                    print(f"DEBUG: last_openai_response is None: {st.session_state.last_openai_response is None}")
+                    pass  # Keep model/session content out of routine logs.
+                    pass  # Keep model/session content out of routine logs.
 
                 # Attach experiment_group_id to result for DB save
                 result["experiment_group_id"] = config.get("experiment_group_id", 1)
@@ -766,10 +782,7 @@ class PainNarrativesApp:
                 if hasattr(st.session_state, "last_openai_response"):
                     logger.info("last_openai_response found in session state")
                     openai_response = st.session_state.last_openai_response
-                    logger.info(
-                        "OpenAI response keys: %s",
-                        list(openai_response.keys()) if openai_response else "None",
-                    )
+                    pass  # Keep model/session content out of routine logs.
                     logger.info("OpenAI response type: %s", type(openai_response))
                 else:
                     logger.warning("last_openai_response NOT found in session state")
@@ -792,8 +805,8 @@ class PainNarrativesApp:
                 st.success(t("ui_text.evaluation_completed_success"))
 
         except Exception as e:
-            logger.error("Evaluation failed: %s", str(e), exc_info=True)
-            st.error(f"❌ Evaluation failed: {str(e)}")
+            logger.error("Evaluation failed: %s", safe_error(e), exc_info=False)
+            st.error(f"❌ Evaluation failed: {safe_error(e)}")
 
     def evaluate_multiple_narratives(
         self,
@@ -824,7 +837,7 @@ class PainNarrativesApp:
                 }
                 st.session_state.evaluation_history.append(evaluation_result)
         except Exception as e:
-            st.error(f"❌ Consistency evaluation failed: {str(e)}")
+            st.error(f"❌ Consistency evaluation failed: {safe_error(e)}")
 
     def batch_evaluation_tab(self, config: Dict[str, Any]) -> None:
         """Tab for batch evaluation of multiple narratives."""
@@ -832,8 +845,7 @@ class PainNarrativesApp:
         st.header(t("ui_text.batch_evaluation_header"))
 
         if st.session_state.openai_client is None:
-            st.info(
-                """
+            st.info("""
                 ℹ️ **Setup Required**
 
                 To use batch evaluation, please configure your OpenAI connection:
@@ -848,8 +860,7 @@ class PainNarrativesApp:
                 - Built-in rate limiting to respect API limits
                 - Export results to CSV for analysis
                 - Optional database storage for long-term tracking
-                """
-            )
+                """)
             return
 
         st.subheader(t("ui_text.upload_data_header"))
@@ -914,7 +925,7 @@ class PainNarrativesApp:
                     batch_results, success_count, error_count = result_tuple
 
             except Exception as e:
-                st.error(f"Error loading file: {str(e)}")
+                st.error(f"Error loading file: {safe_error(e)}")
 
         else:
             # Sample data option
@@ -1217,7 +1228,7 @@ class PainNarrativesApp:
                                     custom_system_role = custom_prompts[questionnaire_id].get("system_role")
                                     custom_instructions = custom_prompts[questionnaire_id].get("instructions")
                         except Exception as e:
-                            logger.warning(f"Failed to load custom prompts, using defaults: {e}")
+                            logger.warning(f"Failed to load custom prompts, using defaults: {safe_error(e)}")
 
                     # Run the appropriate questionnaire
                     result = None
@@ -1329,7 +1340,7 @@ class PainNarrativesApp:
                     "traits": translated["persona_traits"],
                 }
         except Exception as e:
-            logger.warning(f"Questionnaire display translation failed: {e}")
+            logger.warning(f"Questionnaire display translation failed: {safe_error(e)}")
 
         return display_result
 
@@ -1573,8 +1584,8 @@ class PainNarrativesApp:
             user_info = st.session_state.user  # Use the existing user session state
             management_tab_ui(db_manager, user_info)
         except Exception as e:
-            st.error(f"❌ Error loading management interface: {str(e)}")
-            logger.error(f"Management tab error: {e}")
+            st.error(f"❌ Error loading management interface: {safe_error(e)}")
+            logger.error(f"Management tab error: {safe_error(e)}")
 
     def help_tab(self) -> None:
         """Tab for help and documentation."""
@@ -1629,6 +1640,7 @@ class PainNarrativesApp:
     def run(self) -> None:
         """Main application entry point."""
         # Set up configuration
+        self.refresh_user_session()
         config = self.setup_sidebar()
 
         # Main content area
@@ -1728,6 +1740,20 @@ class PainNarrativesApp:
             if user_id is None:
                 raise ValueError("User ID not available")
 
+            if not isinstance(result.get("result"), dict) or "error" in result["result"]:
+                raise ValueError("Failed evaluations cannot be saved as successful results")
+            group_id = result.get("experiment_group_id")
+            if not group_id or not db_manager.can_user_edit_experiment_group(user_id, group_id):
+                raise PermissionError("Evaluation group access required")
+            narrative_id = st.session_state.get("current_narrative_id")
+            narrative = result.get("narrative", "").strip()
+            if not narrative:
+                raise ValueError("A narrative is required")
+            # Resolve the evaluated text, including edits to a previously selected narrative.
+            existing = db_manager.get_narrative_by_id(narrative_id) if narrative_id else None
+            if existing is None or existing.owner_id != user_id or existing.narrative != narrative:
+                narrative_id = db_manager.create_narrative({"narrative": narrative, "owner_id": user_id})
+            st.session_state.current_narrative_id = narrative_id
             # Create experiment record
             experiment_data = {
                 "experiments_group_id": result.get("experiment_group_id", 1),
@@ -1737,16 +1763,24 @@ class PainNarrativesApp:
                 "model_provider": "openai",
                 "model": result.get("model", "gpt-5"),
                 "with_context": False,
-                "narrative_id": 1,  # Default for UI evaluations
+                "narrative_id": narrative_id,
                 "extra_description": {
                     "type": "ui_evaluation",
                     "timestamp": result.get("timestamp"),
+                    "dependencies": runtime_versions(),
                 },
-                "repo_sha": "",
+                "repo_sha": build_revision(),
                 "exp_type": "ui",
             }
 
             experiment_id = db_manager.register_new_experiment(experiment_data)
+            response = st.session_state.get("last_openai_response") or {}
+            request = response.get("_request") or {
+                "messages": st.session_state.get("last_prompt_messages", []),
+                "model": result.get("model"),
+                "temperature": result.get("temperature"),
+            }
+            db_manager.save_request_response(experiment_id, request, response)
 
             # Prepare multilingual result JSON
             current_language = st.session_state.get("language", "en")
@@ -1780,9 +1814,9 @@ class PainNarrativesApp:
                     )
 
                 except Exception as translation_error:
-                    logger.warning(f"Translation failed: {translation_error}")
+                    logger.warning(f"Translation failed: {safe_error(translation_error)}")
                     translation_progress.warning(
-                        t("ui_text.translation_failed_english_only").format(error=str(translation_error))
+                        t("ui_text.translation_failed_english_only").format(error=safe_error(translation_error))
                     )
                     # Continue without translation
 
@@ -1790,13 +1824,14 @@ class PainNarrativesApp:
             evaluation_result_data = {
                 "experiment_id": experiment_id,
                 "experiments_group_id": result.get("experiment_group_id", 1),
-                "narrative_id": 1,  # Default for UI evaluations
+                "narrative_id": narrative_id,
                 "user_id": user_id,
                 "result_type": "narrative_evaluation",
                 "result_json": multilingual_result,
             }
 
             evaluation_result_id = db_manager.save_evaluation_result(evaluation_result_data)
+            db_manager.update_experiment_status(experiment_id, succeeded=True, parsed_answers=True)
             logger.info(f"Saved evaluation result with ID: {evaluation_result_id}")
 
             # Update the evaluation result in session state with multilingual version
@@ -1808,10 +1843,10 @@ class PainNarrativesApp:
                     latest_eval["result"] = multilingual_result
                     logger.info("Updated session state evaluation_history with multilingual result")
 
-            return experiment_id
+            return int(experiment_id)
 
         except Exception as e:
-            logger.error(f"Failed to save to database: {e}")
+            logger.error(f"Failed to save to database: {safe_error(e)}")
             raise
 
     def save_questionnaire_to_db(
@@ -1823,114 +1858,60 @@ class PainNarrativesApp:
         new_experiment: bool = False,
     ) -> Optional[int]:
         """Save questionnaire result to database and return the database ID."""
-        try:
-            db_manager = st.session_state.db_manager
-            if not db_manager:
-                raise ValueError("Database manager not available")
+        from pain_narratives.core.questionnaire_runner import validate_questionnaire_data
 
-            # Calculate total score based on questionnaire type
-            total_score = None
-            if questionnaire_name == "PCS" and "scores" in questionnaire_result:
-                total_score = calculate_pcs_total_score(questionnaire_result)
-            elif questionnaire_name == "BPI-IS" and "responses" in questionnaire_result:
-                total_score = calculate_bpi_is_total_score(questionnaire_result)
-            elif questionnaire_name == "TSK-11SV" and "responses" in questionnaire_result:
-                total_score = calculate_tsk_11sv_total_score(questionnaire_result)
-
-            # Add total score to result_json if calculated
-            result_json = questionnaire_result.copy()
-            if total_score is not None:
-                result_json["total_score"] = total_score
-
-            # Get required database fields
-            experiments_group_id = st.session_state.get("selected_experiment_group_id")
-            narrative_id = st.session_state.get("current_narrative_id")
-            user_id = st.session_state.user["id"] if st.session_state.user else None
-
-            # Check if all required fields are available
-            if not all([experiments_group_id, narrative_id, user_id]):
-                missing_fields = []
-                if not experiments_group_id:
-                    missing_fields.append("experiments_group_id")
-                if not narrative_id:
-                    missing_fields.append("narrative_id")
-                if not user_id:
-                    missing_fields.append("user_id")
-
-                logger.warning(f"Cannot save questionnaire to database: missing required fields: {missing_fields}")
-                st.warning(f"Questionnaire results cannot be saved to database. Missing: {', '.join(missing_fields)}")
-
-                if total_score is not None:
-                    logger.info(f"Calculated total score: {total_score} (not saved to database)")
-                return None
-
-            # Prepare questionnaire data for database
-            questionnaire_data = {
-                "experiments_group_id": experiments_group_id,
-                "narrative_id": narrative_id,
+        validate_questionnaire_data(questionnaire_result, questionnaire_name)
+        db_manager: DatabaseManager = st.session_state.db_manager
+        user = st.session_state.get("user")
+        group_id = config.get("experiment_group_id") or st.session_state.get("selected_experiment_group_id")
+        if not db_manager or not user or not group_id:
+            raise ValueError("Authenticated user and evaluation group are required")
+        user_id = user["id"]
+        if not db_manager.can_user_edit_experiment_group(user_id, group_id):
+            raise PermissionError("Evaluation group access required")
+        narrative_id = st.session_state.get("current_narrative_id")
+        existing = db_manager.get_narrative_by_id(narrative_id) if narrative_id else None
+        if not narrative_text.strip():
+            raise ValueError("Narrative text is required")
+        if existing is None or existing.owner_id != user_id or existing.narrative != narrative_text:
+            narrative_id = db_manager.create_narrative({"narrative": narrative_text, "owner_id": user_id})
+            st.session_state.current_narrative_id = narrative_id
+        response = st.session_state.get("last_openai_response") or {}
+        messages = st.session_state.get("last_prompt_messages") or []
+        request = response.get("_request") or {
+            "model": config["model"],
+            "temperature": config["temperature"],
+            "messages": messages,
+        }
+        result_json = dict(questionnaire_result)
+        calculators = {
+            "PCS": calculate_pcs_total_score,
+            "BPI-IS": calculate_bpi_is_total_score,
+            "TSK-11SV": calculate_tsk_11sv_total_score,
+        }
+        result_json["total_score"] = calculators[questionnaire_name](questionnaire_result)
+        return db_manager.save_questionnaire_run(
+            experiment_data={
+                "experiments_group_id": group_id,
                 "user_id": user_id,
+                "narrative_id": narrative_id,
+                "model_provider": "openai",
+                "model": response.get("model", config["model"]),
+                "repo_sha": build_revision(),
+                "exp_type": "questionnaire",
+                "extra_description": {"dependencies": runtime_versions()},
+            },
+            questionnaire_data={
+                "experiments_group_id": group_id,
+                "user_id": user_id,
+                "narrative_id": narrative_id,
                 "questionnaire_name": questionnaire_name,
-                "prompt": questionnaire_result.get("prompt", ""),
+                "prompt": json.dumps(messages, ensure_ascii=False),
                 "result_json": result_json,
-            }
-
-            # Save questionnaire result
-            questionnaire_id = db_manager.save_questionnaire_result(questionnaire_data)
-            logger.info(f"Saved questionnaire {questionnaire_name} to database with ID: {questionnaire_id}")
-
-            # Save request/response to request_response table if available in session state
-            if hasattr(st.session_state, "last_openai_response") and hasattr(st.session_state, "last_prompt_messages"):
-                try:
-                    openai_response = st.session_state.last_openai_response
-                    prompt_messages = st.session_state.last_prompt_messages
-
-                    if openai_response and prompt_messages:
-                        # Create a minimal experiment entry for the questionnaire
-                        experiment_data = {
-                            "experiments_group_id": experiments_group_id,
-                            "user_id": user_id,
-                            "repeated": 0,
-                            "language_instructions": "spanish",  # Questionnaires are in Spanish
-                            "model_provider": "openai",
-                            "model": openai_response.get("model", "gpt-5"),
-                            "with_context": False,
-                            "narrative_id": narrative_id,
-                            "extra_description": {
-                                "type": "questionnaire",
-                                "questionnaire_name": questionnaire_name,
-                                "questionnaire_id": questionnaire_id,
-                            },
-                            "repo_sha": "",
-                            "exp_type": "questionnaire",
-                        }
-
-                        experiment_id = db_manager.register_new_experiment(experiment_data)
-
-                        # Prepare request JSON
-                        request_json = {
-                            "model": openai_response.get("model", "gpt-5"),
-                            "messages": prompt_messages,
-                            "temperature": 1.0,
-                            "top_p": 1.0,
-                        }
-
-                        # Save request/response
-                        db_manager.save_request_response(experiment_id, request_json, openai_response)
-                        logger.info(
-                            f"Saved request/response for questionnaire {questionnaire_name} with experiment_id: {experiment_id}"
-                        )
-                except Exception as req_resp_error:
-                    logger.warning(f"Failed to save request/response for questionnaire: {req_resp_error}")
-                    # Don't fail the whole save if just request/response fails
-
-            if total_score is not None:
-                logger.info(f"Calculated total score: {total_score}")
-
-            return questionnaire_id
-
-        except Exception as e:
-            logger.error(f"Failed to save questionnaire to database: {e}")
-            raise
+            },
+            request_json=request,
+            response_json=response,
+        )
 
 
 def main() -> None:

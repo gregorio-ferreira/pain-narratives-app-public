@@ -1,0 +1,5 @@
+title = "Pain Narratives secret scanning"
+[extend]
+useDefault = true
+# Production credentials must never be allowlisted. Placeholder fixtures are
+# deliberately low-entropy; add only exact, documented false-positive fingerprints.

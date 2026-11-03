@@ -8,7 +8,7 @@ Prompts are loaded from default_prompts.yaml for easy maintenance and updates.
 import logging
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 import yaml
 
@@ -40,6 +40,8 @@ def load_prompts_version(version: str = "original") -> Dict[str, Any]:
     with open(path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
     logger.info(f"Loaded prompts version {version!r} from {path}")
+    if not isinstance(config, dict):
+        raise ValueError("Prompt configuration must be a mapping")
     return config
 
 
@@ -51,17 +53,17 @@ def load_prompts_config() -> Dict[str, Any]:
 
 def get_narrative_evaluation_config(version: str = "original") -> Dict[str, Any]:
     """Return the `narrative_evaluation` block from the requested prompt version."""
-    return load_prompts_version(version).get("narrative_evaluation", {})
+    return cast(Dict[str, Any], load_prompts_version(version).get("narrative_evaluation", {}))
 
 
 def get_system_role(version: str = "original") -> str:
     """Return the system role for narrative evaluation in the requested version."""
-    return get_narrative_evaluation_config(version).get("system_role", "").strip()
+    return str(get_narrative_evaluation_config(version).get("system_role", "")).strip()
 
 
 def get_base_prompt(version: str = "original") -> str:
     """Return the base prompt for narrative evaluation in the requested version."""
-    return get_narrative_evaluation_config(version).get("base_prompt", "").strip()
+    return str(get_narrative_evaluation_config(version).get("base_prompt", "")).strip()
 
 
 def get_default_dimensions(version: str = "original") -> List[Dict[str, Any]]:

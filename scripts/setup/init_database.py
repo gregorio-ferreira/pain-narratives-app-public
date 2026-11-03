@@ -59,7 +59,7 @@ def init_database_schema() -> None:
         print("3. Create experiment groups through the web UI")
 
     except Exception as e:
-        print(f"❌ Database initialization failed: {e}")
+        print(f"❌ Database initialization failed: {type(e).__name__}")
         print("\n🔍 Troubleshooting:")
         print("- Ensure PostgreSQL is running")
         print("- Check database connection settings in config.yaml")

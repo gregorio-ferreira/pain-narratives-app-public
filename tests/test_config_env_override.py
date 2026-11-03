@@ -5,8 +5,7 @@ from pain_narratives.config import settings as settings_module
 
 def test_pain_narratives_config_env_override(monkeypatch, tmp_path: Path):
     config_path = tmp_path / "custom-config.yaml"
-    config_path.write_text(
-        """
+    config_path.write_text("""
 openai:
   api_key: test-openai-key
   api_key_pain_narratives: test-project-key
@@ -21,8 +20,7 @@ models:
   default_model: test-model
 app:
   environment: test
-""".strip()
-    )
+""".strip())
 
     monkeypatch.setenv("PAIN_NARRATIVES_CONFIG", str(config_path))
     monkeypatch.setattr(settings_module, "_config_manager", None)

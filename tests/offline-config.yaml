@@ -1,0 +1,10 @@
+openai:
+  api_key: unit-test-placeholder
+pg-prod:
+  host: localhost
+  database: unit_tests
+  user: unit_tests
+  password: unused-unit-test-placeholder
+  sslmode: disable
+app:
+  environment: test

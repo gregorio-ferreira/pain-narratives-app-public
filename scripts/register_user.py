@@ -12,6 +12,7 @@ import sys
 from sqlmodel import select
 
 from pain_narratives.core.database import DatabaseManager
+from pain_narratives.core.security import MIN_PASSWORD_LENGTH
 from pain_narratives.db.models_sqlmodel import User
 
 
@@ -30,8 +31,8 @@ def get_user_input() -> tuple[str, str, bool]:
     # Get password
     while True:
         password = getpass.getpass("Enter password: ")
-        if len(password) < 3:
-            print("❌ Password must be at least 3 characters long. Please try again.")
+        if len(password) < MIN_PASSWORD_LENGTH:
+            print(f"❌ Password must be at least {MIN_PASSWORD_LENGTH} characters long. Please try again.")
             continue
 
         confirm_password = getpass.getpass("Confirm password: ")
@@ -66,7 +67,7 @@ def create_user_account(db_manager: DatabaseManager, username: str, password: st
         user = db_manager.create_user(username=username, password=password, is_admin=is_admin)
         return user
     except Exception as e:
-        print(f"❌ Failed to create user: {e}")
+        print(f"❌ Failed to create user: {type(e).__name__}")
         sys.exit(1)
 
 
@@ -121,7 +122,7 @@ def main():
         print("\n\n👋 User registration cancelled.")
         sys.exit(0)
     except Exception as e:
-        print(f"\n❌ Registration failed: {e}")
+        print(f"\n❌ Registration failed: {type(e).__name__}")
         print("\nMake sure:")
         print("1. PostgreSQL is running")
         print("2. Database configuration is correct")

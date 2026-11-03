@@ -36,10 +36,16 @@ def readme_df() -> pd.DataFrame:
             ["Table 7", "Per-model agreement vs real questionnaires (MAE, RMSE, Pearson r, Spearman, Fisher 95% CI)"],
             ["Table 8", "Pairwise inter-model agreement (MAE, RMSE, Pearson r, Spearman, ICC)"],
             ["Table 9", "Wilcoxon + paired-bootstrap |error| delta of each non-anchor model vs GPT-5"],
-            ["Table 10a", "Per-model 2x8 dimension-questionnaire correlations (Spearman rho, bootstrap 95% CI, FDR-corrected p)"],
+            [
+                "Table 10a",
+                "Per-model 2x8 dimension-questionnaire correlations (Spearman rho, bootstrap 95% CI, FDR-corrected p)",
+            ],
             ["Table 10b", "Cross-model paired-bootstrap delta_rho anchored on GPT-5 (16 cells x non-anchor models)"],
             ["Table 10c", "Model Q x Q inter-correlations compared to real-data reference (delta rho per cell)"],
-            ["Table 10d", "Questionnaire inter-correlations (PCS-BPI-TSK pairwise) for the 3 models and the real reference"],
+            [
+                "Table 10d",
+                "Questionnaire inter-correlations (PCS-BPI-TSK pairwise) for the 3 models and the real reference",
+            ],
         ],
         columns=["Field", "Value"],
     )

@@ -32,49 +32,81 @@ WORKBOOK = PKG / "AINarratives_Multimodel_Complete.xlsx"
 
 # (Sheet name, CSV file relative to NB_OUT or REV_OUT, description)
 SHEETS: list[tuple[str, Path | None, str]] = [
-    ("Index", None,
-     "This sheet. Map of every other table + one-line description."),
-    ("Headline_numbers", None,
-     "Top-line summary numbers across all models and analyses."),
+    ("Index", None, "This sheet. Map of every other table + one-line description."),
+    ("Headline_numbers", None, "Top-line summary numbers across all models and analyses."),
     # Publication-style tables (from notebook 06)
-    ("T1_Sample_Characteristics", None,
-     "Patient demographics (N=152)."),
-    ("T2_Dimension_Descriptives", None,
-     "Per-model mean / SD / range for LLM dimension scores (Severidad, Discapacidad)."),
-    ("T2b_Dim_InterModel_Agreement", None,
-     "Pairwise MAE / RMSE between models on the two dimension scores (per-narrative mean across runs)."),
-    ("T3_Questionnaire_Descriptives", None,
-     "Real + per-model synthetic means / SDs for PCS / BPI / TSK."),
-    ("T3b_Real_vs_Synth_Agreement", None,
-     "Per-model MAE / RMSE / Pearson r / Spearman rho vs real."),
-    ("T5_Cronbach_Alpha", None,
-     "Long format: real + per-model synthetic (mean+/-SD across runs) alpha. Includes BPI total + subscales."),
-    ("T5b_Cronbach_Alpha_Compact", None,
-     "Compact format: one row per scale (PCS, BPI total, BPI interference, BPI intensity, TSK). One column group per model with mean and SD side-by-side."),
-    ("T7_LLM_Consistency", None,
-     "Within-model SD across runs per participant."),
-    ("T11_Dim_vs_Real_Quest", None,
-     "LLM dimension scores correlated with real patient questionnaires."),
+    ("T1_Sample_Characteristics", None, "Patient demographics (N=152)."),
+    (
+        "T2_Dimension_Descriptives",
+        None,
+        "Per-model mean / SD / range for LLM dimension scores (Severidad, Discapacidad).",
+    ),
+    (
+        "T2b_Dim_InterModel_Agreement",
+        None,
+        "Pairwise MAE / RMSE between models on the two dimension scores (per-narrative mean across runs).",
+    ),
+    ("T3_Questionnaire_Descriptives", None, "Real + per-model synthetic means / SDs for PCS / BPI / TSK."),
+    ("T3b_Real_vs_Synth_Agreement", None, "Per-model MAE / RMSE / Pearson r / Spearman rho vs real."),
+    (
+        "T5_Cronbach_Alpha",
+        None,
+        "Long format: real + per-model synthetic (mean+/-SD across runs) alpha. Includes BPI total + subscales.",
+    ),
+    (
+        "T5b_Cronbach_Alpha_Compact",
+        None,
+        "Compact format: one row per scale (PCS, BPI total, BPI interference, BPI intensity, TSK). One column group per model with mean and SD side-by-side.",
+    ),
+    ("T7_LLM_Consistency", None, "Within-model SD across runs per participant."),
+    ("T11_Dim_vs_Real_Quest", None, "LLM dimension scores correlated with real patient questionnaires."),
     # Rebuttal cross-model tables (from notebook 07)
-    ("R7_Per_Model_Agreement", REV_OUT / "07_table7_per_model_agreement.csv",
-     "Rebuttal Table 7: per-model agreement vs real (Pearson + Spearman + Fisher 95% CI)."),
-    ("R8_Inter_Model", REV_OUT / "07_table8_inter_model_agreement.csv",
-     "Rebuttal Table 8: pairwise inter-model agreement (MAE, Pearson, ICC)."),
-    ("R9_Stat_vs_Anchor", REV_OUT / "07_table9_stat_comparison_vs_anchor.csv",
-     "Rebuttal Table 9: Wilcoxon + paired bootstrap |err| delta vs GPT-5."),
+    (
+        "R7_Per_Model_Agreement",
+        REV_OUT / "07_table7_per_model_agreement.csv",
+        "Rebuttal Table 7: per-model agreement vs real (Pearson + Spearman + Fisher 95% CI).",
+    ),
+    (
+        "R8_Inter_Model",
+        REV_OUT / "07_table8_inter_model_agreement.csv",
+        "Rebuttal Table 8: pairwise inter-model agreement (MAE, Pearson, ICC).",
+    ),
+    (
+        "R9_Stat_vs_Anchor",
+        REV_OUT / "07_table9_stat_comparison_vs_anchor.csv",
+        "Rebuttal Table 9: Wilcoxon + paired bootstrap |err| delta vs GPT-5.",
+    ),
     # Dimension x questionnaire (from notebook 08 + T10e/f)
-    ("R10a_DimQuest_Sim_Real", REV_OUT / "08_table10a_per_model_correlations.csv",
-     "2x5 dim x quest correlations per model: rho_sim (LLM vs LLM) + rho_real (LLM vs real)."),
-    ("R10b_Cross_Model_Delta", REV_OUT / "08_table10b_cross_model_delta.csv",
-     "Cross-model paired-bootstrap delta_rho_sim vs GPT-5."),
-    ("R10c_QxQ_vs_Real", REV_OUT / "08_table10c_quest_vs_real.csv",
-     "Per-model questionnaire inter-correlations vs the real-data reference."),
-    ("R10d_Q_Inter_Corr", REV_OUT / "08_table10d_quest_inter.csv",
-     "Questionnaire inter-correlations: 3 models + real, side-by-side."),
-    ("R10e_SynthDim_vs_RealQ", REV_OUT / "08_table10e_synthdim_vs_real_quest.csv",
-     "Focused: synthetic dimension vs real patient questionnaire (Spearman + boot CI + FDR)."),
-    ("R10f_SynthDim_RealVal_X", REV_OUT / "08_table10f_synthdim_realvalidity_cross_model.csv",
-     "Cross-model paired bootstrap on rho_real (T10e). External-validity comparison."),
+    (
+        "R10a_DimQuest_Sim_Real",
+        REV_OUT / "08_table10a_per_model_correlations.csv",
+        "2x5 dim x quest correlations per model: rho_sim (LLM vs LLM) + rho_real (LLM vs real).",
+    ),
+    (
+        "R10b_Cross_Model_Delta",
+        REV_OUT / "08_table10b_cross_model_delta.csv",
+        "Cross-model paired-bootstrap delta_rho_sim vs GPT-5.",
+    ),
+    (
+        "R10c_QxQ_vs_Real",
+        REV_OUT / "08_table10c_quest_vs_real.csv",
+        "Per-model questionnaire inter-correlations vs the real-data reference.",
+    ),
+    (
+        "R10d_Q_Inter_Corr",
+        REV_OUT / "08_table10d_quest_inter.csv",
+        "Questionnaire inter-correlations: 3 models + real, side-by-side.",
+    ),
+    (
+        "R10e_SynthDim_vs_RealQ",
+        REV_OUT / "08_table10e_synthdim_vs_real_quest.csv",
+        "Focused: synthetic dimension vs real patient questionnaire (Spearman + boot CI + FDR).",
+    ),
+    (
+        "R10f_SynthDim_RealVal_X",
+        REV_OUT / "08_table10f_synthdim_realvalidity_cross_model.csv",
+        "Cross-model paired bootstrap on rho_real (T10e). External-validity comparison.",
+    ),
 ]
 
 
@@ -97,28 +129,43 @@ def headline_numbers() -> pd.DataFrame:
         pcs = sub.query("questionnaire == 'pcs_total'")["pearson_r"].iloc[0]
         bpi = sub.query("questionnaire == 'bpi_total_mean'")["pearson_r"].iloc[0]
         tsk = sub.query("questionnaire == 'tsk_total'")["pearson_r"].iloc[0]
-        rows.append({"metric": f"Pearson r vs real ({m}): PCS / BPI / TSK",
-                     "value": f"{pcs:.3f} / {bpi:.3f} / {tsk:.3f}"})
+        rows.append(
+            {"metric": f"Pearson r vs real ({m}): PCS / BPI / TSK", "value": f"{pcs:.3f} / {bpi:.3f} / {tsk:.3f}"}
+        )
 
     real_row = t5.query("source == 'real'").iloc[0]
-    rows.append({"metric": "Cronbach alpha (real): PCS / BPI_int / BPI_inten / TSK",
-                 "value": f"{real_row['pcs_alpha']:.3f} / {real_row['bpi_interference_alpha']:.3f} / "
-                          f"{real_row['bpi_intensity_alpha']:.3f} / {real_row['tsk_alpha']:.3f}"})
+    rows.append(
+        {
+            "metric": "Cronbach alpha (real): PCS / BPI_int / BPI_inten / TSK",
+            "value": f"{real_row['pcs_alpha']:.3f} / {real_row['bpi_interference_alpha']:.3f} / "
+            f"{real_row['bpi_intensity_alpha']:.3f} / {real_row['tsk_alpha']:.3f}",
+        }
+    )
     for m in sorted(t5.query("source == 'synthetic_mean'")["model"].unique()):
         r = t5.query("source == 'synthetic_mean' and model == @m").iloc[0]
-        rows.append({"metric": f"Cronbach alpha (synth {m}, mean across 3 runs)",
-                     "value": f"PCS={r['pcs_alpha']:.3f}  BPI_int={r['bpi_interference_alpha']:.3f}  "
-                              f"BPI_inten={r['bpi_intensity_alpha']:.3f}  TSK={r['tsk_alpha']:.3f}"})
+        rows.append(
+            {
+                "metric": f"Cronbach alpha (synth {m}, mean across 3 runs)",
+                "value": f"PCS={r['pcs_alpha']:.3f}  BPI_int={r['bpi_interference_alpha']:.3f}  "
+                f"BPI_inten={r['bpi_intensity_alpha']:.3f}  TSK={r['tsk_alpha']:.3f}",
+            }
+        )
 
     for _, r in r9.iterrows():
-        rows.append({
-            "metric": f"Wilcoxon: GPT-5 vs {r['other']} ({r['questionnaire']})",
-            "value": f"p = {r['wilcoxon_p']:.4f}  Δ|err| = {r['mean_delta_abs_err']:+.3f}",
-        })
+        rows.append(
+            {
+                "metric": f"Wilcoxon: GPT-5 vs {r['other']} ({r['questionnaire']})",
+                "value": f"p = {r['wilcoxon_p']:.4f}  Δ|err| = {r['mean_delta_abs_err']:+.3f}",
+            }
+        )
 
     mean_rho_real = r10e.groupby("model")["rho"].mean().round(3).sort_values(ascending=False)
-    rows.append({"metric": "Mean rho (synth dim vs real questionnaire, T10e)",
-                 "value": ", ".join(f"{m}={v:.3f}" for m, v in mean_rho_real.items())})
+    rows.append(
+        {
+            "metric": "Mean rho (synth dim vs real questionnaire, T10e)",
+            "value": ", ".join(f"{m}={v:.3f}" for m, v in mean_rho_real.items()),
+        }
+    )
 
     return pd.DataFrame(rows)
 
@@ -129,8 +176,12 @@ def main() -> None:
     (PKG / "figures").mkdir(parents=True, exist_ok=True)
 
     # Copy publication-style CSVs from notebook 05/06 outputs
-    for fname in ("05_real_vs_synthetic_all.csv", "05_cronbach_alpha.csv",
-                  "05_llm_consistency.csv", "05_dim_vs_real_quest.csv"):
+    for fname in (
+        "05_real_vs_synthetic_all.csv",
+        "05_cronbach_alpha.csv",
+        "05_llm_consistency.csv",
+        "05_dim_vs_real_quest.csv",
+    ):
         src = NB_OUT / fname
         if src.exists():
             shutil.copy2(src, PKG / "tables" / fname)
@@ -157,8 +208,7 @@ def main() -> None:
     base_sheets = pd.read_excel(consolidated, sheet_name=None)
 
     with pd.ExcelWriter(WORKBOOK, engine="openpyxl") as writer:
-        index_rows = [{"Sheet": name, "Description": desc}
-                      for name, _, desc in SHEETS]
+        index_rows = [{"Sheet": name, "Description": desc} for name, _, desc in SHEETS]
         pd.DataFrame(index_rows).to_excel(writer, sheet_name="Index", index=False)
         headline_numbers().to_excel(writer, sheet_name="Headline_numbers", index=False)
 

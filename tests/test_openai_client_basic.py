@@ -45,7 +45,8 @@ def test_openai_client_basic():
         client = OpenAIClient(api_key="test-key")
         response = client.create_completion(messages=messages, model=None, temperature=0.7, max_tokens=512)
 
-    assert response == fake_response_dict
+    assert {k: v for k, v in response.items() if k != "_request"} == fake_response_dict
+    assert response["_request"]["messages"] == messages
     mock_client.chat.completions.create.assert_called_once()
 
 

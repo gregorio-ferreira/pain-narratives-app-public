@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import zipfile
 from functools import lru_cache
 from pathlib import Path
 from typing import BinaryIO
@@ -21,7 +22,7 @@ def _get_markitdown() -> MarkItDown:
     Instantiating :class:`MarkItDown` is relatively expensive because it loads
     and registers a number of converters (and their dependencies).  Reusing a
     single instance keeps file uploads responsive without compromising
-    thread-safety—the Streamlit app runs in a single process.
+    performance. Uploaded files are processed only as in-memory streams.
     """
 
     return MarkItDown()
@@ -51,7 +52,21 @@ def file_to_markdown(file: BinaryIO, filename: str) -> str:
 
     # Reset the uploaded file pointer in case the caller has already read it.
     file.seek(0)
-    payload = file.read()
+    suffix = Path(filename).suffix.lower()
+    if suffix not in {".txt", ".pdf", ".docx"}:
+        raise RuntimeError("Only PDF, DOCX and TXT narrative uploads are supported")
+    payload = file.read(5 * 1024 * 1024 + 1)
+    if len(payload) > 5 * 1024 * 1024:
+        raise RuntimeError("Narrative uploads must be at most 5 MiB")
+    if suffix == ".docx" and payload:
+        try:
+            with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+                if sum(item.file_size for item in archive.infolist()) > 20 * 1024 * 1024:
+                    raise RuntimeError("Expanded DOCX content exceeds the upload limit")
+                if any(item.flag_bits & 1 for item in archive.infolist()):
+                    raise RuntimeError("Encrypted DOCX files are unsupported")
+        except zipfile.BadZipFile as exc:
+            raise RuntimeError("Invalid DOCX upload") from exc
 
     if not payload:
         return ""

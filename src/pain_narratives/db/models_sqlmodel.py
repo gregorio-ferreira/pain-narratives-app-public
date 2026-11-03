@@ -12,7 +12,7 @@ SCHEMA_NAME = "pain_narratives_app"
 
 
 class Narrative(SQLModel, table=True):
-    __tablename__ = "narratives"  # type: ignore
+    __tablename__ = "narratives"
     __table_args__ = {"schema": SCHEMA_NAME}
 
     narrative_id: int = Field(primary_key=True)
@@ -32,7 +32,7 @@ class Narrative(SQLModel, table=True):
 
 
 class ExperimentGroup(SQLModel, table=True):
-    __tablename__ = "experiments_groups"  # type: ignore
+    __tablename__ = "experiments_groups"
     __table_args__ = {"schema": SCHEMA_NAME}
 
     experiments_group_id: Optional[int] = Field(default=None, primary_key=True)
@@ -56,7 +56,7 @@ class ExperimentGroup(SQLModel, table=True):
 
 
 class ExperimentList(SQLModel, table=True):
-    __tablename__ = "experiments_list"  # type: ignore
+    __tablename__ = "experiments_list"
     __table_args__ = {"schema": SCHEMA_NAME}
 
     experiment_id: Optional[int] = Field(default=None, primary_key=True)
@@ -72,7 +72,7 @@ class ExperimentList(SQLModel, table=True):
     succeeded: bool = Field(default=False, nullable=False)
     parsed_answers: bool = Field(default=False, nullable=False)
     calculated_metrics: bool = Field(default=False, nullable=False)
-    extra_description: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    extra_description: Optional[dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
     repo_sha: str
     exp_type: str = Field(default="aut", nullable=False)
     prompt_version: Optional[str] = Field(default=None, max_length=64)
@@ -89,20 +89,20 @@ class ExperimentList(SQLModel, table=True):
 
 
 class RequestResponse(SQLModel, table=True):
-    __tablename__ = "request_response"  # type: ignore
+    __tablename__ = "request_response"
     __table_args__ = {"schema": SCHEMA_NAME}
 
     id: Optional[int] = Field(default=None, primary_key=True)
     created: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
     experiment_id: Optional[int] = Field(foreign_key=f"{SCHEMA_NAME}.experiments_list.experiment_id")
-    request_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
-    response_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    request_json: Optional[dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
+    response_json: Optional[dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
 
     experiment: Optional["ExperimentList"] = Relationship(back_populates="request_responses")
 
 
 class ExperimentGroupUser(SQLModel, table=True):
-    __tablename__ = "experiment_group_users"  # type: ignore
+    __tablename__ = "experiment_group_users"
     __table_args__ = {"schema": SCHEMA_NAME}
 
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -114,7 +114,7 @@ class ExperimentGroupUser(SQLModel, table=True):
 
 
 class User(SQLModel, table=True):
-    __tablename__ = "users"  # type: ignore
+    __tablename__ = "users"
     __table_args__ = {"schema": SCHEMA_NAME}
 
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -138,7 +138,7 @@ class UserPrompt(SQLModel, table=True):
     # DEPRECATED: This model/table is currently not used by the Streamlit UI and has 0 rows in production.
     # It is retained for backward compatibility with CLI scripts/tests and potential future per-user prompts.
     # If fully removing in the future, also remove related DatabaseManager methods and tests/test_user_prompt_current.py.
-    __tablename__ = "user_prompts"  # type: ignore
+    __tablename__ = "user_prompts"
     __table_args__ = {"schema": SCHEMA_NAME}
 
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -157,7 +157,7 @@ class UserPrompt(SQLModel, table=True):
 class QuestionnairePrompt(SQLModel, table=True):
     """Store custom questionnaire prompts and system roles for experiment groups."""
 
-    __tablename__ = "questionnaire_prompts"  # type: ignore
+    __tablename__ = "questionnaire_prompts"
     __table_args__ = {"schema": SCHEMA_NAME}
 
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -174,7 +174,7 @@ class QuestionnairePrompt(SQLModel, table=True):
 class Questionnaire(SQLModel, table=True):
     """Store questionnaire runs associated with experiments."""
 
-    __tablename__ = "questionnaires"  # type: ignore
+    __tablename__ = "questionnaires"
     __table_args__ = {"schema": SCHEMA_NAME}
 
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -185,7 +185,7 @@ class Questionnaire(SQLModel, table=True):
     questionnaire_name: str
     prompt: str
     created: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
-    result_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    result_json: Optional[dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
 
     experiment: Optional[ExperimentList] = Relationship(back_populates="questionnaires")
     group: Optional[ExperimentGroup] = Relationship(back_populates="questionnaires")
@@ -198,7 +198,7 @@ class Questionnaire(SQLModel, table=True):
 class EvaluationResult(SQLModel, table=True):
     """Persist processed results from evaluations and questionnaires."""
 
-    __tablename__ = "evaluation_results"  # type: ignore
+    __tablename__ = "evaluation_results"
     __table_args__ = {"schema": SCHEMA_NAME}
 
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -208,7 +208,7 @@ class EvaluationResult(SQLModel, table=True):
     narrative_id: int = Field(foreign_key=f"{SCHEMA_NAME}.narratives.narrative_id")
     user_id: int = Field(foreign_key=f"{SCHEMA_NAME}.users.id")
     result_type: str = Field(max_length=50)
-    result_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    result_json: Optional[dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
     created: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
 
     experiment: Optional[ExperimentList] = Relationship(back_populates="evaluation_results")
@@ -221,7 +221,7 @@ class EvaluationResult(SQLModel, table=True):
 class AssessmentFeedback(SQLModel, table=True):
     """Store clinician feedback about assessment scores and explanations."""
 
-    __tablename__ = "assessment_feedback"  # type: ignore
+    __tablename__ = "assessment_feedback"
     __table_args__ = {"schema": SCHEMA_NAME}
 
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -247,7 +247,7 @@ class AssessmentFeedback(SQLModel, table=True):
 class QuestionnaireFeedback(SQLModel, table=True):
     """Store expert feedback about questionnaire results and reasoning."""
 
-    __tablename__ = "questionnaire_feedback"  # type: ignore
+    __tablename__ = "questionnaire_feedback"
     __table_args__ = {"schema": SCHEMA_NAME}
 
     id: Optional[int] = Field(default=None, primary_key=True)

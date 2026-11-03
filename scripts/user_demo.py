@@ -5,8 +5,7 @@ Quick demo of the interactive user registration script.
 This shows how to use the register_user.py script with sample inputs.
 """
 
-print(
-    """
+print("""
 🔐 Pain Narratives User Registration Scripts Demo
 ================================================
 
@@ -19,7 +18,7 @@ The following scripts are available for user management:
 
 2. Batch Registration (register_user_batch.py):
    - Command-line interface for programmatic user creation
-   - Usage: python scripts/register_user_batch.py <username> <password> [--admin]
+   - Usage: python scripts/register_user_batch.py <username> [--admin]
 
 3. User Management (manage_users.py):
    - List, show, delete, and modify existing users
@@ -33,18 +32,17 @@ Examples:
 python scripts/register_user.py
 
 # Batch registration
-python scripts/register_user_batch.py doctor_smith mypassword123
+python scripts/register_user_batch.py doctor_smith
 python scripts/register_user_batch.py admin_user securepass --admin
 
 # User management
 python scripts/manage_users.py list
 python scripts/manage_users.py show admin
 python scripts/manage_users.py make-admin doctor_smith
-python scripts/manage_users.py reset-password doctor_smith newpass123
+python scripts/manage_users.py reset-password doctor_smith
 
 All users can immediately login to the Streamlit application!
-"""
-)
+""")
 
 
 def main():

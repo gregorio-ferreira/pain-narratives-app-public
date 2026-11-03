@@ -30,10 +30,11 @@ import os
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Any, Callable, Optional, TypeVar
 from urllib.parse import parse_qs
 
 from pain_narratives.config.settings import get_settings
+from pain_narratives.core.provider_errors import ProviderAuthError, ProviderRequestError, ProviderTransientError
 
 logger = logging.getLogger(__name__)
 
@@ -48,16 +49,16 @@ class BedrockError(Exception):
     """Base for all Bedrock-specific errors."""
 
 
-class BedrockAuthError(BedrockError):
+class BedrockAuthError(BedrockError, ProviderAuthError):
     """Authentication failure: bearer token expired, invalid, or wrong region.
     The runner halts the batch on this — retrying will not help."""
 
 
-class BedrockTransientError(BedrockError):
+class BedrockTransientError(BedrockError, ProviderTransientError):
     """Server-side / throttling failure. Safe to retry with backoff."""
 
 
-class BedrockModelError(BedrockError):
+class BedrockModelError(BedrockError, ProviderRequestError):
     """The model rejected the request (validation, malformed input).
     Programming bug, not transient — log and skip the narrative."""
 
@@ -236,7 +237,7 @@ class BedrockClient:
         if credentials is None:
             return None
         expiry = getattr(credentials, "_expiry_time", None)
-        if expiry is None:
+        if not isinstance(expiry, datetime):
             return None
         if expiry.tzinfo is None:
             return expiry.replace(tzinfo=timezone.utc)
@@ -426,7 +427,7 @@ def _translate_boto_error(exc: Exception) -> BedrockError:
     msg = str(exc)
     exc_name = type(exc).__name__
     if hasattr(exc, "response"):
-        err = getattr(exc, "response", {}).get("Error", {})  # type: ignore[union-attr]
+        err = getattr(exc, "response", {}).get("Error", {})
         code = err.get("Code", "")
         msg = err.get("Message", msg)
 
@@ -539,12 +540,15 @@ class BedrockOpenAIAdapter:
 # -----------------------------------------------------------------------------
 
 
+RetryResult = TypeVar("RetryResult")
+
+
 def call_with_retry(
-    fn,
+    fn: Callable[[], RetryResult],
     max_attempts: int = 3,
     initial_delay: float = 5.0,
     backoff: float = 2.0,
-):
+) -> RetryResult:
     """Run `fn()` with exponential backoff on BedrockTransientError.
     BedrockAuthError and BedrockModelError raise immediately."""
     delay = initial_delay
@@ -562,7 +566,7 @@ def call_with_retry(
                 "Transient Bedrock error on attempt %d/%d: %s. Sleeping %ss.",
                 attempt,
                 max_attempts,
-                e,
+                type(e).__name__,
                 delay,
             )
             if attempt < max_attempts:

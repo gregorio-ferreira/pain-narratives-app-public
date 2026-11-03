@@ -9,12 +9,14 @@ import streamlit as st
 from sqlmodel import select
 
 from pain_narratives.core.database import DatabaseManager
+from pain_narratives.core.privacy import safe_error
 from pain_narratives.core.questionnaire_prompts import (
     DEFAULT_QUESTIONNAIRE_PROMPTS,
     get_questionnaire_prompts_for_group,
     initialize_default_prompts_for_group,
     update_questionnaire_prompt,
 )
+from pain_narratives.core.security import MIN_PASSWORD_LENGTH
 from pain_narratives.db.models_sqlmodel import ExperimentGroup, User
 from pain_narratives.ui.utils import get_translator
 
@@ -390,15 +392,15 @@ def experiment_group_management_ui(db_manager: DatabaseManager, user_info: Dict[
 
                     # Note: Cache clearing is sufficient, no need to rerun the entire page
                 except (ValueError, RuntimeError, KeyError) as e:
-                    st.error(f"❌ Failed to create Evaluation group: {str(e)}")
+                    st.error(f"❌ Failed to create Evaluation group: {safe_error(e)}")
                 except Exception as e:  # pylint: disable=broad-except
-                    st.error(f"❌ Unexpected error creating Evaluation group: {str(e)}")
+                    st.error(f"❌ Unexpected error creating Evaluation group: {safe_error(e)}")
 
 
 def user_administration_ui(db_manager: DatabaseManager, user_info: Dict[str, Any]) -> None:
     """Display user administration interface (admin only)."""
     t = get_translator(st.session_state.get("language", "en"))
-    if not user_info["is_admin"]:
+    if not db_manager.is_user_admin(user_info["id"]):
         st.warning(t("ui_text.admin_privileges_required_warning"))
         return
 
@@ -428,15 +430,15 @@ def user_administration_ui(db_manager: DatabaseManager, user_info: Dict[str, Any
                     st.error(t("ui_text.username_required_error"))
                 elif not new_password:
                     st.error(t("ui_text.password_required_error"))
-                elif len(new_password) < 3:
+                elif len(new_password) < MIN_PASSWORD_LENGTH:
                     st.error(t("ui_text.password_min_length_error"))
                 else:
                     try:
-                        db_manager.create_user(new_username, new_password, is_admin)
+                        db_manager.create_user(new_username, new_password, is_admin, actor_id=user_info["id"])
                         st.success(t("ui_text.user_created_success").format(username=new_username))
                         st.rerun()
                     except Exception as e:
-                        st.error(t("ui_text.user_creation_failed").format(error=str(e)))
+                        st.error(t("ui_text.user_creation_failed").format(error=safe_error(e)))
 
     # Get all users
     with db_manager.get_session() as session:
@@ -451,6 +453,7 @@ def user_administration_ui(db_manager: DatabaseManager, user_info: Dict[str, Any
 
     user_data = []
     for user in users:
+        assert user.id is not None
         # Get Evaluation group IDs for each user
         group_ids = db_manager.get_user_experiment_groups(user.id)
         group_ids_str = ", ".join(map(str, group_ids)) if group_ids else "-"
@@ -484,6 +487,7 @@ def user_administration_ui(db_manager: DatabaseManager, user_info: Dict[str, Any
 
     if selected_user_key:
         selected_user = user_options[selected_user_key]
+        assert selected_user.id is not None
 
         col1, col2, col3 = st.columns(3)
 
@@ -498,11 +502,13 @@ def user_administration_ui(db_manager: DatabaseManager, user_info: Dict[str, Any
                 use_container_width=True,
             ):
                 try:
-                    db_manager.update_user_admin_status(selected_user.id, not selected_user.is_admin)
+                    db_manager.update_user_admin_status(
+                        selected_user.id, not selected_user.is_admin, actor_id=user_info["id"]
+                    )
                     st.success(t("ui_text.admin_status_updated").format(username=selected_user.username))
                     st.rerun()
                 except Exception as e:
-                    st.error(t("ui_text.admin_update_failed").format(error=str(e)))
+                    st.error(t("ui_text.admin_update_failed").format(error=safe_error(e)))
 
         # Reset password
         with col2:
@@ -511,15 +517,15 @@ def user_administration_ui(db_manager: DatabaseManager, user_info: Dict[str, Any
                 if st.button(t("ui_text.reset_password_button"), key="confirm_reset_pwd"):
                     if not new_pwd:
                         st.error(t("ui_text.password_required_error"))
-                    elif len(new_pwd) < 3:
+                    elif len(new_pwd) < MIN_PASSWORD_LENGTH:
                         st.error(t("ui_text.password_min_length_error"))
                     else:
                         try:
-                            db_manager.reset_user_password(selected_user.id, new_pwd)
+                            db_manager.reset_user_password(selected_user.id, new_pwd, actor_id=user_info["id"])
                             st.success(t("ui_text.password_reset_success").format(username=selected_user.username))
                             st.rerun()
                         except Exception as e:
-                            st.error(t("ui_text.password_reset_failed").format(error=str(e)))
+                            st.error(t("ui_text.password_reset_failed").format(error=safe_error(e)))
 
         # Delete user
         with col3:
@@ -536,11 +542,11 @@ def user_administration_ui(db_manager: DatabaseManager, user_info: Dict[str, Any
                     st.warning(t("ui_text.confirm_delete_user").format(username=selected_user.username))
                     if st.button("⚠️ Confirm Delete", key="confirm_delete_user", type="primary"):
                         try:
-                            db_manager.delete_user(selected_user.id)
+                            db_manager.delete_user(selected_user.id, actor_id=user_info["id"])
                             st.success(t("ui_text.user_deleted_success").format(username=selected_user.username))
                             st.rerun()
                         except Exception as e:
-                            st.error(t("ui_text.user_delete_failed").format(error=str(e)))
+                            st.error(t("ui_text.user_delete_failed").format(error=safe_error(e)))
 
     # Edit Experiment Groups section
     st.divider()
@@ -548,6 +554,7 @@ def user_administration_ui(db_manager: DatabaseManager, user_info: Dict[str, Any
 
     if selected_user_key:
         selected_user = user_options[selected_user_key]
+        assert selected_user.id is not None
 
         # Get all available experiment groups
         all_groups = db_manager.get_all_experiment_groups()
@@ -592,7 +599,7 @@ def user_administration_ui(db_manager: DatabaseManager, user_info: Dict[str, Any
                         # Parse the input
                         if not new_groups_str.strip():
                             # Empty input means remove all groups
-                            new_group_ids = []
+                            new_group_ids: list[int] = []
                         else:
                             # Parse comma-separated integers
                             new_group_ids = []
@@ -607,27 +614,16 @@ def user_administration_ui(db_manager: DatabaseManager, user_info: Dict[str, Any
                                         st.stop()
 
                         # Validate and update
-                        db_manager.update_user_experiment_groups(selected_user.id, new_group_ids)
+                        db_manager.update_user_experiment_groups(
+                            selected_user.id, new_group_ids, actor_id=user_info["id"]
+                        )
                         st.success(t("ui_text.groups_updated_success").format(username=selected_user.username))
                         st.rerun()
 
                     except ValueError as e:
-                        # Handle group not found error
-                        error_msg = str(e)
-                        if "does not exist" in error_msg:
-                            # Extract group ID from error message
-                            import re
-
-                            match = re.search(r"ID (\d+)", error_msg)
-                            if match:
-                                group_id = match.group(1)
-                                st.error(t("ui_text.group_not_found_error").format(group_id=group_id))
-                            else:
-                                st.error(t("ui_text.groups_update_failed").format(error=error_msg))
-                        else:
-                            st.error(t("ui_text.groups_update_failed").format(error=error_msg))
+                        st.error(t("ui_text.groups_update_failed").format(error=safe_error(e)))
                     except Exception as e:
-                        st.error(t("ui_text.groups_update_failed").format(error=str(e)))
+                        st.error(t("ui_text.groups_update_failed").format(error=safe_error(e)))
 
     # Quick actions section (command line reference)
     st.divider()
@@ -638,8 +634,7 @@ def user_administration_ui(db_manager: DatabaseManager, user_info: Dict[str, Any
 
     with col1:
         st.write("**User Management Scripts**")
-        st.code(
-            """
+        st.code("""
 # List all users
 uv run python scripts/manage_users.py list
 
@@ -650,27 +645,24 @@ uv run python scripts/manage_users.py show username
 uv run python scripts/manage_users.py make-admin username
 
 # Reset password
-uv run python scripts/manage_users.py reset-password username newpass
-        """
-        )
+uv run python scripts/manage_users.py reset-password username
+        """)
 
     with col2:
         st.write("**User Registration Scripts**")
-        st.code(
-            """
+        st.code("""
 # Interactive registration
 uv run python scripts/register_user.py
 
 # Batch registration
-uv run python scripts/register_user_batch.py username password
+uv run python scripts/register_user_batch.py username
 
 # Admin user creation
 uv run python scripts/register_user_batch.py admin_user pass --admin
 
 # Import from CSV
 uv run python scripts/manage_users.py import-csv users.csv
-        """
-        )
+        """)
 
     st.info(t("ui_text.command_line_scripts_info"))
 

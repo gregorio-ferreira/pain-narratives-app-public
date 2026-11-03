@@ -15,12 +15,13 @@ Usage:
     python manage_users.py delete <username>
     python manage_users.py make-admin <username>
     python manage_users.py remove-admin <username>
-    python manage_users.py reset-password <username> <new_password>
+    python manage_users.py reset-password <username>
     python manage_users.py import-csv <csv_path>
 """
 
 import argparse
 import csv
+import getpass
 import os
 import re
 import secrets
@@ -31,6 +32,7 @@ from typing import Dict, List, Optional
 from sqlmodel import select
 
 from pain_narratives.core.database import DatabaseManager
+from pain_narratives.core.security import MIN_PASSWORD_LENGTH
 from pain_narratives.db.models_sqlmodel import User
 
 
@@ -46,14 +48,14 @@ Commands:
   delete <username>        Delete a user
   make-admin <username>    Grant admin privileges to a user
   remove-admin <username>  Remove admin privileges from a user
-  reset-password <username> <password>  Reset user password
+  reset-password <username>  Reset user password
 
 Examples:
   %(prog)s list
   %(prog)s show doctor_smith
   %(prog)s delete old_user
   %(prog)s make-admin researcher01
-  %(prog)s reset-password doctor_smith newpassword123
+  %(prog)s reset-password doctor_smith
         """,
     )
 
@@ -73,11 +75,17 @@ Examples:
 
     parser.add_argument("username", nargs="?", help="Username (required for commands except 'list' and 'import-csv')")
 
-    parser.add_argument("password", nargs="?", help="New password (required for 'reset-password' command)")
+    parser.add_argument(
+        "--password-stdin", action="store_true", help="Read a password from standard input for automation"
+    )
 
     parser.add_argument("csv_path", nargs="?", help="Path to CSV file (required for 'import-csv' command)")
 
-    return parser.parse_args()
+    args = parser.parse_args()
+    args.password = None
+    if args.command == "reset-password":
+        args.password = sys.stdin.readline().rstrip("\n") if args.password_stdin else getpass.getpass("New password: ")
+    return args
 
 
 def validate_command_args(args: argparse.Namespace) -> None:
@@ -179,7 +187,7 @@ def delete_user(db_manager: DatabaseManager, username: str) -> None:
             session.commit()
             print(f"✅ User '{username}' deleted successfully.")
         except Exception as e:
-            print(f"❌ Failed to delete user: {e}")
+            print(f"❌ Failed to delete user: {type(e).__name__}")
 
 
 def make_admin(db_manager: DatabaseManager, username: str) -> None:
@@ -200,7 +208,7 @@ def make_admin(db_manager: DatabaseManager, username: str) -> None:
             session.commit()
         print(f"✅ User '{username}' granted admin privileges.")
     except Exception as e:
-        print(f"❌ Failed to grant admin privileges: {e}")
+        print(f"❌ Failed to grant admin privileges: {type(e).__name__}")
 
 
 def remove_admin(db_manager: DatabaseManager, username: str) -> None:
@@ -221,7 +229,7 @@ def remove_admin(db_manager: DatabaseManager, username: str) -> None:
             session.commit()
         print(f"✅ Admin privileges removed from user '{username}'.")
     except Exception as e:
-        print(f"❌ Failed to remove admin privileges: {e}")
+        print(f"❌ Failed to remove admin privileges: {type(e).__name__}")
 
 
 def reset_password(db_manager: DatabaseManager, username: str, new_password: str) -> None:
@@ -231,22 +239,15 @@ def reset_password(db_manager: DatabaseManager, username: str, new_password: str
         print(f"❌ User '{username}' not found.")
         return
 
-    if len(new_password) < 3:
-        print("❌ Password must be at least 3 characters long.")
+    if len(new_password) < MIN_PASSWORD_LENGTH:
+        print(f"❌ Password must be at least {MIN_PASSWORD_LENGTH} characters long.")
         return
 
     try:
-        import hashlib
-
-        hashed_password = hashlib.sha256(new_password.encode()).hexdigest()
-
-        with db_manager.get_session() as session:
-            user.hashed_password = hashed_password
-            session.add(user)
-            session.commit()
+        db_manager.reset_user_password(user.id, new_password)
         print(f"✅ Password reset for user '{username}'.")
     except Exception as e:
-        print(f"❌ Failed to reset password: {e}")
+        print(f"❌ Failed to reset password: {type(e).__name__}")
 
 
 def _sanitize_username(base: str) -> str:
@@ -257,7 +258,7 @@ def _sanitize_username(base: str) -> str:
     return username[:255]
 
 
-def _generate_password(length: int = 12) -> str:
+def _generate_password(length: int = 16) -> str:
     """Generate a secure password with letters and digits."""
     alphabet = string.ascii_letters + string.digits
     return "".join(secrets.choice(alphabet) for _ in range(length))
@@ -279,7 +280,7 @@ def _ensure_unique_username(db_manager: DatabaseManager, base_username: str) -> 
 
 
 def import_users_from_csv(db_manager: DatabaseManager, csv_path: str) -> None:
-    """Import users from a CSV and update it with created username and password.
+    """Import users and write passwords only to a separate mode-600 credential file.
 
     Expected CSV columns (case-sensitive preferred):
     - 'Name Surname'
@@ -293,6 +294,11 @@ def import_users_from_csv(db_manager: DatabaseManager, csv_path: str) -> None:
         print(f"❌ CSV file not found: {csv_path}")
         sys.exit(1)
 
+    credentials_path = csv_path + ".credentials.csv"
+    # Reserve a private output before creating accounts; never overwrite credentials.
+    descriptor = os.open(credentials_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    os.close(descriptor)
+    os.chmod(csv_path, 0o600)
     created: List[Dict[str, str]] = []
 
     # Read CSV
@@ -312,14 +318,14 @@ def import_users_from_csv(db_manager: DatabaseManager, csv_path: str) -> None:
         fieldnames.append(user_col)
 
     password_col = "Password"
-    if password_col not in fieldnames:
-        fieldnames.append(password_col)
+    fieldnames = [name for name in fieldnames if name != password_col]
+    for row in rows:
+        row.pop(password_col, None)
 
     # Process rows
     for row in rows:
         email = (row.get("Email") or "").strip()
         if not email or "@" not in email:
-            row[password_col] = row.get(password_col, "")
             row[user_col] = row.get(user_col, "")
             continue
 
@@ -336,12 +342,16 @@ def import_users_from_csv(db_manager: DatabaseManager, csv_path: str) -> None:
         try:
             db_manager.create_user(username=username, password=password, is_admin=False)
         except Exception as e:
-            print(f"❌ Failed to create user for email {email}: {e}")
+            print(f"❌ Failed to create user for email {email}: {type(e).__name__}")
             continue
 
         # Update row
         row[user_col] = username
-        row[password_col] = password
+        with open(credentials_path, "a", newline="", encoding="utf-8") as credentials:
+            writer = csv.writer(credentials)
+            if credentials.tell() == 0:
+                writer.writerow(["username", "password"])
+            writer.writerow([username, password])
         created.append({"email": email, "username": username})
 
     # Write back CSV (overwrite)
@@ -351,6 +361,7 @@ def import_users_from_csv(db_manager: DatabaseManager, csv_path: str) -> None:
         for row in rows:
             writer.writerow(row)
 
+    print(f"Private credential file: {credentials_path}; distribute securely and delete after delivery.")
     # Summary
     print(f"✅ Completed CSV import. Created {len(created)} user(s).")
     if created:
@@ -396,7 +407,7 @@ def main():
             import_users_from_csv(db_manager, args.csv_path)
 
     except Exception as e:
-        print(f"❌ Operation failed: {e}")
+        print(f"❌ Operation failed: {type(e).__name__}")
         print("\nMake sure:")
         print("1. PostgreSQL is running")
         print("2. Database configuration is correct")
@@ -404,7 +415,5 @@ def main():
         sys.exit(1)
 
 
-if __name__ == "__main__":
-    main()
 if __name__ == "__main__":
     main()

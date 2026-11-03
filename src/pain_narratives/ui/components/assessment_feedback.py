@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 import streamlit as st
 
+from pain_narratives.core.privacy import safe_error
 from pain_narratives.ui.utils.localization import get_translator
 
 __all__ = ["render_assessment_feedback_form"]
@@ -163,7 +164,7 @@ def render_assessment_feedback_form(
 
         index = _option_index(default_value)
         kwargs["index"] = index
-        return st.selectbox(**kwargs)
+        return cast(Optional[str], st.selectbox(**kwargs))
 
     # Get existing dimension feedback defaults
     dimension_defaults: Dict[str, Dict[str, Optional[str]]] = {}
@@ -272,4 +273,4 @@ def render_assessment_feedback_form(
         st.rerun()  # Force re-run to show completion status
 
     except Exception as exc:  # noqa: BLE001 generic user feedback
-        st.error(t("assessment_feedback.save_error").format(error=str(exc)))
+        st.error(t("assessment_feedback.save_error").format(error=safe_error(exc)))
