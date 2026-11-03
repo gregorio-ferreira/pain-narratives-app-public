@@ -6,9 +6,11 @@ https://github.com/tdurieux/anonymous_github#readme.
 
 Use the service for author/institution masking; do not use it as a secret store or
 as the only defense for patient data. Current notebooks must have empty outputs
-and no execution/widget state. Individual-content screenshots have been withheld
-from the public tree; replacements must use explicitly synthetic narratives.
-The original screenshots remain private local material, outside Git/build context.
+and no execution/widget state. The published screenshots show one participant's
+narrative, the same one printed in full in the paper's appendix example, so they
+disclose nothing beyond the paper; the research team approved them for
+publication. Any new screenshot must use that narrative or an explicitly
+synthetic one.
 
 Configure masking for author names, usernames, email addresses, institution names
 and abbreviations, repository owner/URLs, identifying home paths, and old cloud

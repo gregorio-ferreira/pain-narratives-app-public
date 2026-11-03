@@ -1,10 +1,12 @@
-The public figures illustrate application structure and controls. Two older
-screenshots containing individual narrative content have been withheld:
-`evaluation_dimensions.png` and `step_2_questionaries.png`.
+The public figures illustrate application structure and controls. They link from
+the paper and keep the file names the paper uses.
 
-`07_quest_results3.png` (questionnaire results, paper Figure 7) shows a
-model-generated persona, item scores and model reasoning, but no narrative text.
-The research team reviewed it and approved it for publication.
+Three screenshots show narrative-derived content: `evaluation_dimensions.png`
+and `step_2_questionaries.png` show a participant's narrative, and
+`07_quest_results3.png` shows the persona, item scores and model reasoning
+generated from it. This is the same narrative the paper prints in full in its
+appendix example, so the screenshots disclose nothing beyond the paper. The
+research team reviewed them and approved them for publication.
 
-Use newly captured screenshots with explicitly synthetic text before adding
-replacement figures. Browser text masking does not anonymize pixels in an image.
+Any new screenshot must use that narrative or explicitly synthetic text.
+Browser text masking does not anonymize pixels in an image.
